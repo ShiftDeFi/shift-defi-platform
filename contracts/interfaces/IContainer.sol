@@ -9,6 +9,7 @@ interface IContainer {
     }
 
     event SwapRouterUpdated(address indexed previousSwapRouter, address indexed newSwapRouter);
+    event WhitelistedTokenDustThresholdUpdated(address indexed token, uint256 threshold);
 
     error AlreadyWhitelistedToken();
     error NotWhitelistedToken(address token);

@@ -21,7 +21,6 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
 
     function initialize(ContainerInitParams memory containerParams) public initializer {
         __Container_init(containerParams);
-        __StrategyContainer_init();
         IERC20(notion).approve(vault, type(uint256).max);
     }
 
@@ -31,40 +30,31 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         return ContainerType.Local;
     }
 
-    function _updateStatus(ContainerLocalStatus newStatus) private {
-        ContainerLocalStatus previousStatus = status;
-        status = newStatus;
-        emit StatusUpdated(previousStatus, newStatus);
-    }
-
     // ---- Vault interaction ----
 
     function registerDepositRequest(uint256 amount) external onlyVault {
         require(status == ContainerLocalStatus.Idle, Errors.IncorrectContainerStatus());
         require(amount > 0, Errors.ZeroAmount());
-        _updateStatus(ContainerLocalStatus.DepositRequestRegistered);
+        status = ContainerLocalStatus.DepositRequestRegistered;
         IERC20(notion).safeTransferFrom(vault, address(this), amount);
     }
 
     function registerWithdrawRequest(uint256 amount) external onlyVault {
         require(status == ContainerLocalStatus.Idle, Errors.IncorrectContainerStatus());
         require(amount > 0, Errors.ZeroAmount());
-        _updateStatus(ContainerLocalStatus.WithdrawalRequestRegistered);
+        status = ContainerLocalStatus.WithdrawalRequestRegistered;
         registeredWithdrawShareAmount = amount;
     }
 
     function reportDeposit() external onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.AllStrategiesEntered, Errors.IncorrectContainerStatus());
-        _checkIfHarvestsAreUpToDate();
 
-        require(_hasOnlyNotionToken(), WhitelistedTokensOnBalance());
+        require(_validateWhitelistedTokensBeforeReport(true, true), WhitelistedTokensOnBalance());
 
         (uint256 nav0, uint256 nav1) = _getTotalNavs();
 
+        status = ContainerLocalStatus.Idle;
         _strategyEnterBitmask = 0;
-        _strategyHarvestBitmask = 0;
-
-        _updateStatus(ContainerLocalStatus.Idle);
 
         IVault(vault).reportDeposit(
             IVault.ContainerReport({nav0: nav0, nav1: nav1}),
@@ -75,10 +65,10 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     function reportWithdraw() external onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.AllStrategiesExited, Errors.IncorrectContainerStatus());
 
+        status = ContainerLocalStatus.Idle;
         registeredWithdrawShareAmount = 0;
         _strategyExitBitmask = 0;
         require(_hasOnlyNotionToken(), WhitelistedTokensOnBalance());
-        _updateStatus(ContainerLocalStatus.Idle);
         IVault(vault).reportWithdraw(IERC20(notion).balanceOf(address(this)));
     }
 
@@ -93,7 +83,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         _enterStrategy(strategy, inputAmounts, minNavDelta);
 
         if (_allStrategiesEntered()) {
-            _updateStatus(ContainerLocalStatus.AllStrategiesEntered);
+            status = ContainerLocalStatus.AllStrategiesEntered;
             emit AllStrategiesEntered();
         }
     }
@@ -113,7 +103,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         }
 
         if (_allStrategiesEntered()) {
-            _updateStatus(ContainerLocalStatus.AllStrategiesEntered);
+            status = ContainerLocalStatus.AllStrategiesEntered;
             emit AllStrategiesEntered();
         }
     }
@@ -125,7 +115,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         _exitStrategy(strategy, registeredShareAmountCached, minNavDelta);
 
         if (_allStrategiesExited()) {
-            _updateStatus(ContainerLocalStatus.AllStrategiesExited);
+            status = ContainerLocalStatus.AllStrategiesExited;
             emit AllStrategiesExited();
         }
     }
@@ -146,7 +136,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         }
 
         if (_allStrategiesExited()) {
-            _updateStatus(ContainerLocalStatus.AllStrategiesExited);
+            status = ContainerLocalStatus.AllStrategiesExited;
             emit AllStrategiesExited();
         }
     }

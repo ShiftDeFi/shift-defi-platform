@@ -13,6 +13,8 @@ interface IReshufflingGateway {
 
     error NotContainer(address container);
     error NotVault(address vault);
+    error NothingToWithdraw();
+    error NoSharesToWithdraw();
     error VaultNotInRepairingMode();
     error VaultNotInReshufflingMode();
     error NotWhitelistedToken(address token);
@@ -20,5 +22,5 @@ interface IReshufflingGateway {
     error WrongRemoteChainId(uint256 expected, uint256 received);
     error TokenNotWhitelistedOnContainer(address token);
 
-    function withdraw(uint256 positionId) external;
+    function withdraw(address account) external;
 }

@@ -37,6 +37,8 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
 
     uint256 public sharesForWithdrawal;
 
+    mapping(address => uint256) public _whitelistedTokensDustThresholds;
+
     modifier onlyVault() {
         require(msg.sender == vault, Errors.Unauthorized());
         _;
@@ -73,6 +75,15 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         emit TokenWhitelistUpdated(token, false);
     }
 
+    function setWhitelistedTokenDustThreshold(address token, uint256 threshold) external onlyRole(TOKEN_MANAGER_ROLE) {
+        require(token != address(0), Errors.ZeroAddress());
+        require(threshold > 0, Errors.ZeroAmount());
+        require(_whitelistedTokens.contains(token), NotWhitelistedToken(token));
+
+        _whitelistedTokensDustThresholds[token] = threshold;
+        emit WhitelistedTokenDustThresholdUpdated(token, threshold);
+    }
+
     function setSwapRouter(address newSwapRouter) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(newSwapRouter != address(0), Errors.ZeroAddress());
         _setSwapRouter(newSwapRouter);
@@ -96,22 +107,22 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         require(token != address(0), Errors.ZeroAddress());
     }
 
-    function _hasZeroBalanceForAllWhitelistedTokens(bool ignoreNotion) internal view returns (bool) {
+    function _validateWhitelistedTokensBeforeReport(bool ignoreNotion, bool ignoreDust) internal view returns (bool) {
         uint256 length = _whitelistedTokens.length();
         for (uint256 i = 0; i < length; i++) {
             address token = _whitelistedTokens.at(i);
             if (ignoreNotion && token == notion) {
                 continue;
             }
-            if (IERC20(token).balanceOf(address(this)) > 0) {
+            uint256 dustThreshold = !ignoreDust ? 0 : _whitelistedTokensDustThresholds[token];
+            if (IERC20(token).balanceOf(address(this)) > dustThreshold) {
                 return false;
             }
         }
         return true;
     }
-
     function _hasOnlyNotionToken() internal view returns (bool) {
-        return _hasZeroBalanceForAllWhitelistedTokens(true) && IERC20(notion).balanceOf(address(this)) > 0;
+        return _validateWhitelistedTokensBeforeReport(true, true) && IERC20(notion).balanceOf(address(this)) > 0;
     }
 
     function _setSwapRouter(address newSwapRouter) internal {

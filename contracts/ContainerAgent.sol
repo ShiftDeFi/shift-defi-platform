@@ -35,7 +35,6 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         address emergencyManager
     ) public initializer {
         _grantRole(EMERGENCY_MANAGER_ROLE, emergencyManager);
-        __StrategyContainer_init();
         __CrossChainContainer_init(containerParams, crossChainParams);
     }
 
@@ -46,6 +45,8 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         uint256[] calldata inputAmounts,
         uint256 minNavDelta
     ) external onlyRole(OPERATOR_ROLE) {
+        require(status == ContainerAgentStatus.BridgeClaimed, Errors.IncorrectContainerStatus());
+
         _enterStrategy(strategy, inputAmounts, minNavDelta);
 
         if (_allStrategiesEntered()) {
@@ -59,6 +60,8 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         uint256[][] calldata inputAmounts,
         uint256[] calldata minNavDelta
     ) external onlyRole(OPERATOR_ROLE) {
+        require(status == ContainerAgentStatus.BridgeClaimed, Errors.IncorrectContainerStatus());
+
         uint256 length = strategies.length;
         require(length == inputAmounts.length, Errors.ArrayLengthMismatch());
         require(length == minNavDelta.length, Errors.ArrayLengthMismatch());
@@ -74,6 +77,8 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     }
 
     function exitStrategy(address strategy, uint256 minNavDelta) external onlyRole(OPERATOR_ROLE) {
+        require(status == ContainerAgentStatus.WithdrawalRequestReceived, Errors.IncorrectContainerStatus());
+
         uint256 registeredShareAmountCached = registeredWithdrawShareAmount;
         require(registeredShareAmountCached > 0, NoSharesRegisteredForExit());
         _exitStrategy(strategy, registeredShareAmountCached, minNavDelta);
@@ -88,6 +93,8 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         address[] calldata strategies,
         uint256[] calldata minNavDeltas
     ) external onlyRole(OPERATOR_ROLE) {
+        require(status == ContainerAgentStatus.WithdrawalRequestReceived, Errors.IncorrectContainerStatus());
+
         uint256 length = strategies.length;
         require(length == minNavDeltas.length, Errors.ArrayLengthMismatch());
 
@@ -112,8 +119,6 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         require(status == ContainerAgentStatus.AllStrategiesEntered, Errors.IncorrectContainerStatus());
         require(remoteChainId > 0, Errors.ZeroAmount());
 
-        _checkIfHarvestsAreUpToDate();
-
         ReportDepositLocalVars memory vars;
 
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
@@ -132,7 +137,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
             );
         }
 
-        require(_hasZeroBalanceForAllWhitelistedTokens(false), WhitelistedTokensOnBalance());
+        require(_validateWhitelistedTokensBeforeReport(false, true), WhitelistedTokensOnBalance());
 
         (vars.nav0, vars.nav1) = _getTotalNavs();
 
@@ -180,7 +185,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
             (tokens[i], minAmounts[i]) = _bridgeToken(bridgeAdapters[i], peerContainer, bridgeInstructions[i]);
         }
 
-        require(_hasZeroBalanceForAllWhitelistedTokens(false), WhitelistedTokensOnBalance());
+        require(_validateWhitelistedTokensBeforeReport(false, true), WhitelistedTokensOnBalance());
         require(tokens.length > 0, Errors.ZeroAmount());
         require(minAmounts.length == tokens.length, Errors.ArrayLengthMismatch());
 
@@ -244,7 +249,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         address bridgeAdapter,
         address token
     ) external onlyRole(OPERATOR_ROLE) nonReentrant {
-        require(_isReshufflingMode(), ActionUnavailableNotInReshufflingMode());
+        require(_reshufflingMode, ActionUnavailableNotInReshufflingMode());
         IBridgeAdapter(bridgeAdapter).claim(token);
     }
 
@@ -274,7 +279,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         require(bridgeAdapters.length > 0, Errors.ZeroAmount());
         address bridgeCollectorCached = _bridgeCollector;
         require(bridgeCollectorCached != address(0), Errors.ZeroAddress());
-        require(_isReshufflingMode(), ActionUnavailableNotInReshufflingMode());
+        require(_reshufflingMode, ActionUnavailableNotInReshufflingMode());
 
         uint256 length = instructions.length;
         for (uint256 i = 0; i < length; ++i) {

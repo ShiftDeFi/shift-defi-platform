@@ -3,8 +3,7 @@ pragma solidity ^0.8.28;
 
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {ERC721EnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
-import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -18,14 +17,7 @@ import {IReshufflingGateway} from "./interfaces/IReshufflingGateway.sol";
 import {EnumerableAddressSetExtended} from "./libraries/helpers/EnumerableAddressSetExtended.sol";
 import {Errors} from "./libraries/helpers/Errors.sol";
 
-contract Vault is
-    IVault,
-    Initializable,
-    ERC721Upgradeable,
-    ERC721EnumerableUpgradeable,
-    AccessControlUpgradeable,
-    ReentrancyGuardUpgradeable
-{
+contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradeable, ReentrancyGuardUpgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableAddressSetExtended for EnumerableSet.AddressSet;
     using Math for uint256;
@@ -36,10 +28,11 @@ contract Vault is
     bytes32 private constant CONFIGURATOR_ROLE = keccak256("CONFIGURATOR_ROLE");
     bytes32 private constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
 
-    uint256 private constant BURN_POSITION_ID = 0;
-    uint256 private constant VAULT_POSITION_ID = 1;
     uint256 private constant MAX_CONTAINERS = 256;
     uint256 private constant MAX_BPS = 10_000;
+    uint256 private constant DEAD_SHARES = 1000;
+
+    VaultStatus public status;
 
     uint256 public maxDepositAmount;
     uint256 public minDepositAmount;
@@ -47,50 +40,38 @@ contract Vault is
     uint256 public minDepositBatchSize;
     uint256 public minWithdrawBatchRatio;
 
-    VaultStatus public status;
-
     IERC20 public notion;
-    uint256 private _nextPositionId;
-    uint256 public unallocatedNotionAmount;
 
-    // Position Id => shares amount
-    mapping(uint256 => uint256) private _shares;
-    uint256 private _totalShares;
-
-    uint256 public bufferedDeposits;
     uint256 public depositBatchId;
-    mapping(uint256 => uint256) private _depositBatchShares;
-    mapping(uint256 => uint256) private _depositBatchAmount;
+    uint256 public lastResolvedDepositBatchId;
+    uint256 public bufferedDeposits;
+    mapping(uint256 => mapping(address => uint256)) public pendingBatchDeposits;
+    mapping(uint256 => uint256) public depositBatchTotalNotion;
+    mapping(uint256 => uint256) public depositBatchTotalShares;
+    mapping(uint256 => uint256) public batchNotionRemainder;
+    uint256 public totalUnclaimedNotionRemainder;
 
-    // Batch Id => Position Id => amount
-    mapping(uint256 => mapping(uint256 => uint256)) private _batchPositionDeposit;
     mapping(address => ContainerReport) private _depositReports;
     uint256 private _depositReportBitmask;
-    mapping(uint256 => bool) private _isDepositClaimed;
 
-    uint256 public bufferedSharesToWithdraw;
     uint256 public withdrawBatchId;
-    mapping(uint256 => uint256) private _withdrawBatchShares;
-    mapping(uint256 => uint256) private _withdrawBatchAmount;
+    uint256 public lastResolvedWithdrawBatchId;
+    uint256 public bufferedSharesToWithdraw;
+    mapping(uint256 => mapping(address => uint256)) public pendingBatchWithdrawals;
+    mapping(uint256 => uint256) public withdrawBatchTotalShares;
+    mapping(uint256 => uint256) public withdrawBatchTotalNotion;
+    uint256 public totalUnclaimedNotionForWithdraw;
 
-    // Batch Id => Position Id => amount
-    mapping(uint256 => mapping(uint256 => uint256)) private _batchPositionWithdrawnShares;
     uint256 private _withdrawReportBitmask;
-    mapping(uint256 => mapping(uint256 => bool)) private _isWithdrawalClaimed;
 
     EnumerableSet.AddressSet private _containers;
     mapping(address => uint256) public containerWeights;
-
-    uint256 private _reallocationCounter;
-    mapping(address => bool) private _isReallocating;
-    mapping(uint256 => uint256) private _acceptedBatchNotion;
-    address public collector;
 
     address public reshufflingGateway;
     bool public isReshuffling;
     bool public isRepairing;
 
-    mapping(uint256 => bool) private _hasClaimedReshufflingGateway;
+    mapping(address => bool) private _hasClaimedReshufflingGateway;
 
     modifier onlyContainer() {
         require(_isContainer(msg.sender), NotContainer());
@@ -114,8 +95,8 @@ contract Vault is
 
     /**
      * @notice Initializes the Vault contract with initial configuration.
-     * @param _name The name of the ERC721 token representing positions
-     * @param _symbol The symbol of the ERC721 token representing positions
+     * @param _name The name of the ERC20 token representing Vault shares
+     * @param _symbol The symbol of the ERC20 token representing Vault shares
      * @param _notion The address of the NOTION token contract
      * @param roleAddresses Struct containing addresses for protocol roles
      * @param limits Struct containing operational limits
@@ -127,9 +108,8 @@ contract Vault is
         RoleAddresses calldata roleAddresses,
         Limits calldata limits
     ) public initializer {
-        __ERC721_init(_name, _symbol);
-        __ERC721Enumerable_init();
         __AccessControl_init();
+        __ERC20_init(_name, _symbol);
         __ReentrancyGuard_init();
 
         require(roleAddresses.defaultAdmin != address(0), Errors.ZeroAddress());
@@ -152,40 +132,9 @@ contract Vault is
 
         require(_notion != address(0), Errors.ZeroAddress());
         notion = IERC20(_notion);
-
-        _nextPositionId = VAULT_POSITION_ID;
-        _safeMint(address(this), _nextPositionId++);
-    }
-
-    function totalShares() external view override returns (uint256) {
-        return _totalShares;
-    }
-
-    function sharesOf(uint256 positionId) external view override returns (uint256) {
-        return _shares[positionId];
-    }
-
-    function getContainers() external view override returns (address[] memory, uint256[] memory) {
-        uint256 length = _containers.length();
-        address[] memory containers = new address[](length);
-        uint256[] memory weights = new uint256[](length);
-
-        for (uint256 i = 0; i < length; ++i) {
-            address container = _containers.at(i);
-            containers[i] = container;
-            weights[i] = containerWeights[container];
-        }
-        return (containers, weights);
     }
 
     // ---- Vault Configuration ----
-
-    function setCollector(address _collector) external onlyRole(CONFIGURATOR_ROLE) {
-        require(collector == address(0), CollectorAlreadySet());
-        require(_collector != address(0), Errors.ZeroAddress());
-        collector = _collector;
-        emit CollectorSet(_collector);
-    }
 
     function setReshufflingGateway(address _reshufflingGateway) external onlyRole(EMERGENCY_MANAGER_ROLE) {
         require(_reshufflingGateway != address(0), Errors.ZeroAddress());
@@ -265,6 +214,19 @@ contract Vault is
 
     // ---- Container Management ----
 
+    function getContainers() external view override returns (address[] memory, uint256[] memory) {
+        uint256 length = _containers.length();
+        address[] memory containers = new address[](length);
+        uint256[] memory weights = new uint256[](length);
+
+        for (uint256 i = 0; i < length; ++i) {
+            address container = _containers.at(i);
+            containers[i] = container;
+            weights[i] = containerWeights[container];
+        }
+        return (containers, weights);
+    }
+
     function addContainer(address container) external nonReentrant onlyRole(CONTAINER_MANAGER_ROLE) {
         require(container != address(0), Errors.ZeroAddress());
         require(_containers.add(container), ContainerAlreadyExists());
@@ -304,7 +266,8 @@ contract Vault is
             }
         }
 
-        require(newWeightSum == previousWeightSum, IncorrectWeights(newWeightSum));
+        // NOTE: Ignore weight invariant if the last container is being removed
+        require(newWeightSum == previousWeightSum || _containers.length() == 0, IncorrectWeights(newWeightSum));
         emit ContainerWeightsUpdated(containers, weights);
     }
 
@@ -336,158 +299,164 @@ contract Vault is
 
     function _deposit(uint256 amount, address onBehalfOf) internal notInRepairingMode notInReshufflingMode {
         require(amount >= minDepositAmount && amount <= maxDepositAmount, Errors.IncorrectAmount());
-        DepositLocalVars memory vars;
 
-        vars.notionCached = notion;
-        vars.bufferedDepositsCached = bufferedDeposits;
+        uint256 batchId = depositBatchId;
+        uint256 totalBatchDepositAmount = bufferedDeposits + amount;
 
-        vars.positionId = _nextPositionId++;
-        _safeMint(onBehalfOf, vars.positionId);
-        vars.depositBatchIdCached = depositBatchId;
+        require(totalBatchDepositAmount <= maxDepositBatchSize, DepositBatchCapReached());
 
-        vars.notionBalanceBefore = vars.notionCached.balanceOf(address(this));
-        vars.notionCached.safeTransferFrom(msg.sender, address(this), amount);
-        vars.receivedNotionAmount = vars.notionCached.balanceOf(address(this)) - vars.notionBalanceBefore;
+        bufferedDeposits = totalBatchDepositAmount;
+        pendingBatchDeposits[batchId][onBehalfOf] += amount;
 
-        require(vars.receivedNotionAmount >= amount, Errors.IncorrectAmountReceived());
+        notion.safeTransferFrom(msg.sender, address(this), amount);
 
-        require(
-            vars.bufferedDepositsCached + vars.receivedNotionAmount <= maxDepositBatchSize,
-            DepositBatchCapReached()
-        );
-
-        bufferedDeposits = vars.bufferedDepositsCached + vars.receivedNotionAmount;
-        _batchPositionDeposit[vars.depositBatchIdCached][vars.positionId] = vars.receivedNotionAmount;
-
-        emit Deposit(msg.sender, onBehalfOf, vars.depositBatchIdCached, vars.positionId, vars.receivedNotionAmount);
+        emit Deposit(msg.sender, onBehalfOf, batchId, amount);
     }
 
-    function claimDeposit(uint256 positionId, uint256 batchId) external nonReentrant {
-        _requireOwned(positionId);
-        require(!_isDepositClaimed[positionId], AlreadyClaimed());
+    function claimDeposit(uint256 batchId, address onBehalfOf) external nonReentrant {
+        require(batchId <= lastResolvedDepositBatchId, IncorrectBatchId());
+        require(onBehalfOf != address(0), Errors.ZeroAddress());
 
-        uint256 depositAmount = _batchPositionDeposit[batchId][positionId];
-        require(depositAmount > 0, NothingToClaim());
+        ClaimDepositLocalVars memory vars;
+        vars.depositAmount = pendingBatchDeposits[batchId][onBehalfOf];
+        require(vars.depositAmount > 0, NothingToClaim());
 
-        uint256 batchShares = _depositBatchShares[batchId];
-        if (batchShares == 0) {
-            if (batchId < depositBatchId) {
-                revert BatchYieldedNoShares();
-            } else {
-                revert IncorrectBatchId();
-            }
+        vars.batchTotalNotion = depositBatchTotalNotion[batchId];
+        vars.batchTotalShares = depositBatchTotalShares[batchId];
+        vars.batchNotionRemainder = batchNotionRemainder[batchId];
+
+        vars.sharesToClaim = vars.depositAmount.mulDiv(vars.batchTotalShares, vars.batchTotalNotion);
+
+        pendingBatchDeposits[batchId][onBehalfOf] = 0;
+        depositBatchTotalNotion[batchId] = vars.batchTotalNotion - vars.depositAmount;
+        depositBatchTotalShares[batchId] = vars.batchTotalShares - vars.sharesToClaim;
+
+        if (vars.batchNotionRemainder > 0) {
+            vars.notionToClaim = vars.depositAmount.mulDiv(vars.batchNotionRemainder, vars.batchTotalNotion);
+            batchNotionRemainder[batchId] = vars.batchNotionRemainder - vars.notionToClaim;
+            totalUnclaimedNotionRemainder -= vars.notionToClaim;
+            require(_isNotionDecreaseAllowed(vars.notionToClaim), NotEnoughNotion());
         }
 
-        uint256 totalBatchDeposit = _depositBatchAmount[batchId];
-        require(totalBatchDeposit > 0, IncorrectBatchId());
+        if (vars.sharesToClaim > 0) {
+            _transfer(address(this), onBehalfOf, vars.sharesToClaim);
+        }
 
-        uint256 sharesAmount = depositAmount.mulDiv(batchShares, totalBatchDeposit);
+        if (vars.notionToClaim > 0) {
+            notion.safeTransfer(onBehalfOf, vars.notionToClaim);
+        }
 
-        _isDepositClaimed[positionId] = true;
-
-        _updateShares(VAULT_POSITION_ID, positionId, sharesAmount);
-
-        emit DepositClaimed(positionId, batchId, sharesAmount);
+        emit DepositClaimed(msg.sender, onBehalfOf, batchId, vars.sharesToClaim, vars.notionToClaim);
     }
 
-    function withdraw(uint256 positionId, uint256 sharesPercent) external nonReentrant {
+    function withdraw(uint256 sharesPercent) external nonReentrant notInReshufflingMode {
         require(sharesPercent > 0 && sharesPercent <= MAX_BPS, Errors.IncorrectAmount());
-        require(_requireOwned(positionId) == msg.sender, Errors.Unauthorized());
-
         WithdrawLocalVars memory vars;
+
+        vars.sharesToBurn = balanceOf(msg.sender).mulDiv(sharesPercent, MAX_BPS);
+        require(vars.sharesToBurn > 0, NothingToWithdraw());
+
         vars.withdrawBatchIdCached = withdrawBatchId;
 
-        require(_batchPositionWithdrawnShares[vars.withdrawBatchIdCached][positionId] == 0, OneWithdrawPerBatch());
-
-        vars.sharesToBurn = _shares[positionId].mulDiv(sharesPercent, MAX_BPS);
-
+        pendingBatchWithdrawals[vars.withdrawBatchIdCached][msg.sender] += vars.sharesToBurn;
         bufferedSharesToWithdraw += vars.sharesToBurn;
 
-        _batchPositionWithdrawnShares[vars.withdrawBatchIdCached][positionId] = vars.sharesToBurn;
+        _transfer(msg.sender, address(this), vars.sharesToBurn);
 
-        _updateShares(positionId, VAULT_POSITION_ID, vars.sharesToBurn);
-
-        emit Withdraw(msg.sender, vars.withdrawBatchIdCached, positionId, vars.sharesToBurn);
+        emit Withdraw(msg.sender, vars.withdrawBatchIdCached, vars.sharesToBurn);
     }
 
-    function claimWithdraw(uint256 positionId, uint256 batchId) external nonReentrant {
-        address owner = _requireOwned(positionId);
-        require(!_isWithdrawalClaimed[batchId][positionId], AlreadyClaimed());
+    function claimWithdraw(uint256 batchId, address onBehalfOf) external nonReentrant {
+        require(batchId <= lastResolvedWithdrawBatchId, IncorrectBatchId());
+        require(onBehalfOf != address(0), Errors.ZeroAddress());
 
-        uint256 withdrawnShares = _batchPositionWithdrawnShares[batchId][positionId];
-        require(withdrawnShares > 0, NothingToClaim());
+        ClaimWithdrawLocalVars memory vars;
+        vars.withdrawnShares = pendingBatchWithdrawals[batchId][onBehalfOf];
+        vars.batchTotalShares = withdrawBatchTotalShares[batchId];
+        vars.batchTotalNotion = withdrawBatchTotalNotion[batchId];
 
-        uint256 batchAmount = _withdrawBatchAmount[batchId];
-        require(batchAmount > 0, IncorrectBatchId());
+        vars.notionToClaim = vars.withdrawnShares.mulDiv(vars.batchTotalNotion, vars.batchTotalShares);
+        require(vars.notionToClaim > 0, NothingToClaim());
 
-        uint256 totalBatchShares = _withdrawBatchShares[batchId];
-        require(totalBatchShares > 0, IncorrectBatchId());
+        pendingBatchWithdrawals[batchId][onBehalfOf] = 0;
+        withdrawBatchTotalShares[batchId] = vars.batchTotalShares - vars.withdrawnShares;
+        withdrawBatchTotalNotion[batchId] = vars.batchTotalNotion - vars.notionToClaim;
 
-        uint256 amountToClaim = withdrawnShares.mulDiv(batchAmount, totalBatchShares);
+        totalUnclaimedNotionForWithdraw -= vars.notionToClaim;
+        require(_isNotionDecreaseAllowed(vars.notionToClaim), NotEnoughNotion());
 
-        _isWithdrawalClaimed[batchId][positionId] = true;
+        _burn(address(this), vars.withdrawnShares);
+        notion.safeTransfer(onBehalfOf, vars.notionToClaim);
 
-        _updateShares(VAULT_POSITION_ID, BURN_POSITION_ID, withdrawnShares);
-
-        if (_shares[positionId] == 0) {
-            _burn(positionId);
-        }
-
-        notion.safeTransfer(owner, amountToClaim);
-
-        emit WithdrawClaimed(msg.sender, positionId, batchId, amountToClaim);
+        emit WithdrawClaimed(msg.sender, onBehalfOf, batchId, vars.notionToClaim);
     }
 
-    function claimReshufflingGateway(uint256 positionId) external nonReentrant {
+    // TODO: Implement PAUSE LOGIC
+    function claimReshufflingGateway(address account) external nonReentrant {
         require(isRepairing, NotInRepairingMode());
-        require(!_hasClaimedReshufflingGateway[positionId], AlreadyClaimed());
+        require(!_hasClaimedReshufflingGateway[account], AlreadyClaimed());
 
-        _hasClaimedReshufflingGateway[positionId] = true;
+        _hasClaimedReshufflingGateway[account] = true;
 
-        IReshufflingGateway(reshufflingGateway).withdraw(positionId);
-        emit ReshufflingGatewayClaimed(positionId);
+        IReshufflingGateway(reshufflingGateway).withdraw(account);
+        emit ReshufflingGatewayClaimed(account);
+    }
+
+    function _isNotionDecreaseAllowed(uint256 amountToTransfer) internal view returns (bool) {
+        return
+            notion.balanceOf(address(this)) >=
+            amountToTransfer + bufferedDeposits + totalUnclaimedNotionRemainder + totalUnclaimedNotionForWithdraw;
     }
 
     // ---- Deposit Batch Processing ----
+
+    function isDepositReportComplete() public view returns (bool) {
+        return _depositReportBitmask == (1 << _containers.length()) - 1;
+    }
 
     function startDepositBatchProcessing() external onlyRole(OPERATOR_ROLE) notInRepairingMode notInReshufflingMode {
         require(status == VaultStatus.Idle, IncorrectStatus());
 
         DepositBatchProcessingLocalVars memory vars;
-        vars.batchAmount = bufferedDeposits;
+        vars.totalBatchDepositAmount = bufferedDeposits;
 
-        // NOTE: Skip deposit batch processing if not enough notion was deposited
-        if (vars.batchAmount < minDepositBatchSize) {
-            status = VaultStatus.DepositBatchProcessingFinished;
-            emit DepositBatchSkipped(depositBatchId, vars.batchAmount);
-            return;
-        }
+        require(vars.totalBatchDepositAmount >= minDepositBatchSize, DepositBatchSizeTooSmall());
 
+        status = VaultStatus.DepositBatchProcessingStarted;
+        vars.batchId = depositBatchId++;
+        depositBatchTotalNotion[vars.batchId] = vars.totalBatchDepositAmount;
         bufferedDeposits = 0;
 
-        vars.batchId = depositBatchId++;
-        _depositBatchAmount[vars.batchId] = vars.batchAmount;
+        vars.containersNumber = _containers.length();
+        require(vars.containersNumber > 0, NoContainers());
+        vars.lastContainerIndex = vars.containersNumber - 1;
 
-        uint256 length = _containers.length();
-        require(length > 0, NoContainers());
-
-        for (uint256 i = 0; i < length; ++i) {
+        for (uint256 i = 0; i < vars.containersNumber; ++i) {
             address container = _containers.at(i);
             uint256 containerWeight = containerWeights[container];
 
-            if (i < length - 1) {
-                vars.containerAmount = vars.batchAmount.mulDiv(containerWeight, MAX_BPS);
-            } else {
+            if (i == vars.lastContainerIndex) {
                 // NOTE: Last container takes all division dust
-                vars.containerAmount = vars.batchAmount - vars.distributedAmount;
+                vars.containerAmount = vars.totalBatchDepositAmount - vars.distributedNotion;
+            } else {
+                vars.containerAmount = vars.totalBatchDepositAmount.mulDiv(containerWeight, MAX_BPS);
             }
 
-            vars.distributedAmount += vars.containerAmount;
+            vars.distributedNotion += vars.containerAmount;
             IContainerPrincipal(container).registerDepositRequest(vars.containerAmount);
         }
 
-        status = VaultStatus.DepositBatchProcessingStarted;
-        emit DepositBatchProcessingStarted(vars.batchId, vars.batchAmount);
+        require(vars.distributedNotion == vars.totalBatchDepositAmount, IncorrectNotionDistribution());
+
+        emit DepositBatchProcessingStarted(vars.batchId, vars.totalBatchDepositAmount);
+    }
+
+    function skipDepositBatch() external onlyRole(OPERATOR_ROLE) {
+        require(status == VaultStatus.Idle, IncorrectBatchStatus());
+        uint256 bufferedDepositsCached = bufferedDeposits;
+        require(bufferedDepositsCached < minDepositBatchSize, CannotSkipBatch());
+        status = VaultStatus.DepositBatchProcessingFinished;
+        emit DepositBatchSkipped(depositBatchId, bufferedDepositsCached);
     }
 
     function reportDeposit(ContainerReport calldata report, uint256 notionRemainder) external onlyContainer {
@@ -498,51 +467,36 @@ contract Vault is
         uint256 mask = 1 << containerIndex;
         uint256 reportBitmask = _depositReportBitmask;
 
-        if (reportBitmask & mask == 0) {
-            _depositReports[msg.sender] = report;
-            _depositReportBitmask = reportBitmask | mask;
-        } else {
-            // NOTE: Consecutive report happens due to reallocation and we do not need to update nav0 for that container
-            require(_isReallocating[msg.sender], ContainerNotReallocating());
-            ContainerReport storage previousReport = _depositReports[msg.sender];
-            previousReport.nav1 = report.nav1;
+        require(reportBitmask & mask == 0, ContainerAlreadyReported());
 
-            _isReallocating[msg.sender] = false;
-            _reallocationCounter -= 1;
-        }
+        uint256 previousBatchId = depositBatchId - 1;
+
+        _depositReportBitmask = reportBitmask | mask;
+        _depositReports[msg.sender] = report;
 
         if (notionRemainder > 0) {
-            unallocatedNotionAmount += notionRemainder;
+            batchNotionRemainder[previousBatchId] += notionRemainder;
+            totalUnclaimedNotionRemainder += notionRemainder;
             notion.safeTransferFrom(msg.sender, address(this), notionRemainder);
         }
 
-        emit DepositReportReceived(msg.sender, depositBatchId - 1, report.nav0, report.nav1);
+        emit DepositReportReceived(msg.sender, previousBatchId, report.nav0, report.nav1, notionRemainder);
     }
 
-    function resolveDepositBatch() external onlyRole(OPERATOR_ROLE) returns (uint256) {
+    function resolveDepositBatch() external onlyRole(OPERATOR_ROLE) {
         require(status == VaultStatus.DepositBatchProcessingStarted, IncorrectBatchStatus());
-        require(unallocatedNotionAmount == 0, NotionNotAllocated());
-        require(_reallocationCounter == 0, ReallocationUnfinished());
+        require(isDepositReportComplete(), MissingContainerReport());
 
         ResolveDepositBatchLocalVars memory vars;
-        vars.length = _containers.length();
+        status = VaultStatus.DepositBatchProcessingFinished;
+        vars.previousBatchId = depositBatchId - 1;
+        lastResolvedDepositBatchId = vars.previousBatchId;
+        _depositReportBitmask = 0;
 
-        // Make sure each container has reported at least once
-        vars.depositReportBitmaskCached = _depositReportBitmask;
-        if (vars.depositReportBitmaskCached != (1 << vars.length) - 1) {
-            for (uint256 i = 0; i < vars.length; ++i) {
-                if ((vars.depositReportBitmaskCached & (1 << i)) == 0) {
-                    revert MissingContainerReport(_containers.at(i));
-                }
-            }
-        }
+        vars.containersNumber = _containers.length();
 
-        for (uint256 i = 0; i < vars.length; ++i) {
+        for (uint256 i = 0; i < vars.containersNumber; ++i) {
             address container = _containers.at(i);
-
-            if (containerWeights[container] == 0) {
-                continue;
-            }
 
             ContainerReport memory report = _depositReports[container];
 
@@ -550,113 +504,73 @@ contract Vault is
             vars.totalNav1 += report.nav1;
         }
 
-        // NOTE: totalNav1 > totalNav0 is enforced in reportDeposit()
-        vars.batchDeltaNav = vars.totalNav1 - vars.totalNav0;
-
-        vars.batchShares = vars.batchDeltaNav.mulDiv(_totalShares + 1, vars.totalNav0 + 1);
-
-        vars.previousBatchId = depositBatchId - 1;
-        _depositBatchShares[vars.previousBatchId] = vars.batchShares;
-        _mintShares(VAULT_POSITION_ID, vars.batchShares);
-
-        // Flush report states
-        _depositReportBitmask = 0;
-
-        status = VaultStatus.DepositBatchProcessingFinished;
-        emit DepositBatchProcessingFinished(vars.previousBatchId, vars.batchShares, vars.batchDeltaNav, vars.totalNav1);
-        return vars.batchShares;
-    }
-
-    function acceptUnallocatedNotion() external onlyRole(OPERATOR_ROLE) returns (uint256) {
-        require(status == VaultStatus.DepositBatchProcessingStarted, IncorrectBatchStatus());
-        require(_reallocationCounter == 0, ReallocationUnfinished());
-
-        AcceptUnallocatedNotionLocalVars memory vars;
-
-        vars.unallocatedNotionAmountCached = unallocatedNotionAmount;
-        require(vars.unallocatedNotionAmountCached > 0, NothingToReallocate());
-        unallocatedNotionAmount = 0;
-
-        vars.depositReportBitmaskCached = _depositReportBitmask;
-
-        vars.length = _containers.length();
-        for (uint256 i = 0; i < vars.length; ++i) {
-            address container = _containers.at(i);
-            if (containerWeights[container] == 0) {
-                continue;
-            }
-            require(vars.depositReportBitmaskCached & (1 << i) != 0, MissingContainerReport(container));
+        if (totalSupply() == 0) {
+            _mint(address(this), DEAD_SHARES);
         }
 
-        vars.previousBatchId = depositBatchId - 1;
-        _acceptedBatchNotion[vars.previousBatchId] = vars.unallocatedNotionAmountCached;
+        // NOTE: totalNav1 >= totalNav0 is enforced in `reportDeposit()`
+        vars.batchDeltaNav = vars.totalNav1 - vars.totalNav0;
+        vars.batchShares = vars.batchDeltaNav.mulDiv(totalSupply() + 1, vars.totalNav0 + 1);
 
-        notion.safeTransfer(collector, vars.unallocatedNotionAmountCached);
+        depositBatchTotalShares[vars.previousBatchId] = vars.batchShares;
 
-        emit UnallocatedNotionAccepted(vars.previousBatchId, vars.unallocatedNotionAmountCached);
-        return vars.unallocatedNotionAmountCached;
-    }
+        if (vars.batchShares > 0) {
+            _mint(address(this), vars.batchShares);
+        }
 
-    function reallocateNotion(address container, uint256 amount) external onlyRole(OPERATOR_ROLE) {
-        uint256 unallocatedNotionAmountCached = unallocatedNotionAmount;
-        require(amount > 0 && amount <= unallocatedNotionAmountCached, Errors.IncorrectAmount());
-        require(_isContainer(container), NotContainer());
-
-        unallocatedNotionAmount = unallocatedNotionAmountCached - amount;
-
-        _isReallocating[container] = true;
-        _reallocationCounter += 1;
-
-        IContainerPrincipal(container).registerDepositRequest(amount);
+        emit DepositBatchProcessingFinished(vars.previousBatchId, vars.batchShares, vars.batchDeltaNav, vars.totalNav1);
     }
 
     // ---- Withdraw Batch Processing ----
 
+    function isWithdrawReportComplete() public view returns (bool) {
+        return _withdrawReportBitmask == (1 << _containers.length()) - 1;
+    }
+
     function startWithdrawBatchProcessing() external onlyRole(OPERATOR_ROLE) notInReshufflingMode {
         require(status == VaultStatus.DepositBatchProcessingFinished, IncorrectBatchStatus());
-
         WithdrawBatchProcessingLocalVars memory vars;
+
         vars.bufferedSharesToWithdrawCached = bufferedSharesToWithdraw;
+        vars.batchSharesPercent = _calculateSharesPercent(vars.bufferedSharesToWithdrawCached);
+        require(vars.batchSharesPercent >= minWithdrawBatchRatio, NotEnoughSharesWithdrawn());
+
+        status = VaultStatus.WithdrawBatchProcessingStarted;
+        vars.batchId = withdrawBatchId++;
+        withdrawBatchTotalShares[vars.batchId] = vars.bufferedSharesToWithdrawCached;
+
         bufferedSharesToWithdraw = 0;
-
-        // NOTE: Skip withdraw batch processing if not enough notion was withdrawn
-        if (_calculateTotalSharesRatio(vars.bufferedSharesToWithdrawCached) < minWithdrawBatchRatio) {
-            status = VaultStatus.Idle;
-            emit WithdrawBatchSkipped(withdrawBatchId, vars.bufferedSharesToWithdrawCached);
-            return;
-        }
-
-        vars.batchSharesPercent = _calculateTotalSharesRatio(vars.bufferedSharesToWithdrawCached);
-
-        vars.previousBatchId = withdrawBatchId++;
-        _withdrawBatchShares[vars.previousBatchId] = vars.bufferedSharesToWithdrawCached;
-
         uint256 length = _containers.length();
-
         for (uint256 i = 0; i < length; ++i) {
             IContainerPrincipal(_containers.at(i)).registerWithdrawRequest(vars.batchSharesPercent);
         }
+        emit WithdrawBatchProcessingStarted(vars.batchId, vars.bufferedSharesToWithdrawCached, vars.batchSharesPercent);
+    }
 
-        status = VaultStatus.WithdrawBatchProcessingStarted;
-        emit WithdrawBatchProcessingStarted(
-            vars.previousBatchId,
-            vars.bufferedSharesToWithdrawCached,
-            vars.batchSharesPercent
-        );
+    function skipWithdrawBatch() external onlyRole(OPERATOR_ROLE) {
+        require(status == VaultStatus.DepositBatchProcessingFinished, IncorrectBatchStatus());
+        uint256 bufferedSharesToWithdrawCached = bufferedSharesToWithdraw;
+        uint256 batchSharesPercent = _calculateSharesPercent(bufferedSharesToWithdrawCached);
+        require(batchSharesPercent < minWithdrawBatchRatio, CannotSkipBatch());
+        status = VaultStatus.Idle;
+        emit WithdrawBatchSkipped(withdrawBatchId, bufferedSharesToWithdrawCached);
     }
 
     function reportWithdraw(uint256 notionAmount) external onlyContainer {
         require(status == VaultStatus.WithdrawBatchProcessingStarted, IncorrectBatchStatus());
+        require(notionAmount > 0, IncorrectReport());
 
         (, uint256 containerIndex) = _containers.indexOf(msg.sender);
+
         uint256 mask = 1 << containerIndex;
         uint256 reportBitmask = _withdrawReportBitmask;
+        require(reportBitmask & mask == 0, ContainerAlreadyReported());
 
-        require(reportBitmask & mask == 0, AlreadyReported());
         _withdrawReportBitmask = reportBitmask | mask;
-
         uint256 previousBatchId = withdrawBatchId - 1;
-        _withdrawBatchAmount[previousBatchId] += notionAmount;
+        withdrawBatchTotalNotion[previousBatchId] += notionAmount;
+        totalUnclaimedNotionForWithdraw += notionAmount;
+
         notion.safeTransferFrom(msg.sender, address(this), notionAmount);
 
         emit WithdrawReportReceived(msg.sender, previousBatchId, notionAmount);
@@ -664,121 +578,17 @@ contract Vault is
 
     function resolveWithdrawBatch() external onlyRole(OPERATOR_ROLE) {
         require(status == VaultStatus.WithdrawBatchProcessingStarted, IncorrectBatchStatus());
-
-        ResolveWithdrawBatchLocalVars memory vars;
-        vars.previousBatchId = withdrawBatchId - 1;
-        vars.expectedAmount = _withdrawBatchAmount[vars.previousBatchId];
-        vars.actualAmount = notion.balanceOf(address(this)) - bufferedDeposits;
-
-        require(
-            vars.actualAmount >= vars.expectedAmount,
-            NotEnoughFundsWithdrawn(vars.expectedAmount, vars.actualAmount)
-        );
-
-        vars.withdrawReportBitmaskCached = _withdrawReportBitmask;
-        _withdrawReportBitmask = 0;
-
-        vars.length = _containers.length();
-
-        // Make sure each container has reported at least once
-        if (vars.withdrawReportBitmaskCached != (1 << vars.length) - 1) {
-            for (uint256 i = 0; i < vars.length; ++i) {
-                if ((vars.withdrawReportBitmaskCached & (1 << i)) == 0) {
-                    revert MissingContainerReport(_containers.at(i));
-                }
-            }
-        }
+        require(isWithdrawReportComplete(), MissingContainerReport());
 
         status = VaultStatus.Idle;
-        emit WithdrawBatchProcessingFinished(vars.previousBatchId, vars.expectedAmount, vars.actualAmount);
+        uint256 previousBatchId = withdrawBatchId - 1;
+        lastResolvedWithdrawBatchId = previousBatchId;
+        _withdrawReportBitmask = 0;
+
+        emit WithdrawBatchProcessingFinished(previousBatchId, withdrawBatchTotalNotion[previousBatchId]);
     }
 
-    function getAcceptedNotionToClaim(uint256 positionId, uint256 batchId) external view returns (uint256) {
-        uint256 depositAmount = _batchPositionDeposit[batchId][positionId];
-        require(depositAmount > 0, NothingToClaim());
-
-        uint256 totalBatchDeposit = _depositBatchAmount[batchId];
-        require(totalBatchDeposit > 0, IncorrectBatchId());
-
-        return depositAmount.mulDiv(_acceptedBatchNotion[batchId], totalBatchDeposit);
-    }
-
-    function _mintShares(uint256 positionId, uint256 value) internal {
-        if (positionId == 0) {
-            revert InvalidSharesReceiver(0);
-        }
-        _updateShares(0, positionId, value);
-    }
-
-    function _burnShares(uint256 positionId, uint256 value) internal {
-        if (positionId == 0) {
-            revert InvalidSharesSender(0);
-        }
-        _updateShares(positionId, 1, value);
-    }
-
-    function _updateShares(uint256 fromPosition, uint256 toPosition, uint256 value) internal {
-        if (fromPosition != BURN_POSITION_ID) {
-            _requireOwned(fromPosition);
-        }
-        if (toPosition != BURN_POSITION_ID) {
-            _requireOwned(toPosition);
-        }
-
-        if (fromPosition == BURN_POSITION_ID) {
-            _totalShares += value;
-        } else {
-            uint256 fromShares = _shares[fromPosition];
-            if (fromShares < value) {
-                revert InsufficientShares(fromPosition, fromShares, value);
-            }
-            unchecked {
-                // Overflow not possible: value <= fromShares <= totalShares.
-                _shares[fromPosition] = fromShares - value;
-            }
-        }
-
-        if (toPosition == BURN_POSITION_ID) {
-            unchecked {
-                // Overflow not possible: value <= totalShares or value <= fromShares <= totalShares.
-                _totalShares -= value;
-            }
-        } else {
-            unchecked {
-                // Overflow not possible: balance + value is at most totalSupply, which we know fits into a uint256.
-                _shares[toPosition] += value;
-            }
-        }
-        // emit TransferShares
-    }
-
-    function _calculateTotalSharesRatio(uint256 amountShares) internal view returns (uint256) {
-        if (_totalShares == 0) {
-            return 0;
-        }
-        return amountShares.mulDiv(MAX_BPS, _totalShares);
-    }
-
-    // The following functions are overrides required by Solidity.
-
-    function _update(
-        address to,
-        uint256 tokenId,
-        address auth
-    ) internal override(ERC721Upgradeable, ERC721EnumerableUpgradeable) returns (address) {
-        return super._update(to, tokenId, auth);
-    }
-
-    function _increaseBalance(
-        address account,
-        uint128 value
-    ) internal override(ERC721Upgradeable, ERC721EnumerableUpgradeable) {
-        super._increaseBalance(account, value);
-    }
-
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override(ERC721Upgradeable, ERC721EnumerableUpgradeable, AccessControlUpgradeable) returns (bool) {
-        return super.supportsInterface(interfaceId);
+    function _calculateSharesPercent(uint256 shares) internal view returns (uint256) {
+        return shares.mulDiv(MAX_BPS, totalSupply());
     }
 }

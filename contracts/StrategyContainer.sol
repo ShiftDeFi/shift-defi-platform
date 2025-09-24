@@ -23,17 +23,12 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     bytes32 internal constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
     bytes32 internal constant STRATEGY_MANAGER_ROLE = keccak256("STRATEGY_MANAGER_ROLE");
     bytes32 internal constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
-    uint256 internal constant MIN_HARVEST_AGE = 3600;
 
     EnumerableSet.AddressSet internal _strategies;
 
     mapping(address => uint256) internal _strategyNav0;
     mapping(address => uint256) internal _strategyNav1;
-    mapping(address => uint256) internal _strategyHarvestTimestamp;
 
-    uint256 internal _maxHarvestAge;
-
-    uint256 internal _strategyHarvestBitmask;
     uint256 internal _strategyEnterBitmask;
     uint256 internal _strategyExitBitmask;
 
@@ -46,17 +41,71 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     uint256 private constant BPS = 10_000;
 
-    bool private _reshufflingMode;
+    bool internal _reshufflingMode;
 
-    function __StrategyContainer_init() internal onlyInitializing {
-        _setMaxHarvestAge(MIN_HARVEST_AGE);
+    // ---- Configuration ----
+
+    function setBridgeCollector(address newBridgeCollector) external onlyRole(STRATEGY_MANAGER_ROLE) {
+        _setBridgeCollector(newBridgeCollector);
     }
+
+    function setTreasury(address newTreasury) external onlyRole(STRATEGY_MANAGER_ROLE) {
+        _setTreasury(newTreasury);
+    }
+
+    function setFeePct(uint256 newFeePct) external onlyRole(STRATEGY_MANAGER_ROLE) {
+        _setFeePct(newFeePct);
+    }
+
+    function setPriceOracle(address newPriceOracle) external onlyRole(STRATEGY_MANAGER_ROLE) {
+        _setPriceOracle(newPriceOracle);
+    }
+
+    function _setPriceOracle(address newPriceOracle) internal {
+        require(newPriceOracle != address(0), Errors.ZeroAddress());
+        address oldPriceOracle = priceOracle;
+        priceOracle = newPriceOracle;
+        emit PriceOracleUpdated(oldPriceOracle, priceOracle);
+    }
+
+    function _setTreasury(address newTreasury) internal {
+        require(newTreasury != address(0), Errors.ZeroAddress());
+        address oldTreasury = treasury;
+        treasury = newTreasury;
+        emit TreasuryUpdated(oldTreasury, treasury);
+    }
+
+    function _setFeePct(uint256 newFeePct) internal {
+        require(newFeePct <= BPS, Errors.IncorrectAmount());
+        uint256 previousFeePct = feePct;
+        feePct = newFeePct;
+        emit FeePctUpdated(previousFeePct, feePct);
+    }
+
+    function _setBridgeCollector(address newBridgeCollector) internal {
+        require(newBridgeCollector != address(0), Errors.ZeroAddress());
+        address oldBridgeCollector = _bridgeCollector;
+        _bridgeCollector = newBridgeCollector;
+        emit BridgeCollectorUpdated(oldBridgeCollector, newBridgeCollector);
+    }
+
+    // ---- Reshuffling mode management logic ----
+
+    function enableReshufflingMode() external onlyRole(STRATEGY_MANAGER_ROLE) {
+        _reshufflingMode = true;
+        emit ReshufflingModeUpdated(true);
+    }
+
+    function disableReshufflingMode() external onlyRole(RESHUFFLING_MANAGER_ROLE) {
+        _reshufflingMode = false;
+        emit ReshufflingModeUpdated(false);
+    }
+
+    // ---- Strategies management logic ----
 
     function getStrategies() external view returns (address[] memory) {
         return _strategies.values();
     }
-
-    // ---- Strategies management logic ----
 
     function isStrategy(address strategy) external view returns (bool) {
         return _isStrategy(strategy);
@@ -91,104 +140,13 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         emit StrategyRemoved(strategy);
     }
 
-    function enterInReshufflingMode(
-        address strategy,
-        uint256[] calldata inputAmounts,
-        uint256 minNavDelta
-    ) external nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
-        _enterStrategyInReshufflingMode(strategy, inputAmounts, minNavDelta);
-    }
-
-    function exitInReshufflingMode(
-        address strategy,
-        uint256 share,
-        uint256 minNavDelta
-    ) external nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
-        _exitStrategyInReshufflingMode(strategy, share, minNavDelta);
-    }
-
-    function enableReshufflingMode() external onlyRole(STRATEGY_MANAGER_ROLE) {
-        _reshufflingMode = true;
-    }
-
-    function disableReshufflingMode() external onlyRole(RESHUFFLING_MANAGER_ROLE) {
-        _reshufflingMode = false;
-    }
-
-    function setBridgeCollector(address newBridgeCollector) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        _setBridgeCollector(newBridgeCollector);
-    }
-
-    function setMaxHarvestAge(uint256 maxHarvestAge) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        _setMaxHarvestAge(maxHarvestAge);
-    }
-
-    function setTreasury(address newTreasury) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        _setTreasury(newTreasury);
-    }
-
-    function setFeePct(uint256 newFeePct) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        _setFeePct(newFeePct);
-    }
-
-    function setPriceOracle(address newPriceOracle) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        _setPriceOracle(newPriceOracle);
-    }
-
-    function _setPriceOracle(address newPriceOracle) internal {
-        require(newPriceOracle != address(0), Errors.ZeroAddress());
-        address oldPriceOracle = priceOracle;
-        priceOracle = newPriceOracle;
-        emit PriceOracleUpdated(oldPriceOracle, priceOracle);
-    }
-
-    function _setMaxHarvestAge(uint256 maxHarvestAge) internal {
-        require(maxHarvestAge >= MIN_HARVEST_AGE, Errors.IncorrectAmount());
-        uint256 previousMaxHarvestAge = _maxHarvestAge;
-        _maxHarvestAge = maxHarvestAge;
-        emit MaxHarvestAgeUpdated(previousMaxHarvestAge, maxHarvestAge);
-    }
-
-    function _setTreasury(address newTreasury) internal {
-        require(newTreasury != address(0), Errors.ZeroAddress());
-        address oldTreasury = treasury;
-        treasury = newTreasury;
-        emit TreasuryUpdated(oldTreasury, treasury);
-    }
-
-    function _setFeePct(uint256 newFeePct) internal {
-        require(newFeePct <= BPS, Errors.IncorrectAmount());
-        uint256 previousFeePct = feePct;
-        feePct = newFeePct;
-        emit FeePctUpdated(previousFeePct, feePct);
-    }
-
-    function _setBridgeCollector(address newBridgeCollector) internal {
-        require(newBridgeCollector != address(0), Errors.ZeroAddress());
-        address oldBridgeCollector = _bridgeCollector;
-        _bridgeCollector = newBridgeCollector;
-        emit BridgeCollectorUpdated(oldBridgeCollector, newBridgeCollector);
-    }
-
     function _isStrategy(address strategy) private view returns (bool) {
         return _strategies.contains(strategy);
     }
 
-    function _isReshufflingMode() internal view returns (bool) {
-        return _reshufflingMode;
-    }
+    // ---- NAV view logic ----
 
-    // ---- Strategy harvest logic ----
-
-    function manualHarvest(address strategy) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        require(_isStrategy(strategy), StrategyNotFound());
-
-        (, uint256 strategyIndex) = _strategies.indexOf(strategy);
-        require(_isHarvestRequired(strategy, strategyIndex), StrategyAlreadyHarvested(strategy));
-        _harvestStrategy(strategy, strategyIndex);
-    }
-
-    function getTotalNav0() public view returns (uint256) {
+    function getTotalNav0() external view returns (uint256) {
         uint256 totalNav0 = 0;
         for (uint256 i = 0; i < _strategies.length(); ++i) {
             address strategy = _strategies.at(i);
@@ -197,28 +155,13 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         return totalNav0;
     }
 
-    function getTotalNav1() public view returns (uint256) {
+    function getTotalNav1() external view returns (uint256) {
         uint256 totalNav1 = 0;
         for (uint256 i = 0; i < _strategies.length(); ++i) {
             address strategy = _strategies.at(i);
             totalNav1 += _strategyNav1[strategy];
         }
         return totalNav1;
-    }
-
-    function hasHarvestedThisBatch(address strategy) external view returns (bool) {
-        (, uint256 strategyIndex) = _strategies.indexOf(strategy);
-        return _hasHarvestedThisBatch(strategyIndex);
-    }
-
-    function _checkIfHarvestsAreUpToDate() internal view {
-        uint256 length = _strategies.length();
-        for (uint256 i = 0; i < length; ++i) {
-            address strategy = _strategies.at(i);
-            if (_isHarvestOutdated(strategy)) {
-                revert StrategyHarvestOutdated(strategy);
-            }
-        }
     }
 
     function _getTotalNavs() internal view returns (uint256, uint256) {
@@ -235,57 +178,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         return (totalNav0, totalNav1);
     }
 
-    function _hasHarvestedThisBatch(uint256 strategyIndex) private view returns (bool) {
-        return _strategyHarvestBitmask & (1 << strategyIndex) != 0;
-    }
-
-    function _isHarvestOutdated(address strategy) private view returns (bool) {
-        return _strategyHarvestTimestamp[strategy] + _maxHarvestAge < block.timestamp;
-    }
-
-    function _isHarvestRequired(address strategy, uint256 strategyIndex) private view returns (bool) {
-        if (_hasHarvestedThisBatch(strategyIndex)) {
-            return _isHarvestOutdated(strategy);
-        }
-        return true;
-    }
-
-    function setStrategyHarvestTimestamp(address strategy) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        require(_isStrategy(strategy), StrategyNotFound());
-        _strategyHarvestTimestamp[strategy] = block.timestamp;
-    }
-
-    function _harvestStrategy(address strategy, uint256 strategyIndex) internal returns (uint256) {
-        HarvestStrategyLocalVars memory vars;
-
-        _strategyHarvestBitmask |= 1 << strategyIndex;
-        _strategyHarvestTimestamp[strategy] = block.timestamp;
-
-        vars.nav0New = IStrategyTemplate(strategy).harvest();
-
-        if (_hasEnteredThisBatch(strategyIndex)) {
-            require(vars.nav0New > 0, IncorrectNav0());
-            vars.nav0Previous = _strategyNav0[strategy];
-
-            if (vars.nav0New > vars.nav0Previous) {
-                vars.nav0Delta = vars.nav0New - vars.nav0Previous;
-                _strategyNav1[strategy] += vars.nav0Delta;
-            } else {
-                vars.nav0Delta = vars.nav0Previous - vars.nav0New;
-                _strategyNav1[strategy] -= vars.nav0Delta;
-            }
-        }
-
-        _strategyNav0[strategy] = vars.nav0New;
-
-        emit StrategyHarvested(strategy, vars.nav0New);
-        return vars.nav0New;
-    }
-
     // ---- Strategy enter logic ----
-    function _hasEnteredThisBatch(uint256 strategyIndex) private view returns (bool) {
-        return _strategyEnterBitmask & (1 << strategyIndex) != 0;
-    }
 
     function _allStrategiesEntered() internal view returns (bool) {
         return _strategyEnterBitmask == (1 << _strategies.length()) - 1;
@@ -298,34 +191,44 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         EnterStrategyLocalVars memory vars;
 
         address[] memory inputTokens = IStrategyTemplate(strategy).inputTokens();
-        uint256 length = inputTokens.length;
-        require(inputAmounts.length == length, Errors.ArrayLengthMismatch());
+        vars.tokenNumber = inputTokens.length;
+        require(inputAmounts.length == vars.tokenNumber, Errors.ArrayLengthMismatch());
 
         (, vars.strategyIndex) = _strategies.indexOf(strategy);
 
-        require(!_hasEnteredThisBatch(vars.strategyIndex), StrategyAlreadyEntered(strategy));
+        vars.enterBitmask = _strategyEnterBitmask;
+        vars.strategyMask = 1 << vars.strategyIndex;
+        require(vars.enterBitmask & vars.strategyMask == 0, StrategyAlreadyEntered(strategy));
+        _strategyEnterBitmask = vars.enterBitmask | vars.strategyMask;
 
-        if (_isHarvestRequired(strategy, vars.strategyIndex)) {
-            _harvestStrategy(strategy, vars.strategyIndex);
-        }
-
-        _strategyEnterBitmask |= 1 << vars.strategyIndex;
+        vars.nav0 = IStrategyTemplate(strategy).harvest();
+        _strategyNav0[strategy] = vars.nav0;
 
         uint256[] memory remainingAmounts;
         (vars.nav1, vars.hasRemainder, remainingAmounts) = IStrategyTemplate(strategy).enter(inputAmounts, minNavDelta);
         _strategyNav1[strategy] = vars.nav1;
 
-        if (vars.hasRemainder) {
-            require(remainingAmounts.length == length, Errors.ArrayLengthMismatch());
+        require(vars.nav1 > vars.nav0, IncorrectEnterNav(vars.nav0, vars.nav1));
 
-            for (uint256 i = 0; i < length; ++i) {
+        if (vars.hasRemainder) {
+            require(remainingAmounts.length == vars.tokenNumber, Errors.ArrayLengthMismatch());
+
+            for (uint256 i = 0; i < vars.tokenNumber; ++i) {
                 if (remainingAmounts[i] > 0) {
                     IERC20(inputTokens[i]).safeTransferFrom(strategy, address(this), remainingAmounts[i]);
                 }
             }
         }
 
-        emit StrategyEntered(strategy, vars.nav1, vars.hasRemainder);
+        emit StrategyEntered(strategy, vars.nav0, vars.nav1, vars.hasRemainder);
+    }
+
+    function enterInReshufflingMode(
+        address strategy,
+        uint256[] calldata inputAmounts,
+        uint256 minNavDelta
+    ) external nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
+        _enterStrategyInReshufflingMode(strategy, inputAmounts, minNavDelta);
     }
 
     function _enterStrategyInReshufflingMode(
@@ -339,7 +242,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         address[] memory inputTokens = IStrategyTemplate(strategy).inputTokens();
         require(inputAmounts.length == inputAmounts.length, Errors.ArrayLengthMismatch());
 
-        IStrategyTemplate(strategy).harvest();
+        uint256 nav0 = IStrategyTemplate(strategy).harvest();
         (uint256 nav1, bool hasRemainder, uint256[] memory remainingAmounts) = IStrategyTemplate(strategy).enter(
             inputAmounts,
             minNavDelta
@@ -353,7 +256,21 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
                 IERC20(inputTokens[i]).safeTransferFrom(strategy, address(this), remainingAmounts[i]);
             }
         }
-        emit StrategyEntered(strategy, nav1, hasRemainder);
+        emit StrategyEntered(strategy, nav0, nav1, hasRemainder);
+    }
+
+    // ---- Strategy exit logic ----
+
+    function exitInReshufflingMode(
+        address strategy,
+        uint256 share,
+        uint256 minNavDelta
+    ) external nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
+        _exitStrategyInReshufflingMode(strategy, share, minNavDelta);
+    }
+
+    function _allStrategiesExited() internal view returns (bool) {
+        return _strategyExitBitmask == (1 << _strategies.length()) - 1;
     }
 
     function _exitStrategyInReshufflingMode(address strategy, uint256 share, uint256 minNavDelta) internal {
@@ -375,12 +292,6 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         emit StrategyExited(strategy, share);
     }
 
-    // ---- Strategy exit logic ----
-
-    function _allStrategiesExited() internal view returns (bool) {
-        return _strategyExitBitmask == (1 << _strategies.length()) - 1;
-    }
-
     function _exitStrategy(address strategy, uint256 share, uint256 minNavDelta) internal {
         require(_isStrategy(strategy), StrategyNotFound());
         require(!_reshufflingMode, ActionUnavailableInReshufflingMode());
@@ -390,6 +301,8 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
         require(_strategyExitBitmask & mask == 0, StrategyAlreadyExited(strategy));
         _strategyExitBitmask |= mask;
+
+        IStrategyTemplate(strategy).harvest();
 
         (address[] memory tokens, uint256[] memory amounts) = IStrategyTemplate(strategy).exit(share, minNavDelta);
 
@@ -403,8 +316,6 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
         emit StrategyExited(strategy, share);
     }
-
-    // TODO: Implement retry logic
 
     uint256[50] private __gap;
 }

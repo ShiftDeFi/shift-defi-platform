@@ -13,9 +13,9 @@ interface IContainerLocal {
     }
 
     // ---- Events ----
+
     event AllStrategiesEntered();
     event AllStrategiesExited();
-    event StatusUpdated(ContainerLocalStatus previousStatus, ContainerLocalStatus newStatus);
 
     // ---- Functions ----
 

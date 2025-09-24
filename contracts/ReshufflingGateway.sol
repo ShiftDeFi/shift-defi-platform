@@ -180,18 +180,20 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         }
     }
 
-    function withdraw(uint256 positionId) external onlyRepairingMode nonReentrant onlyVault {
-        address owner = IERC721(vault).ownerOf(positionId);
-        require(owner != address(0), Errors.NotPositionOwner(owner, positionId));
-        uint256 shares = IVault(vault).sharesOf(positionId);
-        require(shares > 0, Errors.IncorrectAmount());
-        uint256 totalShares = IVault(vault).totalShares();
-        for (uint256 i = 0; i < _whitelistedTokens.length(); ++i) {
+    function withdraw(address account) external onlyRepairingMode nonReentrant onlyVault {
+        require(account != address(0), Errors.ZeroAddress());
+        uint256 shares = IERC20(vault).balanceOf(account);
+        require(shares > 0, NothingToWithdraw());
+        uint256 totalShares = IERC20(vault).totalSupply();
+        require(totalShares > 0, NoSharesToWithdraw());
+
+        uint256 length = _whitelistedTokens.length();
+        for (uint256 i = 0; i < length; ++i) {
             address token = _whitelistedTokens.at(i);
             uint256 balance = IERC20(token).balanceOf(address(this));
             uint256 amount = balance.mulDiv(shares, totalShares);
             if (amount > 0) {
-                IERC20(token).safeTransfer(owner, amount);
+                IERC20(token).safeTransfer(account, amount);
             }
         }
     }

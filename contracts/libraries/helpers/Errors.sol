@@ -6,7 +6,6 @@ library Errors {
 
     error Unauthorized();
     error OnlyAgent();
-    error NotPositionOwner(address user, uint256 positionId);
 
     // -- State Errors --
 
@@ -21,7 +20,6 @@ library Errors {
 
     error ArrayLengthMismatch();
     error IncorrectAmount();
-    error IncorrectAmountReceived();
     error IncorrectContainerStatus();
     error IncorrectInput();
     error InvalidDataLength();

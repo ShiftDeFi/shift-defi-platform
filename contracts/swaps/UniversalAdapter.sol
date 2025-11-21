@@ -42,11 +42,9 @@ contract UniversalAdapter is AccessControl, ReentrancyGuard, ISwapAdapter, IUniv
         bytes calldata
     ) external payable override nonReentrant {
         require(swapInfos[tokenIn][tokenOut].router != address(0), NoSwapInfo(tokenIn, tokenOut));
-
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
 
         uint256 amountOutBefore = IERC20(tokenOut).balanceOf(address(this));
-
         _executeSwap(swapInfos[tokenIn][tokenOut], tokenIn, amountIn);
         uint256 amountOutAfter = IERC20(tokenOut).balanceOf(address(this));
         require(
@@ -67,16 +65,22 @@ contract UniversalAdapter is AccessControl, ReentrancyGuard, ISwapAdapter, IUniv
     }
 
     function _executeSwap(SwapInfo memory swapInfo, address tokenIn, uint256 amountIn) private {
-        bytes memory executionData = _insertData(swapInfo.payload, swapInfo.amountIndex, abi.encode(amountIn));
+        bytes memory executionData = _insertData(swapInfo.payload, swapInfo.amountIndex, amountIn);
         IERC20(tokenIn).forceApprove(swapInfo.router, amountIn);
         swapInfo.router.functionCall(executionData);
     }
 
-    function _insertData(
-        bytes memory _data,
-        uint256 _index,
-        bytes memory _newData
-    ) private pure returns (bytes memory) {
-        return bytes.concat(bytes.concat(_data.slice(0, _index), _newData), _data.slice(_index + 32, _data.length));
+    function _insertData(bytes memory _data, uint256 _index, uint256 _value) private pure returns (bytes memory) {
+        require(_index + 32 <= _data.length, IndexOutOfBounds(_index));
+        assembly {
+            // data — pointer to the beginning of the bytes structure
+            // first 32 bytes: length
+            // then the data
+            let dataPtr := add(_data, 32) // address of the first byte of the array
+            let dest := add(dataPtr, _index) // address where we write the value
+
+            mstore(dest, _value) // write 32 bytes value starting from dest
+        }
+        return _data;
     }
 }

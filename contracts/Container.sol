@@ -29,13 +29,11 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
     bytes32 internal constant TOKEN_MANAGER_ROLE = keccak256("TOKEN_MANAGER_ROLE");
 
     address public vault;
-    address public notion;
+    address public override notion;
 
     address public override swapRouter;
 
     EnumerableSet.AddressSet private _whitelistedTokens;
-
-    uint256 public sharesForWithdrawal;
 
     mapping(address => uint256) public _whitelistedTokensDustThresholds;
 
@@ -64,14 +62,15 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
     function whitelistToken(address token) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(_whitelistedTokens.add(token), AlreadyWhitelistedToken());
-        IERC20(token).approve(swapRouter, type(uint256).max);
+        IERC20(token).safeIncreaseAllowance(swapRouter, type(uint256).max);
         emit TokenWhitelistUpdated(token, true);
     }
 
     function blacklistToken(address token) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(_whitelistedTokens.remove(token), NotWhitelistedToken(token));
-        IERC20(token).approve(swapRouter, 0);
+        _whitelistedTokensDustThresholds[token] = 0;
+        IERC20(token).forceApprove(swapRouter, 0);
         emit TokenWhitelistUpdated(token, false);
     }
 
@@ -121,6 +120,7 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         }
         return true;
     }
+
     function _hasOnlyNotionToken() internal view returns (bool) {
         return _validateWhitelistedTokensBeforeReport(true, true) && IERC20(notion).balanceOf(address(this)) > 0;
     }
@@ -157,7 +157,7 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         uint256 length = _whitelistedTokens.length();
         for (uint256 i = 0; i < length; i++) {
             address token = _whitelistedTokens.at(i);
-            IERC20(token).approve(addr, 0);
+            IERC20(token).forceApprove(addr, 0);
         }
     }
 
@@ -165,7 +165,7 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         uint256 length = _whitelistedTokens.length();
         for (uint256 i = 0; i < length; i++) {
             address token = _whitelistedTokens.at(i);
-            IERC20(token).approve(addr, type(uint256).max);
+            IERC20(token).safeIncreaseAllowance(addr, type(uint256).max);
         }
     }
 }

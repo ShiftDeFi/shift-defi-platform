@@ -14,7 +14,7 @@ contract AcrossBridgeAdapter is BridgeAdapter, IAcrossV3Receiver {
 
     address public override spookyPool;
     uint256 public feeCapPct;
-    uint256 public constant MAX_FEE_CAP_PCT = 10_000; // 100%
+    uint256 public constant MAX_FEE_CAP_BPS = 10_000; // 100%
 
     function initialize(
         address _defaultAdmin,
@@ -68,28 +68,21 @@ contract AcrossBridgeAdapter is BridgeAdapter, IAcrossV3Receiver {
             acrossParams.fillDeadline >= block.timestamp,
             DeadlineExceeded(uint32(block.timestamp), acrossParams.fillDeadline)
         );
-
-        uint256 feePct = acrossParams.fee.mulDiv(MAX_FEE_CAP_PCT, instruction.amount);
-        uint256 slippageDelta = instruction.amount - instruction.minTokenAmount;
-        uint256 slippageDeltaPct = slippageDelta.mulDiv(MAX_FEE_CAP_PCT, instruction.amount);
-
-        require(feePct < feeCapPct, FeeTooHigh(acrossParams.fee));
-        require(
-            slippageDeltaPct < feeCapPct,
-            MinTokenAmountTooLow(instruction.amount, acrossParams.fee, instruction.minTokenAmount)
-        );
+        require(acrossParams.fee * MAX_FEE_CAP_BPS < feeCapPct * instruction.amount, FeeTooHigh(acrossParams.fee));
     }
 
     function _setAcrossSpookyPool(address newSpookyPool) private {
         require(newSpookyPool != address(0), Errors.ZeroAddress());
         address oldPool = address(spookyPool);
+        require(oldPool != newSpookyPool, Errors.AlreadySet());
         spookyPool = newSpookyPool;
         emit SpookyPoolUpdated(oldPool, newSpookyPool);
     }
 
     function _setFeeCapPct(uint256 newFeeCapPct) private {
-        require(newFeeCapPct <= MAX_FEE_CAP_PCT, InvalidFeeCapPct(newFeeCapPct));
+        require(newFeeCapPct <= MAX_FEE_CAP_BPS, InvalidFeeCapPct(newFeeCapPct));
         uint256 oldFeeCapPct = feeCapPct;
+        require(oldFeeCapPct != newFeeCapPct, Errors.AlreadySet());
         feeCapPct = newFeeCapPct;
         emit FeeCapPctUpdated(oldFeeCapPct, newFeeCapPct);
     }

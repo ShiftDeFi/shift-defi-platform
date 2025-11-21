@@ -31,11 +31,13 @@ contract UniswapV3Adapter is AccessControl, ReentrancyGuard, ISwapAdapter, IUnis
     function whitelistPath(address tokenIn, address tokenOut, uint24 fee) external onlyWhitelistManager {
         bytes memory path = abi.encodePacked(tokenIn, fee, tokenOut);
         whitelistedPaths[path] = true;
+        emit PathWhitelisted(tokenIn, tokenOut, fee, path);
     }
 
     function blacklistPath(address tokenIn, address tokenOut, uint24 fee) external onlyWhitelistManager {
         bytes memory path = abi.encodePacked(tokenIn, fee, tokenOut);
         whitelistedPaths[path] = false;
+        emit PathBlacklisted(tokenIn, tokenOut, fee, path);
     }
 
     function swap(
@@ -51,20 +53,19 @@ contract UniswapV3Adapter is AccessControl, ReentrancyGuard, ISwapAdapter, IUnis
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
         IERC20(tokenIn).forceApprove(uniswapV3Router, amountIn);
 
-        uint256 balanceBefore = IERC20(tokenOut).balanceOf(receiver);
+        uint256 balanceBefore = IERC20(tokenOut).balanceOf(address(this));
         IUniswapV3Router(uniswapV3Router).exactInput(
             IUniswapV3Router.ExactInputParams({
                 deadline: block.timestamp,
                 amountIn: amountIn,
                 amountOutMinimum: minAmountOut,
                 path: data,
-                recipient: receiver
+                recipient: address(this)
             })
         );
-        uint256 balanceAfter = IERC20(tokenOut).balanceOf(receiver);
-        require(
-            balanceAfter - balanceBefore >= minAmountOut,
-            SlippageNotMet(tokenOut, balanceAfter - balanceBefore, minAmountOut)
-        );
+        uint256 balanceAfter = IERC20(tokenOut).balanceOf(address(this));
+        uint256 deltaTokenOut = balanceAfter - balanceBefore;
+        require(deltaTokenOut >= minAmountOut, SlippageNotMet(tokenOut, deltaTokenOut, minAmountOut));
+        IERC20(tokenOut).safeTransfer(receiver, deltaTokenOut);
     }
 }

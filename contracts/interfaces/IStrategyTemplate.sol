@@ -3,65 +3,120 @@ pragma solidity ^0.8.28;
 
 interface IStrategyTemplate {
     struct EnterLocalVars {
-        uint256 allocatedNavBeforeEnter;
-        uint256 allocatedNavAfterEnter;
+        bytes32 currentStateId;
+        bytes32 enterStateId;
+        uint256 enterStateBitmask;
+        uint256 stateToNavBeforeEnter;
+        uint256 stateToNavAfterEnter;
         uint256[] remainingAmounts;
         bool hasRemainder;
+    }
+
+    struct EnterToStateLocalVars {
+        uint256 toStateBitmask;
+        bytes32 currentStateId;
+        uint256 currentStateBitmask;
+        uint256 stateToNavBeforeEnter;
+        uint256 stateToNavAfterEnter;
+    }
+
+    struct EnterInEmergencyModeLocalVars {
+        bytes32 currentStateId;
+        bytes32 targetStateId;
+        uint256 currentStateBitmask;
+        uint256 navBeforeEnter;
+        uint256 navAfterEnter;
     }
 
     struct ExitLocalVars {
         bytes32 currentStateId;
-        uint256 allocatedNavBeforeExit;
-        uint256 allocatedNavAfterExit;
-        uint256[] amountsBeforeExit;
+        uint256 currentStateBitmask;
+        uint256 currentStateNavBeforeExit;
+        uint256 currentStateNavAfterExit;
+        uint256 exitLiquidity;
+        uint256 tokenShare;
         address[] outputTokens;
-        uint256[] remainingAmounts;
-        bool isOnlyTokenState;
-    }
-
-    struct ReenterAfterEmergencyExitLocalVars {
-        bytes32 currentStateId;
-        uint256 allocatedNavBeforeEnter;
-        uint256 allocatedNavAfterEnter;
+        uint256[] outputAmounts;
+        uint256[] amountsBeforeExit;
         bool hasRemainder;
     }
 
-    struct TakeFeesLocalVars {
+    struct HarvestLocalVars {
+        bytes32 currentStateId;
+        uint256 currentStateBitmask;
+        address swapRouter;
         address treasury;
         uint256 feePct;
-        uint256 lengthCached;
-        address[] inputTokens;
+        bytes32 targetStateId;
+        uint256 targetStateNav;
+    }
+
+    struct PrepareFundsAfterExitLocalVars {
+        address[] outputTokens;
+        uint256[] outputAmounts;
+        uint256 length;
+        address container;
+        bool hasRemainder;
+    }
+
+    struct PrepareFundsAfterEnterLocalVars {
+        uint256 length;
+        address container;
+        address[] outputTokens;
+        uint256[] outputAmounts;
+        bool hasRemainder;
+    }
+
+    struct EmergencyExitLocalVars {
+        bytes32 currentStateId;
+        uint256 currentStateBitmask;
+        uint256 toStateBitmask;
+        bool isResolvingEmergency;
+        bool isExitSuccess;
     }
 
     event Entered(uint256 navBefore, uint256 navAfter, bool hasRemainder);
     event Exited(uint256 navBefore, uint256 navAfter, bytes32 stateId);
     event EmergencyExited(bytes32 toStateId);
     event Harvested(uint256 navAfter);
+    event EmergencyExitFailed(bytes32 toStateId);
+    event EmergencyExitSucceeded(bytes32 toStateId);
+    event ReenteredToState(bytes32 stateId);
+    event StateUpdated(bytes32 oldStateId, bytes32 newStateId, uint256 newStateBitmask);
+    event NavResolutionModeUpdated(bool isNavResolutionMode);
+    event EmergencyModeUpdated(bool isEmergencyMode);
+    event InputTokenSet(address);
+    event OutputTokenSet(address);
 
-    error SlippageCheckFailed(uint256 allocatedNavBeforeExit, uint256 allocatedNavAfterExit);
-    error EmergencyModeEnabled();
-    error EmergencyModeDisabled();
-    error WrongStateForExit(bytes32 stateId);
-    error WrongStateForEmergencyExit(bytes32 stateId);
+    error EnterUnavailable();
+    error ExitUnavailable();
+    error EmergencyExitUnavailable();
+    error SlippageCheckFailed(uint256 navBefore, uint256 navAfter, uint256 minNavDelta);
+    error NavResolutionModeActivated();
+    error NavResolutionModeNotActivated();
+    error EmergencyModeActivated();
+    error StateNotFound(bytes32 stateId);
+    error NotInTargetState(bytes32 currentStateId, uint256 currentStateBitmask);
+    error StateAlreadyExists(bytes32 stateId);
+    error TargetStateAlreadySet();
 
     function enter(
         uint256[] memory inputAmounts,
         uint256 minNavDelta
     ) external payable returns (uint256, bool, uint256[] memory);
-
-    function reenterAfterEmergencyExit(uint256 minNavDelta) external payable;
-
-    function exit(uint256 share, uint256 minNavDelta) external payable returns (address[] memory, uint256[] memory);
-
+    function exit(
+        uint256 share,
+        uint256 minLiquidityAfterExit
+    ) external payable returns (address[] memory, uint256[] memory);
     function harvest() external payable returns (uint256);
+    function emergencyExit(bytes32 toStateId, uint256 share) external payable;
+    function emergencyExitMultiple(bytes32[] calldata toStateIds, uint256[] calldata shares) external payable;
 
-    function emergencyExit(bytes32 toStateId) external payable;
+    function setInputTokens(address[] memory inputTokens) external;
+    function setOutputTokens(address[] memory outputTokens) external;
 
-    function nav() external view returns (uint256);
-
-    function allocatedNav(bytes32 stateId) external view returns (uint256);
-
+    // function nav() external view returns (uint256);
+    function stateNav(bytes32 stateId) external view returns (uint256);
     function inputTokens() external view returns (address[] memory);
-
     function outputTokens() external view returns (address[] memory);
 }

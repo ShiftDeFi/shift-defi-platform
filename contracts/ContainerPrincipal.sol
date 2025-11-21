@@ -9,14 +9,10 @@ import {IContainerPrincipal} from "./interfaces/IContainerPrincipal.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
 import {IMessageReceiver} from "./interfaces/IMessageReceiver.sol";
-import {DepositRequestLib} from "./libraries/DepositRequestLib.sol";
 import {IMessageRouter} from "./interfaces/IMessageRouter.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {Errors} from "./libraries/helpers/Errors.sol";
-import {ContainerMessagePackingLib} from "./libraries/ContainerMessagePackingLib.sol";
-import {DepositResponseLib} from "./libraries/DepositResponseLib.sol";
-import {WithdrawalRequestLib} from "./libraries/WithdrawalRequestLib.sol";
-import {WithdrawalResponseLib} from "./libraries/WithdrawalResponseLib.sol";
+import {Codec} from "./libraries/Codec.sol";
 
 contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     using SafeERC20 for IERC20;
@@ -69,22 +65,26 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         IBridgeAdapter.BridgeInstruction[] calldata bridgeInstructions
     ) external payable onlyRole(OPERATOR_ROLE) nonReentrant {
         require(status == ContainerPrincipalStatus.DepositRequestRegistered, Errors.IncorrectContainerStatus());
-        require(bridgeInstructions.length > 0, Errors.ZeroAmount());
-        require(bridgeAdapters.length == bridgeInstructions.length, Errors.ArrayLengthMismatch());
+
+        uint256 bridgeInstructionsLength = bridgeInstructions.length;
+        require(bridgeInstructionsLength > 0, Errors.ZeroAmount());
+        require(bridgeAdapters.length == bridgeInstructionsLength, Errors.ArrayLengthMismatch());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
-        require(remoteChainId > 0, Errors.ZeroAmount());
+        require(remoteChainId > 0, RemoteChainIdNotSet());
 
         status = ContainerPrincipalStatus.DepositRequestSent;
 
         SendDepositRequestLocalVars memory vars;
 
-        vars.tokens = new address[](bridgeInstructions.length);
-        vars.minAmounts = new uint256[](bridgeInstructions.length);
+        vars.tokens = new address[](bridgeInstructionsLength);
+        vars.minAmounts = new uint256[](bridgeInstructionsLength);
 
-        for (uint256 i = 0; i < bridgeInstructions.length; i++) {
+        address peerContainerCached = peerContainer;
+
+        for (uint256 i = 0; i < bridgeInstructionsLength; ++i) {
             (vars.tokens[i], vars.minAmounts[i]) = _bridgeToken(
                 bridgeAdapters[i],
-                peerContainer,
+                peerContainerCached,
                 bridgeInstructions[i]
             );
         }
@@ -92,14 +92,12 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         require(_validateWhitelistedTokensBeforeReport(false, true), WhitelistedTokensOnBalance());
 
         IMessageRouter(messageRouter).send{value: msg.value}(
-            peerContainer,
+            peerContainerCached,
             IMessageRouter.SendParams({
                 adapter: messageInstruction.adapter,
                 adapterParameters: messageInstruction.parameters,
                 chainTo: remoteChainId,
-                message: DepositRequestLib.encode(
-                    DepositRequestLib.DepositRequest({tokens: vars.tokens, amounts: vars.minAmounts})
-                )
+                message: Codec.encode(Codec.DepositRequest({tokens: vars.tokens, amounts: vars.minAmounts}))
             })
         );
 
@@ -110,7 +108,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         MessageInstruction memory messageInstruction
     ) external payable onlyRole(OPERATOR_ROLE) nonReentrant {
         require(status == ContainerPrincipalStatus.WithdrawalRequestRegistered, Errors.IncorrectContainerStatus());
-        require(remoteChainId > 0, Errors.ZeroAmount());
+        require(remoteChainId > 0, RemoteChainIdNotSet());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
 
         uint256 registeredWithdrawShareAmountCached = registeredWithdrawShareAmount;
@@ -124,9 +122,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
                 adapter: messageInstruction.adapter,
                 adapterParameters: messageInstruction.parameters,
                 chainTo: remoteChainId,
-                message: WithdrawalRequestLib.encode(
-                    WithdrawalRequestLib.WithdrawalRequest({share: registeredWithdrawShareAmountCached})
-                )
+                message: Codec.encode(Codec.WithdrawalRequest({share: registeredWithdrawShareAmountCached}))
             })
         );
 
@@ -141,7 +137,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         );
         require(registeredWithdrawShareAmount == 0, Errors.NonZeroAmount());
         require(claimCounter == 0, UnclaimedTokens());
-        require(_hasOnlyNotionToken(), WhitelistedTokensOnBalance());
+        require(_validateWhitelistedTokensBeforeReport(true, true), WhitelistedTokensOnBalance());
 
         ReportDepositLocalVars memory vars;
         vars.nav0 = nav0;
@@ -178,30 +174,30 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
             Errors.IncorrectContainerStatus()
         );
 
-        ContainerMessagePackingLib.ContainerMessage memory message = ContainerMessagePackingLib.decode(rawMessage);
-        if (message.type_ == ContainerMessagePackingLib.DEPOSIT_RESPONSE_TYPE) {
-            DepositResponseLib.DepositResponse memory response = DepositResponseLib.decode(message.payload);
+        uint8 messageType = Codec.fetchMessageType(rawMessage);
+        if (messageType == Codec.DEPOSIT_RESPONSE_TYPE) {
+            Codec.DepositResponse memory response = Codec.decodeDepositResponse(rawMessage);
             nav0 = response.navAH;
             nav1 = response.navAE;
             status = ContainerPrincipalStatus.DepositResponseReceived;
             if (response.tokens.length > 0) {
                 _processExpectedTokens(response.tokens, response.amounts);
             }
-
             emit DepositResponseReceived(claimCounter, nav0, nav1);
             return;
         }
 
-        if (message.type_ == ContainerMessagePackingLib.WITHDRAWAL_RESPONSE_TYPE) {
-            WithdrawalResponseLib.WithdrawalResponse memory response = WithdrawalResponseLib.decode(message.payload);
+        if (messageType == Codec.WITHDRAWAL_RESPONSE_TYPE) {
+            Codec.WithdrawalResponse memory response = Codec.decodeWithdrawalResponse(rawMessage);
             status = ContainerPrincipalStatus.WithdrawalResponseReceived;
             if (response.tokens.length > 0) {
                 _processExpectedTokens(response.tokens, response.amounts);
             }
-
             emit WithdrawalResponseReceived(claimCounter);
             return;
         }
+
+        revert Codec.WrongMessageType(messageType);
     }
 
     // ---- Bridge logic ----

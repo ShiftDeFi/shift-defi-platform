@@ -9,12 +9,15 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/ut
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {ISwapAdapter} from "./interfaces/ISwapAdapter.sol";
 
+import {Errors} from "./libraries/helpers/Errors.sol";
+
 contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, ISwapRouter {
     using SafeERC20 for IERC20;
 
     bytes32 private constant WHITELIST_MANAGER_ROLE = keccak256("WHITELIST_MANAGER_ROLE");
 
     mapping(address => bool) public whitelistedAdapters;
+    mapping(address => mapping(address => PredefinedSwapParameters)) public predefinedSwapParameters;
 
     modifier onlyWhitelistManager() {
         // onlyrole
@@ -33,38 +36,81 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
     }
 
     function whitelistSwapAdapter(address adapter) external onlyWhitelistManager {
-        // add check
+        require(!whitelistedAdapters[adapter], Errors.AlreadyWhitelisted());
         whitelistedAdapters[adapter] = true;
         emit SwapAdapterWhitelisted(adapter);
     }
 
-    // todo: blacklist
     function blacklistSwapAdapter(address adapter) external onlyWhitelistManager {
+        require(whitelistedAdapters[adapter], Errors.AlreadyBlacklisted());
         whitelistedAdapters[adapter] = false;
         emit SwapAdapterBlacklisted(adapter);
     }
 
-    function swap(SwapInstruction calldata instruction) external payable nonReentrant returns (uint256) {
+    function setPredefinedSwapParameters(
+        address tokenIn,
+        address tokenOut,
+        address adapter,
+        bytes calldata payload
+    ) external onlyWhitelistManager {
+        require(tokenIn != address(0), Errors.ZeroAddress());
+        require(tokenOut != address(0), Errors.ZeroAddress());
+        require(adapter != address(0), Errors.ZeroAddress());
+        require(whitelistedAdapters[adapter], AdapterNotWhitelisted(adapter));
+        predefinedSwapParameters[tokenIn][tokenOut] = PredefinedSwapParameters(adapter, payload);
+        emit PredefinedSwapParametersSet(tokenIn, tokenOut, adapter, payload);
+    }
+
+    function tryPredefinedSwap(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 minAmountOut
+    ) external payable returns (bool, uint256) {
+        address adapter = predefinedSwapParameters[tokenIn][tokenOut].adapter;
+        bytes memory payload = predefinedSwapParameters[tokenIn][tokenOut].payload;
+        if (adapter == address(0)) {
+            return (false, 0);
+        }
+        return (
+            true,
+            swap(
+                ISwapRouter.SwapInstruction({
+                    adapter: adapter,
+                    tokenIn: tokenIn,
+                    tokenOut: tokenOut,
+                    amountIn: amountIn,
+                    minAmountOut: minAmountOut,
+                    payload: payload
+                })
+            )
+        );
+    }
+
+    function swap(SwapInstruction memory instruction) public payable nonReentrant returns (uint256) {
         require(whitelistedAdapters[instruction.adapter], AdapterNotWhitelisted(instruction.adapter));
 
         IERC20(instruction.tokenIn).safeTransferFrom(msg.sender, address(this), instruction.amountIn);
         IERC20(instruction.tokenIn).forceApprove(instruction.adapter, instruction.amountIn);
-        uint256 amountOutBefore = IERC20(instruction.tokenOut).balanceOf(msg.sender);
+        uint256 amountOutBefore = IERC20(instruction.tokenOut).balanceOf(address(this));
         ISwapAdapter(instruction.adapter).swap(
             instruction.tokenIn,
             instruction.tokenOut,
             instruction.amountIn,
             instruction.minAmountOut,
-            msg.sender,
+            address(this),
             instruction.payload
         );
-        uint256 amountOutAfter = IERC20(instruction.tokenOut).balanceOf(msg.sender);
+        uint256 amountOutAfter = IERC20(instruction.tokenOut).balanceOf(address(this));
+        uint256 deltaTokenOut = amountOutAfter - amountOutBefore;
         require(
-            amountOutAfter - amountOutBefore >= instruction.minAmountOut,
-            SlippageNotMet(amountOutBefore, amountOutAfter, instruction.minAmountOut) // todo: inline with other slippage checks
+            deltaTokenOut >= instruction.minAmountOut,
+            SlippageNotMet(amountOutBefore, amountOutAfter, instruction.minAmountOut)
         );
 
-        emit Swap(msg.sender, instruction.tokenIn, instruction.tokenOut, instruction.amountIn, amountOutAfter);
-        return amountOutAfter - amountOutBefore; // cache
+        IERC20(instruction.tokenOut).safeTransfer(msg.sender, deltaTokenOut);
+
+        emit Swap(msg.sender, instruction.tokenIn, instruction.tokenOut, instruction.amountIn, deltaTokenOut);
+        return deltaTokenOut;
     }
 }

@@ -30,7 +30,6 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     uint256 private constant MAX_CONTAINERS = 256;
     uint256 private constant MAX_BPS = 10_000;
-    uint256 private constant DEAD_SHARES = 1000;
 
     VaultStatus public status;
 
@@ -192,22 +191,22 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     }
 
     function _setMaxDepositBatchSize(uint256 _maxDepositBatchSize) internal {
-        require(_maxDepositBatchSize > minDepositBatchSize, Errors.IncorrectAmount());
+        require(
+            _maxDepositBatchSize > minDepositBatchSize && _maxDepositBatchSize >= maxDepositAmount,
+            Errors.IncorrectAmount()
+        );
         maxDepositBatchSize = _maxDepositBatchSize;
         emit MaxDepositBatchSizeUpdated(_maxDepositBatchSize);
     }
 
     function _setMinDepositBatchSize(uint256 _minDepositBatchSize) internal {
-        require(
-            _minDepositBatchSize > minDepositAmount && _minDepositBatchSize < maxDepositBatchSize,
-            Errors.IncorrectAmount()
-        );
+        require(_minDepositBatchSize > 0 && _minDepositBatchSize < maxDepositBatchSize, Errors.IncorrectAmount());
         minDepositBatchSize = _minDepositBatchSize;
         emit MinDepositBatchSizeUpdated(_minDepositBatchSize);
     }
 
     function _setMinWithdrawBatchRatio(uint256 _minWithdrawBatchRatio) internal {
-        require(_minWithdrawBatchRatio > 0 && _minWithdrawBatchRatio < MAX_BPS, Errors.IncorrectAmount());
+        require(_minWithdrawBatchRatio > 0 && _minWithdrawBatchRatio <= MAX_BPS, Errors.IncorrectAmount());
         minWithdrawBatchRatio = _minWithdrawBatchRatio;
         emit MinWithdrawBatchRatioUpdated(_minWithdrawBatchRatio);
     }
@@ -322,18 +321,14 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         require(vars.depositAmount > 0, NothingToClaim());
 
         vars.batchTotalNotion = depositBatchTotalNotion[batchId];
-        vars.batchTotalShares = depositBatchTotalShares[batchId];
         vars.batchNotionRemainder = batchNotionRemainder[batchId];
 
-        vars.sharesToClaim = vars.depositAmount.mulDiv(vars.batchTotalShares, vars.batchTotalNotion);
+        vars.sharesToClaim = vars.depositAmount.mulDiv(depositBatchTotalShares[batchId], vars.batchTotalNotion);
 
         pendingBatchDeposits[batchId][onBehalfOf] = 0;
-        depositBatchTotalNotion[batchId] = vars.batchTotalNotion - vars.depositAmount;
-        depositBatchTotalShares[batchId] = vars.batchTotalShares - vars.sharesToClaim;
 
         if (vars.batchNotionRemainder > 0) {
             vars.notionToClaim = vars.depositAmount.mulDiv(vars.batchNotionRemainder, vars.batchTotalNotion);
-            batchNotionRemainder[batchId] = vars.batchNotionRemainder - vars.notionToClaim;
             totalUnclaimedNotionRemainder -= vars.notionToClaim;
             require(_isNotionDecreaseAllowed(vars.notionToClaim), NotEnoughNotion());
         }
@@ -372,15 +367,14 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
         ClaimWithdrawLocalVars memory vars;
         vars.withdrawnShares = pendingBatchWithdrawals[batchId][onBehalfOf];
-        vars.batchTotalShares = withdrawBatchTotalShares[batchId];
-        vars.batchTotalNotion = withdrawBatchTotalNotion[batchId];
 
-        vars.notionToClaim = vars.withdrawnShares.mulDiv(vars.batchTotalNotion, vars.batchTotalShares);
+        vars.notionToClaim = vars.withdrawnShares.mulDiv(
+            withdrawBatchTotalNotion[batchId],
+            withdrawBatchTotalShares[batchId]
+        );
         require(vars.notionToClaim > 0, NothingToClaim());
 
         pendingBatchWithdrawals[batchId][onBehalfOf] = 0;
-        withdrawBatchTotalShares[batchId] = vars.batchTotalShares - vars.withdrawnShares;
-        withdrawBatchTotalNotion[batchId] = vars.batchTotalNotion - vars.notionToClaim;
 
         totalUnclaimedNotionForWithdraw -= vars.notionToClaim;
         require(_isNotionDecreaseAllowed(vars.notionToClaim), NotEnoughNotion());
@@ -391,7 +385,6 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         emit WithdrawClaimed(msg.sender, onBehalfOf, batchId, vars.notionToClaim);
     }
 
-    // TODO: Implement PAUSE LOGIC
     function claimReshufflingGateway(address account) external nonReentrant {
         require(isRepairing, NotInRepairingMode());
         require(!_hasClaimedReshufflingGateway[account], AlreadyClaimed());
@@ -419,34 +412,33 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
         DepositBatchProcessingLocalVars memory vars;
         vars.totalBatchDepositAmount = bufferedDeposits;
-
         require(vars.totalBatchDepositAmount >= minDepositBatchSize, DepositBatchSizeTooSmall());
+
+        vars.containersNumber = _containers.length();
+        require(vars.containersNumber > 0, NoContainers());
 
         status = VaultStatus.DepositBatchProcessingStarted;
         vars.batchId = depositBatchId++;
         depositBatchTotalNotion[vars.batchId] = vars.totalBatchDepositAmount;
         bufferedDeposits = 0;
 
-        vars.containersNumber = _containers.length();
-        require(vars.containersNumber > 0, NoContainers());
-        vars.lastContainerIndex = vars.containersNumber - 1;
+        vars.undistributedWeight = MAX_BPS;
+        vars.undistributedNotionAmount = vars.totalBatchDepositAmount;
 
         for (uint256 i = 0; i < vars.containersNumber; ++i) {
             address container = _containers.at(i);
             uint256 containerWeight = containerWeights[container];
 
-            if (i == vars.lastContainerIndex) {
-                // NOTE: Last container takes all division dust
-                vars.containerAmount = vars.totalBatchDepositAmount - vars.distributedNotion;
-            } else {
-                vars.containerAmount = vars.totalBatchDepositAmount.mulDiv(containerWeight, MAX_BPS);
-            }
+            vars.containerAmount = vars.undistributedNotionAmount.mulDiv(containerWeight, vars.undistributedWeight);
 
-            vars.distributedNotion += vars.containerAmount;
+            vars.undistributedWeight -= containerWeight;
+            vars.undistributedNotionAmount -= vars.containerAmount;
+
             IContainerPrincipal(container).registerDepositRequest(vars.containerAmount);
         }
 
-        require(vars.distributedNotion == vars.totalBatchDepositAmount, IncorrectNotionDistribution());
+        require(vars.undistributedNotionAmount == 0, IncorrectNotionDistribution());
+        require(vars.undistributedWeight == 0, IncorrectWeights(vars.undistributedWeight));
 
         emit DepositBatchProcessingStarted(vars.batchId, vars.totalBatchDepositAmount);
     }
@@ -504,13 +496,14 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
             vars.totalNav1 += report.nav1;
         }
 
-        if (totalSupply() == 0) {
-            _mint(address(this), DEAD_SHARES);
-        }
-
         // NOTE: totalNav1 >= totalNav0 is enforced in `reportDeposit()`
         vars.batchDeltaNav = vars.totalNav1 - vars.totalNav0;
-        vars.batchShares = vars.batchDeltaNav.mulDiv(totalSupply() + 1, vars.totalNav0 + 1);
+        vars.totalSupplyCached = totalSupply();
+        if (vars.totalNav0 == 0 || vars.totalSupplyCached == 0) {
+            vars.batchShares = vars.batchDeltaNav;
+        } else {
+            vars.batchShares = vars.batchDeltaNav.mulDiv(vars.totalSupplyCached, vars.totalNav0);
+        }
 
         depositBatchTotalShares[vars.previousBatchId] = vars.batchShares;
 

@@ -21,6 +21,7 @@ interface IContainerAgent {
     }
 
     // ---- Events ----
+
     event AllStrategiesEntered();
     event AllStrategiesExited();
     event DepositReported(uint256 nav0, uint256 nav1);
@@ -28,8 +29,17 @@ interface IContainerAgent {
     event DepositRequestReceived(uint256 claimCounter);
     event WithdrawalRequestReceived(uint256 shares);
 
+    // ---- Errors ----
+
+    error EmergencyResolutionInProgress();
+
     // ---- Functions ----
+
     function claim(address bridgeAdapter, address token) external;
 
     function claimMultiple(address[] memory bridgeAdapters, address[] memory tokens) external;
+
+    function addStrategy(address strategy, address[] calldata inputTokens, address[] calldata outputTokens) external;
+
+    function removeStrategy(address strategy) external;
 }

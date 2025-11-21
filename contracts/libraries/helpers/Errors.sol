@@ -15,6 +15,8 @@ library Errors {
     error EmergencyModeEnabled();
     error NotImplemented();
     error NotInRepairingMode();
+    error TokenAlreadySet(address value);
+    error AlreadySet();
 
     // -- Input Validation Errors --
 
@@ -27,6 +29,8 @@ library Errors {
     error ZeroAmount();
     error ZeroArrayLength();
     error NonZeroAmount();
+    error NotFound();
+    error IncorrectContainerType(address container, uint8 expected, uint8 received);
 
     // -- Business Logic Errors --
 

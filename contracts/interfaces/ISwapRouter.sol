@@ -4,6 +4,11 @@ pragma solidity ^0.8.28;
 /// @title Interface for a universal token swap router (Exact-In model)
 /// @notice Provides a unified interface for token swaps with fixed input amounts.
 interface ISwapRouter {
+    struct PredefinedSwapParameters {
+        address adapter;
+        bytes payload;
+    }
+
     struct SwapInstruction {
         address adapter;
         address tokenIn; // Token to swap from
@@ -22,13 +27,27 @@ interface ISwapRouter {
         uint256 amountIn,
         uint256 amountOut
     );
+    event DefaultAdapterForTokenPairSet(address indexed tokenIn, address indexed tokenOut, address indexed adapter);
+    event PredefinedSwapParametersSet(
+        address indexed tokenIn,
+        address indexed tokenOut,
+        address indexed adapter,
+        bytes payload
+    );
 
     error AdapterNotWhitelisted(address adapter);
     error NotWhitelistManager(address sender);
     error SlippageNotMet(uint256 amountOutBefore, uint256 amountOutAfter, uint256 minAmountOut);
+    error DefaultAdapterNotSet(address tokenIn, address tokenOut);
 
     /// @notice Executes the swap based on the given instruction.
     /// @param instruction Details of the swap operation.
     /// @return amountOut Actual amount of tokenOut received.
     function swap(SwapInstruction calldata instruction) external payable returns (uint256 amountOut);
+    function tryPredefinedSwap(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 minAmountOut
+    ) external payable returns (bool, uint256);
 }

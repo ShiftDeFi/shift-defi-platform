@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.28;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -39,7 +39,6 @@ interface IVault {
         uint256 depositAmount;
         uint256 batchTotalNotion;
         uint256 batchNotionRemainder;
-        uint256 batchTotalShares;
         uint256 sharesToClaim;
         uint256 notionToClaim;
     }
@@ -52,18 +51,16 @@ interface IVault {
 
     struct ClaimWithdrawLocalVars {
         uint256 withdrawnShares;
-        uint256 batchTotalNotion;
-        uint256 batchTotalShares;
         uint256 notionToClaim;
     }
 
     struct DepositBatchProcessingLocalVars {
-        uint256 batchId;
         uint256 totalBatchDepositAmount;
         uint256 containersNumber;
-        uint256 lastContainerIndex;
+        uint256 batchId;
+        uint256 undistributedWeight;
+        uint256 undistributedNotionAmount;
         uint256 containerAmount;
-        uint256 distributedNotion;
     }
 
     struct ResolveDepositBatchLocalVars {
@@ -72,6 +69,7 @@ interface IVault {
         uint256 totalNav0;
         uint256 totalNav1;
         uint256 batchDeltaNav;
+        uint256 totalSupplyCached;
         uint256 batchShares;
     }
 

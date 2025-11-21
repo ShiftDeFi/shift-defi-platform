@@ -2,6 +2,8 @@
 pragma solidity ^0.8.28;
 
 interface ICrossChainContainer {
+    // ---- Structs ----
+
     struct MessageInstruction {
         address adapter;
         bytes parameters;
@@ -15,12 +17,16 @@ interface ICrossChainContainer {
         uint256 bridgedAmount;
     }
 
+    // ---- Events ----
+
     event MessageRouterUpdated(address previousMessageRouter, address newMessageRouter);
     event TokenClaimed(address token, uint256 amount);
     event BridgeAdapterUpdated(address bridgeAdapter, bool isSupported);
     event PeerContainerUpdated(address previousPeerContainer, address newPeerContainer);
     event RemoteChainIdUpdated(uint256 previousRemoteChainId, uint256 newRemoteChainId);
     event BridgeSent(address token, uint256 amount, address bridgeAdapter, address bridgeTo);
+
+    // ---- Errors ----
 
     error TokenNotExpected();
     error UnclaimedTokens();
@@ -32,6 +38,9 @@ interface ICrossChainContainer {
     error RemoteChainIdAlreadySet();
     error InvalidDecimals();
     error BridgeSlippageExceeded(uint256 expected, uint256 received);
+    error RemoteChainIdNotSet();
+
+    // ---- Functions ----
 
     function setMessageRouter(address newMessageRouter) external;
 

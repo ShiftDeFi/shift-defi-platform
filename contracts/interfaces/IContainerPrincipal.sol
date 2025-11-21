@@ -6,6 +6,8 @@ import {IBridgeAdapter} from "./IBridgeAdapter.sol";
 import {ICrossChainContainer} from "./ICrossChainContainer.sol";
 
 interface IContainerPrincipal {
+    // ---- Enums ----
+
     enum ContainerPrincipalStatus {
         Idle, // no active deposit and withdrawal requests
         DepositRequestRegistered, // deposit request registered, allowed only swaps and allocation.
@@ -16,6 +18,8 @@ interface IContainerPrincipal {
         WithdrawalResponseReceived, // nothing allowed
         BridgeClaimed // nothing allowed
     }
+
+    // ---- Structs ----
 
     struct SendDepositRequestLocalVars {
         address[] tokens;
@@ -28,6 +32,8 @@ interface IContainerPrincipal {
         uint256 remainder;
     }
 
+    // ---- Events ----
+
     event DepositRequestRegistered(uint256 amount);
     event WithdrawalRequestRegistered(uint256 shares);
     event DepositRequestSent();
@@ -37,7 +43,10 @@ interface IContainerPrincipal {
     event DepositReported(uint256 nav0, uint256 nav1, uint256 remainder);
     event WithdrawalReported();
 
+    // ---- Functions ----
+
     function registerDepositRequest(uint256 amount) external;
+
     function registerWithdrawRequest(uint256 amount) external;
 
     function sendDepositRequest(

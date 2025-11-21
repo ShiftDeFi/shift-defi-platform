@@ -19,7 +19,6 @@ interface IAcrossV3Receiver {
     error OnlySpookyPool(address addr, address spookyPool);
     error FeeTooHigh(uint256 fee);
     error InvalidFeeCapPct(uint256 feeCapPct);
-    error MinTokenAmountTooLow(uint256 amount, uint256 fee, uint256 minTokenAmount);
 
     function spookyPool() external view returns (address);
     function handleV3AcrossMessage(address tokenSent, uint256 amount, address relayer, bytes memory message) external;

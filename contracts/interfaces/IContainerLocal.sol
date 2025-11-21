@@ -35,7 +35,7 @@ interface IContainerLocal {
         uint256[] calldata minNavDelta
     ) external;
 
-    function exitStrategy(address strategy, uint256 minNavDelta) external;
+    function exitStrategy(address strategy, uint256 maxNavDelta) external;
 
-    function exitStrategyMultiple(address[] calldata strategies, uint256[] calldata minNavDelta) external;
+    function exitStrategyMultiple(address[] calldata strategies, uint256[] calldata maxNavDeltas) external;
 }

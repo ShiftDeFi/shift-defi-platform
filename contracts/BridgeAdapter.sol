@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 import {RingCacheLibrary} from "./libraries/helpers/RingCacheLibrary.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
@@ -12,14 +13,18 @@ import {Errors} from "./libraries/helpers/Errors.sol";
 
 abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IBridgeAdapter {
     using SafeERC20 for IERC20;
+    using Math for uint256;
     using RingCacheLibrary for RingCacheLibrary.RingCache;
 
     bytes32 internal constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
 
-    mapping(address => mapping(uint256 => address)) public bridgePaths;
-    mapping(address => mapping(address => uint256)) public claimableAmounts;
-    mapping(address => bool) public whitelistedBridgers;
-    mapping(uint256 => address) public peers;
+    mapping(address => mapping(uint256 => address)) public override bridgePaths;
+    mapping(address => mapping(address => uint256)) public override claimableAmounts;
+    mapping(address => bool) public override whitelistedBridgers;
+    mapping(uint256 => address) public override peers;
+
+    uint256 private _slippageCapPct;
+    uint256 private constant MAX_SLIPPAGE_CAP_PCT = 10_000; // 100%
 
     RingCacheLibrary.RingCache private _cache;
 
@@ -30,12 +35,23 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(GOVERNANCE_ROLE, governance);
 
-        _cache.initialize(8);
+        _cache.initialize("BRIDGE_CACHE", 8);
     }
 
-    function setBridgePath(address tokenOnSrc, uint256 chainId, address tokenOnDst) external onlyRole(GOVERNANCE_ROLE) {
+    function setSlippageCapPct(uint256 slippageCapPct) external onlyRole(GOVERNANCE_ROLE) {
+        require(slippageCapPct <= MAX_SLIPPAGE_CAP_PCT, Errors.IncorrectAmount());
+        _slippageCapPct = slippageCapPct;
+        emit SlippageCapPctUpdated(_slippageCapPct);
+    }
+
+    function setBridgePath(
+        address tokenOnSrc,
+        uint256 chainId,
+        address tokenOnDst
+    ) external override onlyRole(GOVERNANCE_ROLE) {
         require(tokenOnSrc != address(0), Errors.ZeroAddress());
         require(chainId > 0, Errors.ZeroAmount());
+        require(bridgePaths[tokenOnSrc][chainId] != tokenOnDst, Errors.AlreadySet());
 
         bridgePaths[tokenOnSrc][chainId] = tokenOnDst;
         emit BridgePathUpdated(tokenOnSrc, chainId, tokenOnDst);
@@ -44,6 +60,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     function setPeer(uint256 chainId, address peer) external onlyRole(GOVERNANCE_ROLE) {
         require(peer != address(0), Errors.ZeroAddress());
         require(chainId > 0, Errors.ZeroAmount());
+        require(peers[chainId] != peer, Errors.AlreadySet());
 
         peers[chainId] = peer;
         emit PeerUpdated(chainId, peer);
@@ -51,12 +68,14 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
 
     function whitelistBridger(address bridger) external onlyRole(GOVERNANCE_ROLE) {
         require(bridger != address(0), Errors.ZeroAddress());
+        require(!whitelistedBridgers[bridger], Errors.AlreadyWhitelisted());
         whitelistedBridgers[bridger] = true;
         emit BridgerWhitelisted(bridger);
     }
 
     function blacklistBridger(address bridger) external onlyRole(GOVERNANCE_ROLE) {
         require(bridger != address(0), Errors.ZeroAddress());
+        require(whitelistedBridgers[bridger], Errors.AlreadyBlacklisted());
         whitelistedBridgers[bridger] = false;
         emit BridgerBlacklisted(bridger);
     }
@@ -79,8 +98,8 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
         return bridgedAmount;
     }
 
-    function claim(address token) external virtual override nonReentrant {
-        _claim(msg.sender, token);
+    function claim(address token) external virtual override nonReentrant returns (uint256) {
+        return _claim(msg.sender, token);
     }
 
     function retryBridge(
@@ -92,7 +111,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
         _validateBridgeInstruction(instruction);
 
         bytes32 key = keccak256(abi.encode(instruction.token, instruction.chainTo, instruction.amount, receiver));
-        require(_cache.exists(key), RingCacheLibrary.DoesNotExists(key));
+        require(_cache.exists(key), RingCacheLibrary.DoesNotExists(_cache.id, key));
 
         uint256 bridgedAmount = _bridge(instruction, abi.encode(receiver));
 
@@ -118,20 +137,23 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
         emit Bridged(claimer, token, amount);
     }
 
-    function _claim(address claimer, address token) internal {
+    function _claim(address claimer, address token) internal returns (uint256) {
         require(claimer != address(0), Errors.ZeroAddress());
         require(token != address(0), Errors.ZeroAddress());
 
         uint256 amount = claimableAmounts[claimer][token];
         uint256 amountOnContract = IERC20(token).balanceOf(address(this));
 
-        require(amount > 0 || amountOnContract > 0, Errors.ZeroAmount());
-        require(amount >= amountOnContract, Errors.NotEnoughTokens(token, amount));
+        require(amount > 0 && amountOnContract > 0, Errors.ZeroAmount());
+        require(amount <= amountOnContract, Errors.NotEnoughTokens(token, amount));
 
         claimableAmounts[claimer][token] = 0;
 
         IERC20(token).safeTransfer(claimer, amount);
+
         emit Claimed(claimer, token, amount);
+
+        return amount;
     }
 
     function _validateBridgeInstruction(BridgeInstruction calldata instruction) internal view {
@@ -143,8 +165,13 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
             BadBridgePath(instruction.token, instruction.chainTo)
         );
         require(peers[instruction.chainTo] != address(0), PeerNotSet(instruction.chainTo));
+        require(instruction.minTokenAmount <= instruction.amount, Errors.IncorrectAmount());
+        uint256 slippageDelta = instruction.amount - instruction.minTokenAmount;
+        require(
+            slippageDelta * MAX_SLIPPAGE_CAP_PCT <= _slippageCapPct * instruction.amount,
+            SlippageCapExceeded(slippageDelta, _slippageCapPct)
+        );
     }
-
     function _bridge(
         BridgeInstruction calldata bridgeInstruction,
         bytes memory message

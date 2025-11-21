@@ -4,16 +4,11 @@ pragma solidity ^0.8.28;
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
-import {ContainerMessagePackingLib} from "./libraries/ContainerMessagePackingLib.sol";
 import {CrossChainContainer, ContainerInitParams, CrossChainContainerInitParams} from "./CrossChainContainer.sol";
-import {DepositRequestLib} from "./libraries/DepositRequestLib.sol";
 import {Errors} from "./libraries/helpers/Errors.sol";
+import {Codec} from "./libraries/Codec.sol";
 import {IContainerAgent} from "./interfaces/IContainerAgent.sol";
 import {StrategyContainer} from "./StrategyContainer.sol";
-import {WithdrawalRequestLib} from "./libraries/WithdrawalRequestLib.sol";
-import {DepositResponseLib} from "./libraries/DepositResponseLib.sol";
-import {WithdrawalRequestLib} from "./libraries/WithdrawalRequestLib.sol";
-import {WithdrawalResponseLib} from "./libraries/WithdrawalResponseLib.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
 import {IMessageRouter} from "./interfaces/IMessageRouter.sol";
@@ -23,6 +18,11 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
 
     ContainerAgentStatus public status;
     uint256 public registeredWithdrawShareAmount;
+
+    modifier notResolvingEmergency() {
+        require(!_isResolvingEmergency, EmergencyResolutionInProgress());
+        _;
+    }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -36,6 +36,22 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     ) public initializer {
         _grantRole(EMERGENCY_MANAGER_ROLE, emergencyManager);
         __CrossChainContainer_init(containerParams, crossChainParams);
+    }
+
+    // ---- Strategy management logic ----
+
+    function addStrategy(
+        address strategy,
+        address[] calldata inputTokens,
+        address[] calldata outputTokens
+    ) external notResolvingEmergency onlyRole(STRATEGY_MANAGER_ROLE) {
+        require(status == ContainerAgentStatus.Idle, Errors.IncorrectContainerStatus());
+        _addStrategy(strategy, inputTokens, outputTokens);
+    }
+
+    function removeStrategy(address strategy) external notResolvingEmergency onlyRole(STRATEGY_MANAGER_ROLE) {
+        require(status == ContainerAgentStatus.Idle, Errors.IncorrectContainerStatus());
+        _removeStrategy(strategy);
     }
 
     // ---- Container Agent logic ----
@@ -115,9 +131,10 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         MessageInstruction calldata messageInstruction,
         address[] calldata bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata bridgeInstructions
-    ) external payable onlyRole(OPERATOR_ROLE) {
+    ) external payable notResolvingEmergency onlyRole(OPERATOR_ROLE) {
         require(status == ContainerAgentStatus.AllStrategiesEntered, Errors.IncorrectContainerStatus());
-        require(remoteChainId > 0, Errors.ZeroAmount());
+        require(remoteChainId > 0, RemoteChainIdNotSet());
+        require(bridgeAdapters.length == bridgeInstructions.length, Errors.ArrayLengthMismatch());
 
         ReportDepositLocalVars memory vars;
 
@@ -147,8 +164,8 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
                 adapter: messageInstruction.adapter,
                 chainTo: remoteChainId,
                 adapterParameters: messageInstruction.parameters,
-                message: DepositResponseLib.encode(
-                    DepositResponseLib.DepositResponse({
+                message: Codec.encode(
+                    Codec.DepositResponse({
                         tokens: vars.tokens,
                         amounts: vars.minAmounts,
                         navAH: vars.nav0,
@@ -165,14 +182,14 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         MessageInstruction calldata messageInstruction,
         address[] calldata bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata bridgeInstructions
-    ) external payable onlyRole(OPERATOR_ROLE) {
+    ) external payable notResolvingEmergency onlyRole(OPERATOR_ROLE) {
         require(status == ContainerAgentStatus.AllStrategiesExited, Errors.IncorrectContainerStatus());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
-        require(remoteChainId > 0, Errors.ZeroAmount());
-
+        require(remoteChainId > 0, RemoteChainIdNotSet());
+        require(bridgeAdapters.length > 0, Errors.ZeroArrayLength());
+        require(bridgeAdapters.length == bridgeInstructions.length, Errors.ArrayLengthMismatch());
         uint256 registeredWithdrawShareAmountCached = registeredWithdrawShareAmount;
 
-        // TODO: Wrap batch processing finnishing in an internal method
         _strategyExitBitmask = 0;
         registeredWithdrawShareAmount = 0;
 
@@ -186,8 +203,6 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         }
 
         require(_validateWhitelistedTokensBeforeReport(false, true), WhitelistedTokensOnBalance());
-        require(tokens.length > 0, Errors.ZeroAmount());
-        require(minAmounts.length == tokens.length, Errors.ArrayLengthMismatch());
 
         IMessageRouter(messageRouter).send{value: msg.value}(
             peerContainer,
@@ -195,9 +210,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
                 adapter: messageInstruction.adapter,
                 chainTo: remoteChainId,
                 adapterParameters: messageInstruction.parameters,
-                message: WithdrawalResponseLib.encode(
-                    WithdrawalResponseLib.WithdrawalResponse({tokens: tokens, amounts: minAmounts})
-                )
+                message: Codec.encode(Codec.WithdrawalResponse({tokens: tokens, amounts: minAmounts}))
             })
         );
 
@@ -206,14 +219,13 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
 
     // ---- Messaging logic ----
 
-    function receiveMessage(bytes memory rawMessage) external onlyMessageRouter {
+    function receiveMessage(bytes memory rawMessage) external onlyMessageRouter notResolvingEmergency {
         require(status == ContainerAgentStatus.Idle, Errors.IncorrectContainerStatus());
-        ContainerMessagePackingLib.ContainerMessage memory message = ContainerMessagePackingLib.decode(rawMessage);
 
-        if (message.type_ == ContainerMessagePackingLib.DEPOSIT_REQUEST_TYPE) {
-            DepositRequestLib.DepositRequest memory request = DepositRequestLib.decode(message.payload);
+        uint8 messageType = Codec.fetchMessageType(rawMessage);
+        if (messageType == Codec.DEPOSIT_REQUEST_TYPE) {
+            Codec.DepositRequest memory request = Codec.decodeDepositRequest(rawMessage);
             if (request.tokens.length > 0) {
-                // TODO: Check if length == 0 zero requires extra handling
                 _processExpectedTokens(request.tokens, request.amounts);
             }
             status = ContainerAgentStatus.DepositRequestReceived;
@@ -221,8 +233,8 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
             return;
         }
 
-        if (message.type_ == ContainerMessagePackingLib.WITHDRAWAL_REQUEST_TYPE) {
-            WithdrawalRequestLib.WithdrawalRequest memory request = WithdrawalRequestLib.decode(message.payload);
+        if (messageType == Codec.WITHDRAWAL_REQUEST_TYPE) {
+            Codec.WithdrawalRequest memory request = Codec.decodeWithdrawalRequest(rawMessage);
             if (request.share > 0) {
                 registeredWithdrawShareAmount = request.share;
                 status = ContainerAgentStatus.WithdrawalRequestReceived;
@@ -231,12 +243,15 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
             return;
         }
 
-        revert ContainerMessagePackingLib.WrongMessageType(message.type_);
+        revert Codec.WrongMessageType(messageType);
     }
 
     // ---- Bridge logic ----
 
-    function claim(address bridgeAdapter, address token) external onlyRole(OPERATOR_ROLE) nonReentrant {
+    function claim(
+        address bridgeAdapter,
+        address token
+    ) external onlyRole(OPERATOR_ROLE) nonReentrant notResolvingEmergency {
         require(status == ContainerAgentStatus.DepositRequestReceived, Errors.IncorrectContainerStatus());
         _claimExpectedToken(bridgeAdapter, token);
 
@@ -248,7 +263,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     function claimInReshufflingMode(
         address bridgeAdapter,
         address token
-    ) external onlyRole(OPERATOR_ROLE) nonReentrant {
+    ) external onlyRole(OPERATOR_ROLE) nonReentrant notResolvingEmergency {
         require(_reshufflingMode, ActionUnavailableNotInReshufflingMode());
         IBridgeAdapter(bridgeAdapter).claim(token);
     }
@@ -256,7 +271,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     function claimMultiple(
         address[] calldata bridgeAdapters,
         address[] calldata tokens
-    ) external onlyRole(OPERATOR_ROLE) nonReentrant {
+    ) external onlyRole(OPERATOR_ROLE) nonReentrant notResolvingEmergency {
         require(status == ContainerAgentStatus.DepositRequestReceived, Errors.IncorrectContainerStatus());
 
         uint256 length = bridgeAdapters.length;
@@ -274,7 +289,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     function withdrawToReshufflingGateway(
         address[] memory bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata instructions
-    ) external nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    ) external nonReentrant notResolvingEmergency onlyRole(RESHUFFLING_MANAGER_ROLE) {
         require(bridgeAdapters.length == instructions.length, Errors.ArrayLengthMismatch());
         require(bridgeAdapters.length > 0, Errors.ZeroAmount());
         address bridgeCollectorCached = _bridgeCollector;

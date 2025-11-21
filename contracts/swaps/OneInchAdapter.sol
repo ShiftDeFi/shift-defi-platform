@@ -29,7 +29,7 @@ contract OneInchAdapter is ReentrancyGuard, ISwapAdapter, IOneInchAdapter {
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
         IERC20(tokenIn).forceApprove(oneInchRouter, amountIn);
 
-        uint256 balanceBefore = IERC20(tokenOut).balanceOf(receiver);
+        uint256 balanceBefore = IERC20(tokenOut).balanceOf(address(this));
 
         (bytes4 selector, bytes memory parameters) = abi.decode(data, (bytes4, bytes));
         if (selector == IOneInchV6.swap.selector) {
@@ -42,18 +42,15 @@ contract OneInchAdapter is ReentrancyGuard, ISwapAdapter, IOneInchAdapter {
             require(descs.dstToken == tokenOut, InvalidDestinationToken(descs.dstToken));
             require(descs.amount == amountIn, InvalidAmountIn(descs.amount));
             require(descs.minReturnAmount <= minAmountOut, InvalidMinAmountOut(descs.minReturnAmount));
-            require(descs.dstReceiver == msg.sender, InvalidSrcReceiver(descs.srcReceiver));
-            // TODO: add more executors and executor data
+            require(descs.dstReceiver == address(this), InvalidSrcReceiver(descs.srcReceiver));
             IOneInchV6(oneInchRouter).swap(executor, descs, executorData);
         } else {
-            // TODO: add more selectors
             revert InvalidSelector(selector);
         }
 
-        uint256 balanceAfter = IERC20(tokenOut).balanceOf(receiver);
-        require(
-            balanceAfter - balanceBefore >= minAmountOut,
-            SlippageNotMet(tokenOut, balanceAfter - balanceBefore, minAmountOut)
-        );
+        uint256 balanceAfter = IERC20(tokenOut).balanceOf(address(this));
+        uint256 deltaTokenOut = balanceAfter - balanceBefore;
+        require(deltaTokenOut >= minAmountOut, SlippageNotMet(tokenOut, deltaTokenOut, minAmountOut));
+        IERC20(tokenOut).safeTransfer(receiver, deltaTokenOut);
     }
 }

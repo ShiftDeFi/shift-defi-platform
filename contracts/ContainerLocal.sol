@@ -108,11 +108,11 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         }
     }
 
-    function exitStrategy(address strategy, uint256 minNavDelta) external onlyRole(OPERATOR_ROLE) {
+    function exitStrategy(address strategy, uint256 maxNavDelta) external onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.WithdrawalRequestRegistered, Errors.IncorrectContainerStatus());
         uint256 registeredShareAmountCached = registeredWithdrawShareAmount;
         require(registeredShareAmountCached > 0, NoSharesRegisteredForExit());
-        _exitStrategy(strategy, registeredShareAmountCached, minNavDelta);
+        _exitStrategy(strategy, registeredShareAmountCached, maxNavDelta);
 
         if (_allStrategiesExited()) {
             status = ContainerLocalStatus.AllStrategiesExited;
@@ -122,17 +122,17 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
 
     function exitStrategyMultiple(
         address[] calldata strategies,
-        uint256[] calldata minNavDeltas
+        uint256[] calldata maxNavDeltas
     ) external onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.WithdrawalRequestRegistered, Errors.IncorrectContainerStatus());
         uint256 length = strategies.length;
-        require(length == minNavDeltas.length, Errors.ArrayLengthMismatch());
+        require(length == maxNavDeltas.length, Errors.ArrayLengthMismatch());
 
         uint256 registeredShareAmountCached = registeredWithdrawShareAmount;
         require(registeredShareAmountCached > 0, NoSharesRegisteredForExit());
 
         for (uint256 i = 0; i < length; ++i) {
-            _exitStrategy(strategies[i], registeredShareAmountCached, minNavDeltas[i]);
+            _exitStrategy(strategies[i], registeredShareAmountCached, maxNavDeltas[i]);
         }
 
         if (_allStrategiesExited()) {

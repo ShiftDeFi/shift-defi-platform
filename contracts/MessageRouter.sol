@@ -10,7 +10,6 @@ import {IMessageRouter} from "./interfaces/IMessageRouter.sol";
 import {IMessageReceiver} from "./interfaces/IMessageReceiver.sol";
 import {IMessageAdapter} from "./interfaces/IMessageAdapter.sol";
 import {RingCacheLibrary} from "./libraries/helpers/RingCacheLibrary.sol";
-import {MessageCodec} from "./libraries/MessageCodec.sol";
 import {Errors} from "./libraries/helpers/Errors.sol";
 
 contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IMessageRouter {
@@ -19,14 +18,12 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
     bytes32 private constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
     bytes32 private constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
 
-    uint256 private nonce;
+    uint256 private _nonce;
 
+    mapping(bytes32 => PathData) private _paths;
     mapping(address => bool) private _whitelistedMessageAdapters;
-    mapping(bytes32 => bool) private _whitelistedPaths;
-    mapping(bytes32 => address) private _receivers;
-    mapping(bytes32 => uint256) private _lastNonces;
 
-    RingCacheLibrary.RingCache private _cache;
+    RingCacheLibrary.RingCache private _sendMessagesCache;
 
     function initialize(
         address defaultAdmin,
@@ -41,7 +38,50 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         _grantRole(GOVERNANCE_ROLE, governance);
         _grantRole(MANAGER_ROLE, manager);
 
-        _cache.initialize(maxCacheSize);
+        _sendMessagesCache.initialize(keccak256("SEND_CACHE"), maxCacheSize);
+    }
+
+    function calculatePath(address sender, address receiver, uint256 chainId) public pure returns (bytes32) {
+        return keccak256(abi.encode(sender, receiver, chainId));
+    }
+
+    function encodeMessage(uint256 nonce, bytes32 path, bytes memory message) public pure returns (bytes memory) {
+        return abi.encodePacked(nonce, path, message);
+    }
+
+    function calculateCacheKey(uint256 chainTo, bytes memory rawMessageWithPathAndNonce) public pure returns (bytes32) {
+        return keccak256(abi.encode(chainTo, rawMessageWithPathAndNonce));
+    }
+
+    function decodeMessage(bytes memory message) public view returns (uint256, bytes32, bytes memory) {
+        require(message.length >= 64, MessageTooShort(message.length));
+        // Extract nonce (uint256 = 32 bytes)
+        uint256 nonce;
+        assembly {
+            nonce := mload(add(message, 32))
+        }
+
+        // Extract path (bytes32 = 32 bytes)
+        bytes32 pathOnRemoteChain;
+        assembly {
+            pathOnRemoteChain := mload(add(message, 64))
+        }
+
+        // Extract remaining message bytes
+        uint256 messageLength = message.length - 64; // Total length minus nonce and path
+        if (messageLength == 0) {
+            return (nonce, pathOnRemoteChain, new bytes(0));
+        }
+        bytes memory messageData = new bytes(messageLength);
+        assembly {
+            let src := add(message, 96)
+            let dst := add(messageData, 32)
+            let success := staticcall(gas(), 0x04, src, messageLength, dst, messageLength)
+            if iszero(success) {
+                revert(0, 0)
+            }
+        }
+        return (nonce, pathOnRemoteChain, messageData);
     }
 
     function whitelistPath(address sender, address receiver, uint256 chainId) external onlyRole(GOVERNANCE_ROLE) {
@@ -49,40 +89,25 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         require(receiver != address(0), Errors.ZeroAddress());
         require(chainId > 0, Errors.ZeroAmount());
 
-        bytes32 path = keccak256(abi.encodePacked(sender, receiver, chainId));
-
-        require(!_whitelistedPaths[path], Errors.AlreadyWhitelisted());
-
-        _whitelistedPaths[path] = true;
-        _lastNonces[path] = 0;
-
+        bytes32 path = calculatePath(sender, receiver, chainId);
+        PathData memory pathData = _paths[path];
+        require(!pathData.isWhitelisted, Errors.AlreadyWhitelisted());
+        _paths[path] = PathData({
+            lastNonce: pathData.lastNonce,
+            chainId: chainId,
+            sender: sender,
+            receiver: receiver,
+            isWhitelisted: true
+        });
         emit PathWhitelisted(sender, receiver, chainId, path);
     }
 
     function blacklistPath(address sender, address receiver, uint256 chainId) external onlyRole(GOVERNANCE_ROLE) {
-        require(sender != address(0), Errors.ZeroAddress());
-        require(receiver != address(0), Errors.ZeroAddress());
-        require(chainId > 0, Errors.ZeroAmount());
-
-        bytes32 path = keccak256(abi.encodePacked(sender, receiver, chainId));
-
-        require(_whitelistedPaths[path], Errors.AlreadyBlacklisted());
-
-        _whitelistedPaths[path] = false;
-        _lastNonces[path] = 0;
-
-        emit PathBlacklisted(sender, receiver, chainId, path);
-    }
-
-    function setReceiver(address sender, address receiver, uint256 chainId) external onlyRole(GOVERNANCE_ROLE) {
-        require(sender != address(0), Errors.ZeroAddress());
-        require(chainId > 0, Errors.ZeroAmount());
-
-        bytes32 path = keccak256(abi.encodePacked(sender, receiver, chainId));
-
-        _receivers[path] = receiver;
-
-        emit ReceiverSet(sender, receiver, chainId, path);
+        bytes32 path = calculatePath(sender, receiver, chainId);
+        PathData memory pathData = _paths[path];
+        require(pathData.isWhitelisted, InvalidPath(path));
+        _paths[path].isWhitelisted = false;
+        emit PathBlacklisted(pathData.sender, pathData.receiver, pathData.chainId, path);
     }
 
     function whitelistMessageAdapter(address adapter) external onlyRole(GOVERNANCE_ROLE) {
@@ -99,28 +124,29 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
 
     function isMessageCached(
         uint256 chainTo,
-        uint256 nonce_,
-        bytes32 path,
+        uint256 nonce,
+        bytes32 remotePath,
         bytes memory message
-    ) external view returns (bool) {
-        bytes memory messageWithNonceAndPath = MessageCodec.encodeMessage(nonce_, path, message);
-        bytes32 cacheKey = keccak256(abi.encodePacked(chainTo, messageWithNonceAndPath));
-        return _cache.exists(cacheKey);
+    ) external view override returns (bool) {
+        bytes memory messageWithNonceAndPath = encodeMessage(nonce, remotePath, message);
+        bytes32 cacheKey = calculateCacheKey(chainTo, messageWithNonceAndPath);
+        return _sendMessagesCache.exists(cacheKey);
     }
 
     function send(address receiver, SendParams calldata sendParams) external payable override nonReentrant {
-        require(receiver != address(0), Errors.ZeroAddress());
-        require(sendParams.chainTo > 0, Errors.ZeroAmount());
         require(_whitelistedMessageAdapters[sendParams.adapter], UnsupportedAdapter(sendParams.adapter));
 
         SendLocalVars memory sendLocalVars;
-        sendLocalVars.localPath = keccak256(abi.encodePacked(msg.sender, receiver, sendParams.chainTo));
-        sendLocalVars.nonce = ++nonce;
-        sendLocalVars.remotePath = keccak256(abi.encodePacked(msg.sender, receiver, block.chainid));
+        sendLocalVars.localPath = calculatePath(msg.sender, receiver, sendParams.chainTo);
+        sendLocalVars.remotePath = calculatePath(msg.sender, receiver, block.chainid);
+        sendLocalVars.localPathData = _paths[sendLocalVars.localPath];
+        sendLocalVars.remotePathData = _paths[sendLocalVars.remotePath];
+        sendLocalVars.nonce = ++_nonce;
 
-        require(_whitelistedPaths[sendLocalVars.localPath], InvalidPath(sendLocalVars.localPath));
+        require(sendLocalVars.localPathData.isWhitelisted, InvalidPath(sendLocalVars.localPath));
+        require(sendLocalVars.localPathData.receiver == receiver, InvalidPath(sendLocalVars.localPath));
 
-        sendLocalVars.rawMessageWithPathAndNonce = MessageCodec.encodeMessage(
+        sendLocalVars.rawMessageWithPathAndNonce = encodeMessage(
             sendLocalVars.nonce,
             sendLocalVars.remotePath,
             sendParams.message
@@ -133,65 +159,75 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         );
         _cacheMessage(sendParams.chainTo, sendLocalVars.rawMessageWithPathAndNonce);
 
-        emit MessageSent(sendLocalVars.nonce, sendParams.chainTo, msg.sender, receiver, sendParams.adapter);
+        emit MessageSent(
+            sendLocalVars.nonce,
+            sendParams.chainTo,
+            msg.sender,
+            receiver,
+            sendParams.adapter,
+            sendLocalVars.localPath,
+            sendLocalVars.remotePath
+        );
     }
 
     function receiveMessage(bytes memory rawMessageWithPathAndNonce) external override nonReentrant {
-        (uint256 _nonce, bytes32 path, bytes memory rawMessage) = MessageCodec.decodeMessage(
-            rawMessageWithPathAndNonce
-        );
+        (uint256 nonce, bytes32 path, bytes memory rawMessage) = decodeMessage(rawMessageWithPathAndNonce);
+        PathData memory pathData = _paths[path];
 
-        require(_nonce > _lastNonces[path], ReplayCheckFailed(_nonce));
+        require(nonce > pathData.lastNonce, ReplayCheckFailed(nonce));
         require(_whitelistedMessageAdapters[msg.sender], UnsupportedAdapter(msg.sender));
-        require(_receivers[path] != address(0), ReceiverNotSet(path));
+        require(pathData.isWhitelisted, InvalidPath(path));
 
-        _lastNonces[path] = _nonce;
-        IMessageReceiver(_receivers[path]).receiveMessage(rawMessage);
+        _paths[path].lastNonce = nonce;
+        IMessageReceiver(pathData.receiver).receiveMessage(rawMessage);
 
-        emit MessageReceived(_nonce, path, _receivers[path], msg.sender);
+        _cacheMessage(pathData.chainId, rawMessageWithPathAndNonce);
+
+        emit MessageReceived(nonce, pathData.chainId, pathData.sender, pathData.receiver, msg.sender, path);
     }
 
     function retryCachedMessage(
-        uint256 nonce_,
+        uint256 nonce,
         bytes32 path,
         SendParams calldata sendParams
     ) external payable override nonReentrant onlyRole(MANAGER_ROLE) {
         require(_whitelistedMessageAdapters[sendParams.adapter], UnsupportedAdapter(sendParams.adapter));
 
-        bytes memory messageWithPathAndNonce = MessageCodec.encodeMessage(nonce_, path, sendParams.message);
-        bytes32 cachedKey = keccak256(abi.encodePacked(sendParams.chainTo, messageWithPathAndNonce));
+        bytes memory messageWithPathAndNonce = encodeMessage(nonce, path, sendParams.message);
+        bytes32 cachedKey = calculateCacheKey(sendParams.chainTo, messageWithPathAndNonce);
 
-        require(_cache.exists(cachedKey), RingCacheLibrary.DoesNotExists(cachedKey));
+        require(_sendMessagesCache.exists(cachedKey), RingCacheLibrary.DoesNotExists(_sendMessagesCache.id, cachedKey));
 
         IMessageAdapter(sendParams.adapter).send{value: msg.value}(
             sendParams.chainTo,
             sendParams.adapterParameters,
             messageWithPathAndNonce
         );
-        emit MessageRetried(nonce_, sendParams.chainTo, path, sendParams.adapter);
+
+        emit MessageRetried(nonce, sendParams.chainTo, path, sendParams.adapter);
     }
 
     function removeMessageFromCache(
-        uint256 _nonce,
+        uint256 nonce,
         uint256 chainTo,
         bytes32 path,
         bytes memory message
     ) external override onlyRole(MANAGER_ROLE) {
-        bytes memory messageWithPathAndNonce = MessageCodec.encodeMessage(_nonce, path, message);
+        bytes memory messageWithPathAndNonce = encodeMessage(nonce, path, message);
         _removeFromCache(chainTo, messageWithPathAndNonce);
-        emit MessageRemovedFromCache(_nonce, chainTo, path);
+        emit MessageRemovedFromCache(_sendMessagesCache.id, nonce, chainTo, path);
     }
 
     function _cacheMessage(uint256 chainTo, bytes memory rawMessageWithPathAndNonce) private {
-        bytes32 cached = keccak256(abi.encodePacked(chainTo, rawMessageWithPathAndNonce));
-        _cache.add(cached);
-        emit RingCacheLibrary.CacheStored(cached);
+        bytes32 cachedData = calculateCacheKey(chainTo, rawMessageWithPathAndNonce);
+        _sendMessagesCache.add(cachedData);
+        emit RingCacheLibrary.CacheStored(_sendMessagesCache.id, cachedData);
     }
 
     function _removeFromCache(uint256 chainTo, bytes memory rawMessageWithPath) private {
-        bytes32 cachedKey = keccak256(abi.encodePacked(chainTo, rawMessageWithPath));
-        require(_cache.exists(cachedKey), RingCacheLibrary.DoesNotExists(cachedKey));
-        _cache.remove(cachedKey);
-        emit RingCacheLibrary.CacheEvicted(cachedKey);
+        bytes32 cachedKey = calculateCacheKey(chainTo, rawMessageWithPath);
+        require(_sendMessagesCache.exists(cachedKey), RingCacheLibrary.DoesNotExists(_sendMessagesCache.id, cachedKey));
+        _sendMessagesCache.remove(cachedKey);
+        emit RingCacheLibrary.CacheEvicted(_sendMessagesCache.id, cachedKey);
     }
 }

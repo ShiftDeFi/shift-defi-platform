@@ -31,6 +31,9 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     uint256 internal _strategyEnterBitmask;
     uint256 internal _strategyExitBitmask;
+    // @dev Bitmask to track if strategy's nav is unresolved during emergency resolution
+    //      0: resolved, 1: unresolved
+    uint256 internal _strategyUnresolvedNavBitmask;
 
     address internal _bridgeCollector; // address where funds stores after cross-chain migration
 
@@ -40,8 +43,10 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     uint256 public override feePct;
 
     uint256 private constant BPS = 10_000;
+    uint256 private constant MAX_STRATEGIES = 256;
 
     bool internal _reshufflingMode;
+    bool internal _isResolvingEmergency;
 
     // ---- Configuration ----
 
@@ -111,22 +116,69 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         return _isStrategy(strategy);
     }
 
-    function addStrategy(address strategy) external onlyRole(STRATEGY_MANAGER_ROLE) {
+    function setStrategyInputTokens(
+        address strategy,
+        address[] calldata inputTokens
+    ) external onlyRole(STRATEGY_MANAGER_ROLE) {
+        require(_isStrategy(strategy), StrategyNotFound());
+        uint256 inputTokenNumber = inputTokens.length;
+        require(inputTokenNumber > 0, Errors.ZeroArrayLength());
+
+        for (uint256 i = 0; i < inputTokenNumber; ++i) {
+            address inputToken = inputTokens[i];
+            require(inputToken != address(0), Errors.ZeroAddress());
+            require(_isTokenWhitelisted(inputToken), NotWhitelistedToken(inputToken));
+        }
+        IStrategyTemplate(strategy).setInputTokens(inputTokens);
+        emit StrategyInputTokensUpdated(strategy);
+    }
+
+    function setStrategyOutputTokens(
+        address strategy,
+        address[] calldata outputTokens
+    ) external onlyRole(STRATEGY_MANAGER_ROLE) {
+        require(_isStrategy(strategy), StrategyNotFound());
+        uint256 outputTokenNumber = outputTokens.length;
+        require(outputTokenNumber > 0, Errors.ZeroArrayLength());
+
+        for (uint256 i = 0; i < outputTokenNumber; ++i) {
+            address outputToken = outputTokens[i];
+            require(outputToken != address(0), Errors.ZeroAddress());
+            require(_isTokenWhitelisted(outputToken), NotWhitelistedToken(outputToken));
+        }
+        IStrategyTemplate(strategy).setOutputTokens(outputTokens);
+        emit StrategyOutputTokensUpdated(strategy);
+    }
+
+    function _addStrategy(address strategy, address[] calldata inputTokens, address[] calldata outputTokens) internal {
         require(strategy != address(0), Errors.ZeroAddress());
+        uint256 inputTokenNumber = inputTokens.length;
+        require(inputTokenNumber > 0, Errors.ZeroArrayLength());
+        uint256 outputTokenNumber = outputTokens.length;
+        require(outputTokenNumber > 0, Errors.ZeroArrayLength());
+        require(_strategies.length() < MAX_STRATEGIES, MaxStrategiesReached());
+
+        for (uint256 i = 0; i < inputTokenNumber; ++i) {
+            address inputToken = inputTokens[i];
+            require(inputToken != address(0), Errors.ZeroAddress());
+            require(_isTokenWhitelisted(inputToken), NotWhitelistedToken(inputToken));
+        }
+
+        for (uint256 i = 0; i < outputTokenNumber; ++i) {
+            address outputToken = outputTokens[i];
+            require(outputToken != address(0), Errors.ZeroAddress());
+            require(_isTokenWhitelisted(outputToken), NotWhitelistedToken(outputToken));
+        }
+
         require(_strategies.add(strategy), StrategyAlreadyExists());
 
-        address[] memory inputTokens = IStrategyTemplate(strategy).inputTokens();
-        uint256 length = inputTokens.length;
-
-        for (uint256 i = 0; i < length; ++i) {
-            require(_isTokenWhitelisted(inputTokens[i]), NotWhitelistedToken(inputTokens[i]));
-            IERC20(inputTokens[i]).approve(strategy, type(uint256).max);
-        }
+        IStrategyTemplate(strategy).setInputTokens(inputTokens);
+        IStrategyTemplate(strategy).setOutputTokens(outputTokens);
 
         emit StrategyAdded(strategy);
     }
 
-    function removeStrategy(address strategy) external onlyRole(STRATEGY_MANAGER_ROLE) {
+    function _removeStrategy(address strategy) internal {
         require(strategy != address(0), Errors.ZeroAddress());
         require(_strategies.remove(strategy), StrategyNotFound());
 
@@ -186,6 +238,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     function _enterStrategy(address strategy, uint256[] calldata inputAmounts, uint256 minNavDelta) internal {
         require(_isStrategy(strategy), StrategyNotFound());
+        require(!isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
         require(!_reshufflingMode, ActionUnavailableInReshufflingMode());
 
         EnterStrategyLocalVars memory vars;
@@ -203,6 +256,10 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
         vars.nav0 = IStrategyTemplate(strategy).harvest();
         _strategyNav0[strategy] = vars.nav0;
+
+        for (uint256 i = 0; i < vars.tokenNumber; ++i) {
+            IERC20(inputTokens[i]).safeIncreaseAllowance(strategy, inputAmounts[i]);
+        }
 
         uint256[] memory remainingAmounts;
         (vars.nav1, vars.hasRemainder, remainingAmounts) = IStrategyTemplate(strategy).enter(inputAmounts, minNavDelta);
@@ -240,9 +297,16 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         require(_reshufflingMode, ActionUnavailableInReshufflingMode());
 
         address[] memory inputTokens = IStrategyTemplate(strategy).inputTokens();
-        require(inputAmounts.length == inputAmounts.length, Errors.ArrayLengthMismatch());
+        uint256 tokenNumber = inputTokens.length;
+
+        require(tokenNumber == inputAmounts.length, Errors.ArrayLengthMismatch());
 
         uint256 nav0 = IStrategyTemplate(strategy).harvest();
+
+        for (uint256 i = 0; i < tokenNumber; ++i) {
+            IERC20(inputTokens[i]).safeIncreaseAllowance(strategy, inputAmounts[i]);
+        }
+
         (uint256 nav1, bool hasRemainder, uint256[] memory remainingAmounts) = IStrategyTemplate(strategy).enter(
             inputAmounts,
             minNavDelta
@@ -250,7 +314,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
         if (hasRemainder) {
             uint256 length = remainingAmounts.length;
-            require(length == remainingAmounts.length, Errors.ArrayLengthMismatch());
+            require(length == inputTokens.length, Errors.ArrayLengthMismatch());
             for (uint256 i = 0; i < length; ++i) {
                 require(_isTokenWhitelisted(inputTokens[i]), NotWhitelistedToken(inputTokens[i]));
                 IERC20(inputTokens[i]).safeTransferFrom(strategy, address(this), remainingAmounts[i]);
@@ -264,36 +328,38 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     function exitInReshufflingMode(
         address strategy,
         uint256 share,
-        uint256 minNavDelta
+        uint256 maxNavDelta
     ) external nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
-        _exitStrategyInReshufflingMode(strategy, share, minNavDelta);
+        _exitStrategyInReshufflingMode(strategy, share, maxNavDelta);
     }
 
     function _allStrategiesExited() internal view returns (bool) {
         return _strategyExitBitmask == (1 << _strategies.length()) - 1;
     }
 
-    function _exitStrategyInReshufflingMode(address strategy, uint256 share, uint256 minNavDelta) internal {
+    function _exitStrategyInReshufflingMode(address strategy, uint256 share, uint256 maxNavDelta) internal {
         require(share > 0, Errors.ZeroAmount());
         require(share <= BPS, Errors.IncorrectAmount());
         require(_isStrategy(strategy), StrategyNotFound());
         require(_reshufflingMode, ActionUnavailableInReshufflingMode());
 
         IStrategyTemplate(strategy).harvest();
-        (address[] memory tokens, uint256[] memory amounts) = IStrategyTemplate(strategy).exit(share, minNavDelta);
+        (address[] memory tokens, uint256[] memory amounts) = IStrategyTemplate(strategy).exit(share, maxNavDelta);
 
         uint256 length = tokens.length;
         require(length == amounts.length, Errors.ArrayLengthMismatch());
 
         for (uint256 i = 0; i < length; ++i) {
-            require(_isTokenWhitelisted(tokens[i]), NotWhitelistedToken(tokens[i]));
-            IERC20(tokens[i]).safeTransferFrom(strategy, address(this), amounts[i]);
+            if (_isTokenWhitelisted(tokens[i])) {
+                IERC20(tokens[i]).safeTransferFrom(strategy, address(this), amounts[i]);
+            }
         }
         emit StrategyExited(strategy, share);
     }
 
-    function _exitStrategy(address strategy, uint256 share, uint256 minNavDelta) internal {
+    function _exitStrategy(address strategy, uint256 share, uint256 maxNavDelta) internal {
         require(_isStrategy(strategy), StrategyNotFound());
+        require(!isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
         require(!_reshufflingMode, ActionUnavailableInReshufflingMode());
 
         (, uint256 strategyIndex) = _strategies.indexOf(strategy);
@@ -304,17 +370,61 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
         IStrategyTemplate(strategy).harvest();
 
-        (address[] memory tokens, uint256[] memory amounts) = IStrategyTemplate(strategy).exit(share, minNavDelta);
+        (address[] memory tokens, uint256[] memory amounts) = IStrategyTemplate(strategy).exit(share, maxNavDelta);
 
         uint256 length = tokens.length;
         require(length == amounts.length, Errors.ArrayLengthMismatch());
 
         for (uint256 i = 0; i < length; ++i) {
-            require(_isTokenWhitelisted(tokens[i]), NotWhitelistedToken(tokens[i]));
-            IERC20(tokens[i]).safeTransferFrom(strategy, address(this), amounts[i]);
+            if (_isTokenWhitelisted(tokens[i])) {
+                IERC20(tokens[i]).safeTransferFrom(strategy, address(this), amounts[i]);
+            }
         }
 
         emit StrategyExited(strategy, share);
+    }
+
+    // ---- Emergency resolution logic ----
+
+    function startEmergencyResolution() external {
+        require(_isStrategy(msg.sender), StrategyNotFound());
+
+        (, uint256 strategyIndex) = _strategies.indexOf(msg.sender);
+        uint256 mask = 1 << strategyIndex;
+        _strategyUnresolvedNavBitmask |= mask;
+
+        if (!_isResolvingEmergency) {
+            _isResolvingEmergency = true;
+            emit EmergencyResolutionStarted(msg.sender);
+        }
+    }
+
+    function isResolvingEmergency() external view returns (bool) {
+        return _isResolvingEmergency;
+    }
+
+    function completeEmergencyResolution() external onlyRole(EMERGENCY_MANAGER_ROLE) {
+        require(_isResolvingEmergency, NotResolvingEmergency());
+        _isResolvingEmergency = false;
+        require(_strategyUnresolvedNavBitmask == 0, EmergencyResolutionNotCompleted(_strategyUnresolvedNavBitmask));
+        emit EmergencyResolutionCompleted();
+    }
+
+    function resolveStrategyNav(uint256 resolvedNav) external {
+        require(_isStrategy(msg.sender), StrategyNotFound());
+        require(isStrategyNavUnresolved(msg.sender), StrategyNavAlreadyResolved(msg.sender));
+
+        (, uint256 strategyIndex) = _strategies.indexOf(msg.sender);
+        uint256 mask = 1 << strategyIndex;
+        _strategyUnresolvedNavBitmask &= ~mask;
+        _strategyNav0[msg.sender] = resolvedNav;
+        emit StrategyNavResolved(msg.sender, resolvedNav);
+    }
+
+    function isStrategyNavUnresolved(address strategy) public view returns (bool) {
+        (, uint256 strategyIndex) = _strategies.indexOf(strategy);
+        uint256 mask = 1 << strategyIndex;
+        return _strategyUnresolvedNavBitmask & mask != 0;
     }
 
     uint256[50] private __gap;

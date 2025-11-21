@@ -23,7 +23,6 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // todo: to bytes32
     bytes32 public constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
     bytes32 public constant WHITELIST_MANAGER_ROLE = keccak256("WHITELIST_MANAGER_ROLE");
 
@@ -78,23 +77,21 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         emit BridgeAdapterWhitelisted(bridgeAdapter);
     }
 
-    // todo: blacklist
     function blacklistToken(address token) external onlyRole(WHITELIST_MANAGER_ROLE) {
         _whitelistedTokens.remove(token);
         emit TokenBlacklisted(token);
     }
 
-    // todo: blacklist
     function blacklistBridgeAdapter(address bridgeAdapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
         _whitelistedBridgeAdapters.remove(bridgeAdapter);
         emit BridgeAdapterBlacklisted(bridgeAdapter);
     }
 
-    function claimBridge(address bridgeAdapter, address token) external nonReentrant {
+    function claimBridge(address bridgeAdapter, address token) external nonReentrant returns (uint256) {
         require(_whitelistedBridgeAdapters.contains(bridgeAdapter), NotWhitelistedBridgeAdapter(bridgeAdapter));
         require(_whitelistedTokens.contains(token), NotWhitelistedToken(token));
 
-        IBridgeAdapter(bridgeAdapter).claim(token);
+        return IBridgeAdapter(bridgeAdapter).claim(token);
     }
 
     function prepareLiquidity(
@@ -111,7 +108,7 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
                 _whitelistedTokens.contains(swapInstructions[i].tokenOut),
                 NotWhitelistedToken(swapInstructions[i].tokenOut)
             );
-            // todo: think about approve
+
             IERC20(swapInstructions[i].tokenIn).forceApprove(swapRouter, swapInstructions[i].amountIn);
             ISwapRouter(swapRouter).swap(swapInstructions[i]);
         }
@@ -125,7 +122,12 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         require(bridgeAdapters.length > 0, Errors.IncorrectAmount());
         require(bridgeAdapters.length == instructions.length, Errors.ArrayLengthMismatch());
 
-        require(IContainer(container).containerType() == IContainer.ContainerType.Principal, NotContainer(container));
+        IContainer.ContainerType containerType = IContainer(container).containerType();
+        require(
+            containerType == IContainer.ContainerType.Principal,
+            Errors.IncorrectContainerType(container, uint8(IContainer.ContainerType.Principal), uint8(containerType))
+        );
+
         require(IVault(vault).isContainer(container), NotContainer(container));
 
         address agentAddress = ICrossChainContainer(container).peerContainer();
@@ -151,8 +153,8 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
                 IContainer(container).isTokenWhitelisted(instructions[i].token),
                 TokenNotWhitelistedOnContainer(instructions[i].token)
             );
-            // todo: think about approve
-            IERC20(instructions[i].token).approve(bridgeAdapters[i], instructions[i].amount);
+
+            IERC20(instructions[i].token).safeIncreaseAllowance(bridgeAdapters[i], instructions[i].amount);
             uint256 amount = IBridgeAdapter(bridgeAdapters[i]).bridge(instructions[i], agentAddress);
             require(amount >= instructions[i].minTokenAmount, Errors.IncorrectAmount());
             emit SentToCrossChainContainer(container, instructions[i].token, amount);
@@ -167,7 +169,13 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         require(tokens.length > 0, Errors.IncorrectAmount());
         require(tokens.length == amounts.length, Errors.ArrayLengthMismatch());
         require(IVault(vault).isContainer(container), NotContainer(container));
-        // todo: add container type check
+
+        IContainer.ContainerType containerType = IContainer(container).containerType();
+        require(
+            containerType == IContainer.ContainerType.Local,
+            Errors.IncorrectContainerType(container, uint8(IContainer.ContainerType.Local), uint8(containerType))
+        );
+
         for (uint256 i = 0; i < tokens.length; i++) {
             address token = tokens[i];
             uint256 amount = amounts[i];

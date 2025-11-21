@@ -96,13 +96,16 @@ abstract contract CrossChainContainer is Container, IMessageReceiver, ICrossChai
 
         for (uint256 i = 0; i < length; i++) {
             require(_isTokenWhitelisted(tokens[i]), NotWhitelistedToken(tokens[i]));
-            uint256 expectedAmount = _expectedTokenAmounts[tokens[i]];
-            if (expectedAmount == 0) {
+
+            uint256 expectedAmount = Common.fromUnifiedDecimalsUint8(tokens[i], amounts[i]);
+            require(expectedAmount > 0, Errors.ZeroAmount());
+
+            uint256 previousExpectedAmount = _expectedTokenAmounts[tokens[i]];
+
+            if (previousExpectedAmount == 0) {
                 claimCounterCached += 1;
             }
-            // NOTE: += in case same token is bridged via different adapters
-
-            _expectedTokenAmounts[tokens[i]] = expectedAmount + Common.fromUnifiedDecimalsUint8(tokens[i], amounts[i]);
+            _expectedTokenAmounts[tokens[i]] = previousExpectedAmount + expectedAmount;
         }
 
         claimCounter = claimCounterCached;
@@ -116,6 +119,10 @@ abstract contract CrossChainContainer is Container, IMessageReceiver, ICrossChai
 
         _isBridgeAdapterSupported[bridgeAdapter] = isSupported;
         emit BridgeAdapterUpdated(bridgeAdapter, isSupported);
+    }
+
+    function isBridgeAdapterSupported(address bridgeAdapter) external view returns (bool) {
+        return _isBridgeAdapterSupported[bridgeAdapter];
     }
 
     function _claimExpectedToken(address bridgeAdapter, address token) internal {

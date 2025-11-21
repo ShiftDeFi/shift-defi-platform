@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 library RingCacheLibrary {
     uint256 internal constant DEFAULT_CACHE_SIZE = 10;
+    uint256 internal constant MAX_CACHE_SIZE = 256;
 
     struct RingCache {
         mapping(bytes32 => uint256) indices;
@@ -10,47 +11,43 @@ library RingCacheLibrary {
         uint256 head;
         uint256 size;
         uint256 maxCacheSize;
+        bytes32 id;
     }
 
-    event CacheStored(bytes32 value);
-    event CacheEvicted(bytes32 value);
+    event CacheStored(bytes32 id, bytes32 value);
+    event CacheEvicted(bytes32 id, bytes32 value);
 
-    error AlreadyInitialized();
-    error AlreadyExists(bytes32);
-    error InvalidSize();
-    error DoesNotExists(bytes32);
+    error AlreadyInitialized(bytes32 id);
+    error AlreadyExists(bytes32 id, bytes32 data);
+    error InvalidSize(uint256 proposedSize, uint256 maximumSize);
+    error DoesNotExists(bytes32 id, bytes32 data);
 
-    function initialize(RingCache storage _cache, uint256 _cacheSize) internal {
-        require(_cache.maxCacheSize == 0, AlreadyInitialized());
-        require(_cacheSize > 0, InvalidSize());
+    function initialize(RingCache storage _cache, bytes32 _id, uint256 _cacheSize) internal {
+        require(_cache.maxCacheSize == 0, AlreadyInitialized(_cache.id));
+        require(_cacheSize > 0, InvalidSize(_cacheSize, MAX_CACHE_SIZE));
+        require(_cacheSize < MAX_CACHE_SIZE, InvalidSize(_cacheSize, MAX_CACHE_SIZE));
         _cache.maxCacheSize = _cacheSize;
+        _cache.id = _id;
     }
 
     function add(RingCache storage _cache, bytes32 value) internal {
         if (exists(_cache, value)) return;
-        if (_cache.size < _cache.maxCacheSize) {
-            uint256 index = (_cache.head + _cache.size) % _cache.maxCacheSize;
-            _cache.indices[value] = index + 1;
-            _cache.ring[index] = value;
-            _cache.size++;
-        } else {
-            bytes32 old = _cache.ring[_cache.head];
-            delete _cache.indices[old];
-            _cache.ring[_cache.head] = value;
-            _cache.indices[value] = _cache.head + 1;
-            _cache.head = (_cache.head + 1) % _cache.maxCacheSize;
-        }
+        uint256 index = (_cache.head++) % _cache.maxCacheSize;
+        bytes32 oldValue = _cache.ring[index];
+        if (_cache.indices[oldValue] == index + 1) delete _cache.indices[oldValue];
+        else _cache.size++;
+        _cache.indices[value] = index + 1;
+        _cache.ring[index] = value;
     }
 
     function remove(RingCache storage _cache, bytes32 value) internal {
         uint256 index = _cache.indices[value];
-        require(index != 0, DoesNotExists(value));
+        require(index != 0, DoesNotExists(_cache.id, value));
         index = index - 1;
-        if (_cache.ring[index] == value) {
-            delete _cache.indices[value];
-            delete _cache.ring[index];
-            _cache.size--;
-        }
+        require(_cache.ring[index] == value, DoesNotExists(_cache.id, value));
+        delete _cache.indices[value];
+        delete _cache.ring[index];
+        _cache.size--;
     }
     function exists(RingCache storage _cache, bytes32 value) internal view returns (bool) {
         return _cache.indices[value] != 0;

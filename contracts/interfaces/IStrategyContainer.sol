@@ -31,6 +31,10 @@ interface IStrategyContainer {
     event BridgeCollectorUpdated(address oldBridgeCollector, address newBridgeCollector);
     event PriceOracleUpdated(address oldPriceOracle, address newPriceOracle);
     event ReshufflingModeUpdated(bool reshufflingMode);
+    event EmergencyResolutionStarted(address strategy);
+    event EmergencyResolutionCompleted();
+    event StrategyNavResolved(address indexed strategy, uint256 resolvedNav);
+    event StrategyOutputTokensUpdated(address indexed strategy);
 
     // ---- Errors ----
 
@@ -45,11 +49,29 @@ interface IStrategyContainer {
     error ActionUnavailableNotInReshufflingMode();
     error ActionUnavailableInReshufflingMode();
     error IncorrectEnterNav(uint256 nav0, uint256 nav1);
+    error StrategyNavUnresolved(address strategy);
+    error StrategyNavAlreadyResolved(address strategy);
+    error NotResolvingEmergency();
+    error EmergencyResolutionNotCompleted(uint256 strategyUnresolvedNavBitmask);
+    error MaxStrategiesReached();
 
     // ---- Functions ----
+
     function treasury() external view returns (address);
 
     function feePct() external view returns (uint256);
 
     function priceOracle() external view returns (address);
+
+    function isResolvingEmergency() external view returns (bool);
+
+    function startEmergencyResolution() external;
+
+    function completeEmergencyResolution() external;
+
+    function resolveStrategyNav(uint256 resolvedNav) external;
+
+    function setStrategyInputTokens(address strategy, address[] calldata inputTokens) external;
+
+    function setStrategyOutputTokens(address strategy, address[] calldata outputTokens) external;
 }

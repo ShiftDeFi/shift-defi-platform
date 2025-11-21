@@ -12,6 +12,7 @@ interface IUniversalAdapter {
 
     error NotWhitelistManager(address sender);
     error NoSwapInfo(address fromToken, address toToken);
+    error IndexOutOfBounds(uint256 index);
 
     function isSwapSupported(address tokenIn, address tokenOut) external view returns (bool);
     function setSwapInfo(

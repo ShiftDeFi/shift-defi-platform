@@ -44,11 +44,10 @@ interface IStrategyTemplate {
     struct HarvestLocalVars {
         bytes32 currentStateId;
         uint256 currentStateBitmask;
+        uint256 currentStateNav;
         address swapRouter;
         address treasury;
         uint256 feePct;
-        bytes32 targetStateId;
-        uint256 targetStateNav;
     }
 
     struct PrepareFundsAfterExitLocalVars {

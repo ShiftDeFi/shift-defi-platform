@@ -429,8 +429,6 @@ library Codec {
     function fetchUint128(bytes memory data, uint256 position) internal pure returns (uint256) {
         // Validate that we have enough data to read UINT128_SIZE bytes starting at position
         require(data.length >= position + UINT128_SIZE, InvalidDataLength());
-        // Additional check: ensure position doesn't cause overflow
-        require(position <= data.length, InvalidDataLength());
 
         uint256 word;
         assembly {

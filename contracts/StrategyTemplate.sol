@@ -322,25 +322,22 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     }
 
     function harvest() external payable onlyStrategyContainer nonReentrant returns (uint256) {
+        require(!_navResolutionMode, NavResolutionModeActivated());
         HarvestLocalVars memory vars;
 
+        vars.currentStateId = _currentStateId;
+        if (vars.currentStateId == NO_ALLOCATION_STATE_ID) {
+            return 0;
+        }
+        vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.swapRouter = IContainer(_strategyContainer).swapRouter();
         vars.treasury = IStrategyContainer(_strategyContainer).treasury();
         vars.feePct = IStrategyContainer(_strategyContainer).feePct();
-        vars.targetStateId = _targetStateId;
-        vars.currentStateId = _currentStateId;
-        vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
-
-        require(
-            vars.currentStateId == vars.targetStateId,
-            NotInTargetState(vars.currentStateId, vars.currentStateBitmask)
-        );
-
-        vars.targetStateNav = stateNav(vars.targetStateId);
 
         _harvest(vars.swapRouter, vars.treasury, vars.feePct);
-        emit Harvested(vars.targetStateNav);
-        return vars.targetStateNav;
+        vars.currentStateNav = stateNav(vars.currentStateId);
+        emit Harvested(vars.currentStateNav);
+        return vars.currentStateNav;
     }
 
     function emergencyExit(

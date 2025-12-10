@@ -90,7 +90,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
         _validateBridgeInstruction(instruction);
 
         IERC20(instruction.token).safeTransferFrom(msg.sender, address(this), instruction.amount);
-        uint256 bridgedAmount = _bridge(instruction, abi.encode(receiver));
+        uint256 bridgedAmount = _bridge(instruction, receiver, peers[instruction.chainTo]);
 
         _cacheInstruction(instruction, receiver);
 
@@ -113,7 +113,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
         bytes32 key = keccak256(abi.encode(instruction.token, instruction.chainTo, instruction.amount, receiver));
         require(_cache.exists(key), RingCacheLibrary.DoesNotExists(_cache.id, key));
 
-        uint256 bridgedAmount = _bridge(instruction, abi.encode(receiver));
+        uint256 bridgedAmount = _bridge(instruction, receiver, peers[instruction.chainTo]);
 
         emit BridgeSent(instruction.token, bridgedAmount, instruction.chainTo);
     }
@@ -174,7 +174,8 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     }
     function _bridge(
         BridgeInstruction calldata bridgeInstruction,
-        bytes memory message
+        address receiver,
+        address peer
     ) internal virtual returns (uint256);
 
     function _validatePaylaod(bytes memory payload) internal virtual {}

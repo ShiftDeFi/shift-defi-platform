@@ -4,11 +4,10 @@ pragma solidity ^0.8.28;
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
-import {CrossChainContainer, CrossChainContainerInitParams, ContainerInitParams} from "./CrossChainContainer.sol";
+import {CrossChainContainer} from "./CrossChainContainer.sol";
 import {IContainerPrincipal} from "./interfaces/IContainerPrincipal.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
-import {IMessageReceiver} from "./interfaces/IMessageReceiver.sol";
 import {IMessageRouter} from "./interfaces/IMessageRouter.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {Errors} from "./libraries/helpers/Errors.sol";
@@ -41,7 +40,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
 
     // ---- Container Principal logic ----
 
-    function registerDepositRequest(uint256 amount) external onlyVault {
+    function registerDepositRequest(uint256 amount) external nonReentrant onlyVault {
         require(status == ContainerPrincipalStatus.Idle, Errors.IncorrectContainerStatus());
         require(amount > 0, Errors.ZeroAmount());
         status = ContainerPrincipalStatus.DepositRequestRegistered;
@@ -63,7 +62,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         MessageInstruction memory messageInstruction,
         address[] calldata bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata bridgeInstructions
-    ) external payable onlyRole(OPERATOR_ROLE) nonReentrant {
+    ) external payable nonReentrant onlyRole(OPERATOR_ROLE) {
         require(status == ContainerPrincipalStatus.DepositRequestRegistered, Errors.IncorrectContainerStatus());
 
         uint256 bridgeInstructionsLength = bridgeInstructions.length;
@@ -71,6 +70,8 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         require(bridgeAdapters.length == bridgeInstructionsLength, Errors.ArrayLengthMismatch());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
         require(remoteChainId > 0, RemoteChainIdNotSet());
+        address peerContainerCached = peerContainer;
+        require(peerContainerCached != address(0), PeerContainerNotSet());
 
         status = ContainerPrincipalStatus.DepositRequestSent;
 
@@ -78,8 +79,6 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
 
         vars.tokens = new address[](bridgeInstructionsLength);
         vars.minAmounts = new uint256[](bridgeInstructionsLength);
-
-        address peerContainerCached = peerContainer;
 
         for (uint256 i = 0; i < bridgeInstructionsLength; ++i) {
             (vars.tokens[i], vars.minAmounts[i]) = _bridgeToken(
@@ -106,9 +105,11 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
 
     function sendWithdrawRequest(
         MessageInstruction memory messageInstruction
-    ) external payable onlyRole(OPERATOR_ROLE) nonReentrant {
+    ) external payable nonReentrant onlyRole(OPERATOR_ROLE) {
         require(status == ContainerPrincipalStatus.WithdrawalRequestRegistered, Errors.IncorrectContainerStatus());
         require(remoteChainId > 0, RemoteChainIdNotSet());
+        address peerContainerCached = peerContainer;
+        require(peerContainerCached != address(0), PeerContainerNotSet());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
 
         uint256 registeredWithdrawShareAmountCached = registeredWithdrawShareAmount;
@@ -117,7 +118,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         status = ContainerPrincipalStatus.WithdrawalRequestSent;
 
         IMessageRouter(messageRouter).send{value: msg.value}(
-            peerContainer,
+            peerContainerCached,
             IMessageRouter.SendParams({
                 adapter: messageInstruction.adapter,
                 adapterParameters: messageInstruction.parameters,
@@ -129,7 +130,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         emit WithdrawalRequestSent(registeredWithdrawShareAmountCached);
     }
 
-    function reportDeposit() external payable onlyRole(OPERATOR_ROLE) nonReentrant {
+    function reportDeposit() external payable nonReentrant onlyRole(OPERATOR_ROLE) {
         require(
             status == ContainerPrincipalStatus.BridgeClaimed ||
                 status == ContainerPrincipalStatus.DepositResponseReceived,
@@ -151,7 +152,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         emit DepositReported(vars.nav0, vars.nav1, vars.remainder);
     }
 
-    function reportWithdrawal() external payable onlyRole(OPERATOR_ROLE) nonReentrant {
+    function reportWithdrawal() external payable nonReentrant onlyRole(OPERATOR_ROLE) {
         require(status == ContainerPrincipalStatus.BridgeClaimed, Errors.IncorrectContainerStatus());
         require(registeredWithdrawShareAmount > 0, Errors.ZeroAmount());
         require(claimCounter == 0, UnclaimedTokens());
@@ -202,7 +203,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
 
     // ---- Bridge logic ----
 
-    function claim(address bridgeAdapter, address token) external onlyRole(OPERATOR_ROLE) nonReentrant {
+    function claim(address bridgeAdapter, address token) external nonReentrant onlyRole(OPERATOR_ROLE) {
         require(
             status == ContainerPrincipalStatus.DepositResponseReceived ||
                 status == ContainerPrincipalStatus.WithdrawalResponseReceived,
@@ -219,7 +220,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     function claimMultiple(
         address[] calldata bridgeAdapters,
         address[] calldata tokens
-    ) external onlyRole(OPERATOR_ROLE) nonReentrant {
+    ) external nonReentrant onlyRole(OPERATOR_ROLE) {
         require(
             status == ContainerPrincipalStatus.DepositResponseReceived ||
                 status == ContainerPrincipalStatus.WithdrawalResponseReceived,

@@ -35,4 +35,5 @@ library Errors {
     // -- Business Logic Errors --
 
     error NotEnoughTokens(address token, uint256 amount);
+    error SwapFailed(address tokenIn, address tokenOut, uint256 amountIn, uint256 minAmountOut);
 }

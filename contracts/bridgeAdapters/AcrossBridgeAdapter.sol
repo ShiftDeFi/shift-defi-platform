@@ -27,12 +27,12 @@ contract AcrossBridgeAdapter is BridgeAdapter, IAcrossV3Receiver {
         _setFeeCapPct(_feeCapPct);
     }
 
-    function setSpookyPool(address spookyPoolAddress) external onlyRole(GOVERNANCE_ROLE) {
-        _setAcrossSpookyPool(spookyPoolAddress);
+    function setSpookyPool(address _spookyPoolAddress) external onlyRole(GOVERNANCE_ROLE) {
+        _setAcrossSpookyPool(_spookyPoolAddress);
     }
 
-    function setFeeCapPct(uint256 feeCapPct) external onlyRole(GOVERNANCE_ROLE) {
-        _setFeeCapPct(feeCapPct);
+    function setFeeCapPct(uint256 _feeCapPct) external onlyRole(GOVERNANCE_ROLE) {
+        _setFeeCapPct(_feeCapPct);
     }
 
     function handleV3AcrossMessage(address token, uint256 amount, address, bytes memory message) external {
@@ -40,16 +40,21 @@ contract AcrossBridgeAdapter is BridgeAdapter, IAcrossV3Receiver {
         _finalizeBridge(abi.decode(message, (address)), token, amount);
     }
 
-    function _bridge(BridgeInstruction calldata instruction, bytes memory message) internal override returns (uint256) {
+    function _bridge(
+        BridgeInstruction calldata instruction,
+        address receiver,
+        address peer
+    ) internal override returns (uint256) {
         AcrossParams memory acrossPayload = abi.decode(instruction.payload, (AcrossParams));
 
         _validatePayload(instruction, acrossPayload);
 
         IERC20(instruction.token).approve(spookyPool, instruction.amount);
         uint256 minAmount = instruction.amount - acrossPayload.fee;
+        bytes memory message = abi.encode(receiver);
         ISpookyPool(spookyPool).depositV3Now(
             address(this),
-            peers[instruction.chainTo],
+            peer,
             instruction.token,
             bridgePaths[instruction.token][instruction.chainTo],
             instruction.amount,

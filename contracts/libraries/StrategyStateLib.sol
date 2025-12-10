@@ -31,21 +31,21 @@ library StrategyStateLib {
     }
 
     function createState(
-        bool isTargetState,
-        bool isProtocolState,
-        bool isTokenState,
-        uint8 height
+        bool _isTargetState,
+        bool _isProtocolState,
+        bool _isTokenState,
+        uint8 _height
     ) internal pure returns (uint256) {
-        if (isTargetState && isTokenState) {
+        if (_isTargetState && _isTokenState) {
             revert InconsistentState();
         }
-        if (!isTargetState && !isProtocolState && !isTokenState) {
+        if (!_isTargetState && !_isProtocolState && !_isTokenState) {
             revert ZeroState();
         }
         return
-            (isTargetState ? TARGET_STATE_MASK : 0) |
-            (isProtocolState ? PROTOCOL_STATE_MASK : 0) |
-            (isTokenState ? TOKEN_STATE_MASK : 0) |
-            height;
+            (_isTargetState ? TARGET_STATE_MASK : 0) |
+            (_isProtocolState ? PROTOCOL_STATE_MASK : 0) |
+            (_isTokenState ? TOKEN_STATE_MASK : 0) |
+            _height;
     }
 }

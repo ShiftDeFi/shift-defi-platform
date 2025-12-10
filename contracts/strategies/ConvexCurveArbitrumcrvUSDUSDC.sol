@@ -80,7 +80,6 @@ contract ConvexCurveArbitrumcrvUSDUSDC is Initializable, ReentrancyGuardUpgradea
 
     function crvUSDUSDCStateNav() public view returns (uint256) {
         uint256 lpLocked = IConvexRewardPool(_rewardPool).balanceOf(address(this));
-        uint256 lpOnBalance = IERC20(_pool).balanceOf(address(this));
         uint256 crvUSDBalance = IERC20(_crvUSD).balanceOf(address(this));
         uint256 usdcBalance = IERC20(_usdc).balanceOf(address(this));
 
@@ -97,7 +96,6 @@ contract ConvexCurveArbitrumcrvUSDUSDC is Initializable, ReentrancyGuardUpgradea
 
     function usdcStateNav() public view returns (uint256) {
         uint256 lpLocked = IConvexRewardPool(_rewardPool).balanceOf(address(this));
-        uint256 lpOnBalance = IERC20(_pool).balanceOf(address(this));
         uint256 usdcBalance = IERC20(_usdc).balanceOf(address(this));
         uint256 curveTotalLp = IERC20(_pool).totalSupply();
         uint256[] memory tokenTotalBalances = new uint256[](2);
@@ -147,6 +145,10 @@ contract ConvexCurveArbitrumcrvUSDUSDC is Initializable, ReentrancyGuardUpgradea
     }
 
     function _enterConvex() internal {
+        bool isShutdown;
+        (, , , isShutdown, ) = IConvexBooster(_booster).poolInfo(_convexPoolId);
+        require(!isShutdown, ConvexPoolShutdowned(_convexPoolId));
+
         uint256 lpAmount = IERC20(_pool).balanceOf(address(this));
         if (lpAmount > 0) {
             IERC20(_pool).forceApprove(_booster, lpAmount);
@@ -222,7 +224,10 @@ contract ConvexCurveArbitrumcrvUSDUSDC is Initializable, ReentrancyGuardUpgradea
         ICurveStableSwapNG(_pool).exchange(0, 1, amountToWithdraw, 0);
     }
 
-    function _harvest(address swapRouter, address treasury, uint256 feePct) internal override {
+    function _harvest(bytes32 _stateId, address _treasury, uint256 _feePct) internal override {
+        if (_stateId != CONVEX_ALLOCATION_STATE_ID) {
+            return;
+        }
         IConvexRewardPool(_rewardPool).getReward(address(this));
         uint256 rewardLength = IConvexRewardPool(_rewardPool).rewardLength();
         for (uint256 i = 0; i < rewardLength; i++) {
@@ -231,9 +236,9 @@ contract ConvexCurveArbitrumcrvUSDUSDC is Initializable, ReentrancyGuardUpgradea
                 continue;
             }
             uint256 rewardAmount = IERC20(rewardToken).balanceOf(address(this));
-            uint256 fee = rewardAmount.mulDiv(feePct, BPS, Math.Rounding.Floor);
+            uint256 fee = rewardAmount.mulDiv(_feePct, BPS, Math.Rounding.Floor);
             if (fee > 0) {
-                IERC20(rewardToken).safeTransfer(treasury, fee);
+                IERC20(rewardToken).safeTransfer(_treasury, fee);
             }
             _swapToInputTokens(rewardToken, _usdc);
         }

@@ -9,29 +9,33 @@ import {IChainlinkPriceFeed} from "../dependencies/interfaces/chainlink/IChainli
 import {IChainlinkOracleWrapper} from "../interfaces/IChainlinkOracleWrapper.sol";
 
 contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracleWrapper {
-    bytes32 private constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    bytes32 private constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
     mapping(address => address) public tokenToChainlinkFeed;
 
-    constructor(address defaultAdmin, address governance) AccessControl() {
+    constructor(address defaultAdmin, address oracleManager) AccessControl() {
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
-        _grantRole(GOVERNANCE_ROLE, governance);
+        _grantRole(ORACLE_MANAGER_ROLE, oracleManager);
     }
 
-    function setChainlinkFeed(address token, address feed) external override onlyRole(GOVERNANCE_ROLE) {
+    function setChainlinkFeed(address token, address feed) external override onlyRole(ORACLE_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(feed != address(0), Errors.ZeroAddress());
+
         tokenToChainlinkFeed[token] = feed;
+
         emit ChainlinkFeedSet(token, feed);
     }
 
     function getPrice(address token) external view override returns (uint256, uint8) {
+        require(token != address(0), Errors.ZeroAddress());
         address chainlinkFeed = tokenToChainlinkFeed[token];
         require(chainlinkFeed != address(0), ChainlinkFeedNotFound(token));
+
         int256 price = IChainlinkPriceFeed(chainlinkFeed).latestAnswer();
-        uint8 decimals = IChainlinkPriceFeed(chainlinkFeed).decimals();
-        require(price > 0, Errors.ZeroAmount());
-        return (uint256(price), decimals);
+        require(price > 0, ZeroPrice(token));
+
+        return (uint256(price), IChainlinkPriceFeed(chainlinkFeed).decimals());
     }
 
     function decimals() external pure override returns (uint8) {

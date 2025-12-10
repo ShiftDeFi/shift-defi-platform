@@ -28,7 +28,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     bytes32 private constant CONFIGURATOR_ROLE = keccak256("CONFIGURATOR_ROLE");
     bytes32 private constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
 
-    uint256 private constant MAX_CONTAINERS = 256;
+    uint256 private constant MAX_CONTAINERS = 255;
     uint256 private constant MAX_BPS = 10_000;
 
     VaultStatus public status;
@@ -131,6 +131,9 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
         require(_notion != address(0), Errors.ZeroAddress());
         notion = IERC20(_notion);
+
+        depositBatchId = 1;
+        withdrawBatchId = 1;
     }
 
     // ---- Vault Configuration ----
@@ -228,14 +231,15 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     function addContainer(address container) external nonReentrant onlyRole(CONTAINER_MANAGER_ROLE) {
         require(container != address(0), Errors.ZeroAddress());
-        require(_containers.add(container), ContainerAlreadyExists());
 
         uint256 length = _containers.length();
-        require(length <= MAX_CONTAINERS, MaxContainersReached());
+        require(length < MAX_CONTAINERS, MaxContainersReached());
 
-        if (length == 1) {
+        if (length == 0) {
             containerWeights[container] = MAX_BPS;
         }
+
+        require(_containers.add(container), ContainerAlreadyExists());
 
         notion.approve(container, type(uint256).max);
         emit ContainerAdded(container);
@@ -332,6 +336,8 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
             totalUnclaimedNotionRemainder -= vars.notionToClaim;
             require(_isNotionDecreaseAllowed(vars.notionToClaim), NotEnoughNotion());
         }
+
+        require(vars.sharesToClaim > 0 || vars.notionToClaim > 0, NothingToClaim());
 
         if (vars.sharesToClaim > 0) {
             _transfer(address(this), onBehalfOf, vars.sharesToClaim);

@@ -13,7 +13,7 @@ import {IPriceOracle} from "./interfaces/IPriceOracle.sol";
 contract PriceOracleAggregator is Initializable, AccessControlUpgradeable, IPriceOracleAggregator {
     using Math for uint256;
 
-    bytes32 private constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    bytes32 private constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
     uint8 private constant DEFAULT_PRICE_DECIMALS = 8;
     uint256 private constant DEFAULT_PRICE_PRECISION = 10 ** DEFAULT_PRICE_DECIMALS;
@@ -24,35 +24,49 @@ contract PriceOracleAggregator is Initializable, AccessControlUpgradeable, IPric
         _disableInitializers();
     }
 
-    function initialize(address defaultAdmin, address governance) external initializer {
+    function initialize(address defaultAdmin, address oracleManager) external initializer {
         __AccessControl_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
-        _grantRole(GOVERNANCE_ROLE, governance);
+        _grantRole(ORACLE_MANAGER_ROLE, oracleManager);
     }
-    function setPriceOracle(address token, address priceOracle) external override onlyRole(GOVERNANCE_ROLE) {
+
+    function setPriceOracle(address token, address priceOracle) external override onlyRole(ORACLE_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(priceOracle != address(0), Errors.ZeroAddress());
+
         priceOracles[token] = priceOracle;
+
         emit PriceOracleSet(token, priceOracle);
     }
 
     function fetchTokenPrice(address token) external view override returns (uint256) {
-        require(priceOracles[token] != address(0), Errors.ZeroAddress());
-        (uint256 price, uint8 decimals) = IPriceOracle(priceOracles[token]).getPrice(token);
+        require(token != address(0), Errors.ZeroAddress());
+        address priceOracle = priceOracles[token];
+        require(priceOracle != address(0), PriceOracleNotFound(token));
+
+        (uint256 price, uint8 decimals) = IPriceOracle(priceOracle).getPrice(token);
+
         return _normalizePrice(price, decimals);
     }
 
     function getRelativeValueUnified(address token0, address token1, uint256 value0) external view returns (uint256) {
+        require(token0 != address(0), Errors.ZeroAddress());
+        require(token1 != address(0), Errors.ZeroAddress());
+        if (value0 == 0) return 0;
+
+        uint256 normalizedAmount = Common.toUnifiedDecimalsUint8(token0, value0);
+        if (token0 == token1) return normalizedAmount;
+
         address priceOracle0 = priceOracles[token0];
         address priceOracle1 = priceOracles[token1];
-        require(priceOracle0 != address(0), Errors.ZeroAddress());
-        require(priceOracle1 != address(0), Errors.ZeroAddress());
+
+        require(priceOracle0 != address(0), PriceOracleNotFound(token0));
+        require(priceOracle1 != address(0), PriceOracleNotFound(token1));
 
         (uint256 price0, uint8 decimals0) = IPriceOracle(priceOracle0).getPrice(token0);
         (uint256 price1, uint8 decimals1) = IPriceOracle(priceOracle1).getPrice(token1);
 
-        uint256 normalizedAmount = Common.toUnifiedDecimalsUint8(token0, value0);
         return
             normalizedAmount.mulDiv(
                 _normalizePrice(price0, decimals0),
@@ -61,7 +75,7 @@ contract PriceOracleAggregator is Initializable, AccessControlUpgradeable, IPric
             );
     }
 
-    function _normalizePrice(uint256 price, uint8 decimals) internal view returns (uint256) {
+    function _normalizePrice(uint256 price, uint8 decimals) internal pure returns (uint256) {
         if (decimals > DEFAULT_PRICE_DECIMALS) {
             return price / 10 ** (decimals - DEFAULT_PRICE_DECIMALS);
         } else if (decimals < DEFAULT_PRICE_DECIMALS) {

@@ -1,8 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-interface ICrossChainContainer {
+import {IContainer} from "./IContainer.sol";
+
+interface ICrossChainContainer is IContainer {
     // ---- Structs ----
+
+    struct CrossChainContainerInitParams {
+        address messageRouter;
+        uint256 remoteChainId;
+    }
 
     struct MessageInstruction {
         address adapter;
@@ -39,16 +46,25 @@ interface ICrossChainContainer {
     error InvalidDecimals();
     error BridgeSlippageExceeded(uint256 expected, uint256 received);
     error RemoteChainIdNotSet();
+    error PeerContainerNotSet();
 
     // ---- Functions ----
+
+    function messageRouter() external view returns (address);
+
+    function peerContainer() external view returns (address);
+
+    function remoteChainId() external view returns (uint256);
+
+    function claimCounter() external view returns (uint256);
 
     function setMessageRouter(address newMessageRouter) external;
 
     function setPeerContainer(address newPeerContainer) external;
 
+    function receiveMessage(bytes memory rawMessage) external;
+
     function setBridgeAdapter(address bridgeAdapter, bool isSupported) external;
 
-    function peerContainer() external view returns (address);
-
-    function remoteChainId() external view returns (uint256);
+    function isBridgeAdapterSupported(address bridgeAdapter) external view returns (bool);
 }

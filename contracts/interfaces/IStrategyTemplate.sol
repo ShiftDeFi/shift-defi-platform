@@ -61,8 +61,8 @@ interface IStrategyTemplate {
     struct PrepareFundsAfterEnterLocalVars {
         uint256 length;
         address container;
-        address[] outputTokens;
-        uint256[] outputAmounts;
+        address[] tokens;
+        uint256[] amounts;
         bool hasRemainder;
     }
 
@@ -77,7 +77,7 @@ interface IStrategyTemplate {
     event Entered(uint256 navBefore, uint256 navAfter, bool hasRemainder);
     event Exited(uint256 navBefore, uint256 navAfter, bytes32 stateId);
     event EmergencyExited(bytes32 toStateId);
-    event Harvested(uint256 navAfter);
+    event Harvested(bytes32 stateId, uint256 navAfter);
     event EmergencyExitFailed(bytes32 toStateId);
     event EmergencyExitSucceeded(bytes32 toStateId);
     event ReenteredToState(bytes32 stateId);
@@ -114,8 +114,7 @@ interface IStrategyTemplate {
     function setInputTokens(address[] memory inputTokens) external;
     function setOutputTokens(address[] memory outputTokens) external;
 
-    // function nav() external view returns (uint256);
     function stateNav(bytes32 stateId) external view returns (uint256);
-    function inputTokens() external view returns (address[] memory);
-    function outputTokens() external view returns (address[] memory);
+    function getInputTokens() external view returns (address[] memory);
+    function getOutputTokens() external view returns (address[] memory);
 }

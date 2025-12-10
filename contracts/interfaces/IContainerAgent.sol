@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-interface IContainerAgent {
+import {ICrossChainContainer} from "./ICrossChainContainer.sol";
+import {IStrategyContainer} from "./IStrategyContainer.sol";
+import {IBridgeAdapter} from "./IBridgeAdapter.sol";
+
+interface IContainerAgent is ICrossChainContainer, IStrategyContainer {
     // ---- Enums ----
 
     enum ContainerAgentStatus {
@@ -14,6 +18,7 @@ interface IContainerAgent {
     }
 
     struct ReportDepositLocalVars {
+        address peerContainerCached;
         address[] tokens;
         uint256[] minAmounts;
         uint256 nav0;
@@ -31,15 +36,44 @@ interface IContainerAgent {
 
     // ---- Errors ----
 
-    error EmergencyResolutionInProgress();
-
     // ---- Functions ----
+
+    function status() external view returns (ContainerAgentStatus);
+
+    function registeredWithdrawShareAmount() external view returns (uint256);
+
+    function enterStrategy(address strategy, uint256[] calldata inputAmounts, uint256 minNavDelta) external;
+
+    function enterStrategyMultiple(
+        address[] calldata strategies,
+        uint256[][] calldata inputAmounts,
+        uint256[] calldata minNavDelta
+    ) external;
+
+    function exitStrategy(address strategy, uint256 minNavDelta) external;
+
+    function exitStrategyMultiple(address[] calldata strategies, uint256[] calldata minNavDeltas) external;
+
+    function reportDeposit(
+        MessageInstruction calldata messageInstruction,
+        address[] calldata bridgeAdapters,
+        IBridgeAdapter.BridgeInstruction[] calldata bridgeInstructions
+    ) external payable;
+
+    function reportWithdrawal(
+        MessageInstruction calldata messageInstruction,
+        address[] calldata bridgeAdapters,
+        IBridgeAdapter.BridgeInstruction[] calldata bridgeInstructions
+    ) external payable;
 
     function claim(address bridgeAdapter, address token) external;
 
-    function claimMultiple(address[] memory bridgeAdapters, address[] memory tokens) external;
+    function claimInReshufflingMode(address bridgeAdapter, address token) external;
 
-    function addStrategy(address strategy, address[] calldata inputTokens, address[] calldata outputTokens) external;
+    function claimMultiple(address[] calldata bridgeAdapters, address[] calldata tokens) external;
 
-    function removeStrategy(address strategy) external;
+    function withdrawToReshufflingGateway(
+        address[] memory bridgeAdapters,
+        IBridgeAdapter.BridgeInstruction[] calldata instructions
+    ) external;
 }

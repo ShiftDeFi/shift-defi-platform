@@ -2,32 +2,24 @@
 pragma solidity ^0.8.28;
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/interfaces/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {Container, ContainerInitParams} from "./Container.sol";
+import {Container} from "./Container.sol";
 import {Errors} from "./libraries/helpers/Errors.sol";
 import {Common} from "./libraries/helpers/Common.sol";
 import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
 import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
-import {IMessageReceiver} from "./interfaces/IMessageReceiver.sol";
 import {IContainer} from "./interfaces/IContainer.sol";
 
-struct CrossChainContainerInitParams {
-    address messageRouter;
-    address peerContainer;
-    uint256 remoteChainId;
-}
-
-abstract contract CrossChainContainer is Container, IMessageReceiver, ICrossChainContainer {
+abstract contract CrossChainContainer is Container, ICrossChainContainer {
     using Math for uint256;
 
     bytes32 internal constant MESSENGER_MANAGER_ROLE = keccak256("MESSENGER_MANAGER_ROLE");
     bytes32 internal constant BRIDGE_ADAPTER_MANAGER_ROLE = keccak256("BRIDGE_ADAPTER_MANAGER_ROLE");
 
     address public messageRouter;
-    address public override peerContainer;
+    address public peerContainer;
     uint256 public remoteChainId;
 
     uint256 public claimCounter;
@@ -48,8 +40,10 @@ abstract contract CrossChainContainer is Container, IMessageReceiver, ICrossChai
     ) internal onlyInitializing {
         __Container_init(containerParams);
         _setMessageRouter(crossChainParams.messageRouter);
-        _setPeerContainer(crossChainParams.peerContainer);
-        _setRemoteChainId(crossChainParams.remoteChainId);
+
+        require(crossChainParams.remoteChainId > 0, Errors.ZeroAmount());
+        remoteChainId = crossChainParams.remoteChainId;
+        emit RemoteChainIdUpdated(0, crossChainParams.remoteChainId);
     }
 
     // ---- Messaging logic ----
@@ -59,13 +53,11 @@ abstract contract CrossChainContainer is Container, IMessageReceiver, ICrossChai
     }
 
     function setPeerContainer(address newPeerContainer) external onlyRole(MESSENGER_MANAGER_ROLE) {
-        require(peerContainer == address(0), PeerContainerAlreadySet());
-        _setPeerContainer(newPeerContainer);
-    }
-
-    function setRemoteChainId(uint256 newRemoteChainId) external onlyRole(MESSENGER_MANAGER_ROLE) {
-        require(remoteChainId == 0, RemoteChainIdAlreadySet());
-        _setRemoteChainId(newRemoteChainId);
+        address previousPeerContainer = peerContainer;
+        require(previousPeerContainer == address(0), PeerContainerAlreadySet());
+        require(newPeerContainer != address(0), Errors.ZeroAddress());
+        peerContainer = newPeerContainer;
+        emit PeerContainerUpdated(previousPeerContainer, newPeerContainer);
     }
 
     function _setMessageRouter(address newMessageRouter) internal {
@@ -73,18 +65,6 @@ abstract contract CrossChainContainer is Container, IMessageReceiver, ICrossChai
         address previousMessageRouter = messageRouter;
         messageRouter = newMessageRouter;
         emit MessageRouterUpdated(previousMessageRouter, newMessageRouter);
-    }
-
-    function _setRemoteChainId(uint256 newRemoteChainId) internal {
-        uint256 previousRemoteChainId = remoteChainId;
-        remoteChainId = newRemoteChainId;
-        emit RemoteChainIdUpdated(previousRemoteChainId, newRemoteChainId);
-    }
-
-    function _setPeerContainer(address newPeerContainer) internal {
-        address previousPeerContainer = peerContainer;
-        peerContainer = newPeerContainer;
-        emit PeerContainerUpdated(previousPeerContainer, newPeerContainer);
     }
 
     function _processExpectedTokens(address[] memory tokens, uint256[] memory amounts) internal {

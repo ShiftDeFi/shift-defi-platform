@@ -25,13 +25,15 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     bytes32 private constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
+    bytes32 private constant HARVEST_MANAGER_ROLE = keccak256("HARVEST_MANAGER_ROLE");
+
     bytes32 internal constant NO_ALLOCATION_STATE_ID = bytes32(0);
     uint256 internal constant BPS = 10_000;
 
     address internal _strategyContainer;
     address internal _notion;
-    bytes32 private _currentStateId = NO_ALLOCATION_STATE_ID;
     bytes32 private _targetStateId;
+    bytes32 private _currentStateId = NO_ALLOCATION_STATE_ID;
 
     mapping(bytes32 => uint256) private _stateBitmasks;
 
@@ -39,7 +41,6 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     EnumerableSet.AddressSet private _inputTokens;
     EnumerableSet.AddressSet private _outputTokens;
 
-    bool private _emergencyMode;
     bool private _navResolutionMode;
 
     /* Modifiers */
@@ -50,12 +51,23 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         _;
     }
 
+    modifier onlyStrategyContainerOrHarvestManager() {
+        address strategyContainerCached = _strategyContainer;
+        bool isHarvestManager = AccessControlUpgradeable(strategyContainerCached).hasRole(
+            HARVEST_MANAGER_ROLE,
+            msg.sender
+        );
+        require(isHarvestManager || msg.sender == strategyContainerCached, Errors.Unauthorized());
+        _;
+    }
+
     modifier onlyStrategyContainerOrEmergencyManager() {
-        bool isEmergencyManager = AccessControlUpgradeable(_strategyContainer).hasRole(
+        address strategyContainerCached = _strategyContainer;
+        bool isEmergencyManager = AccessControlUpgradeable(strategyContainerCached).hasRole(
             EMERGENCY_MANAGER_ROLE,
             msg.sender
         );
-        require(isEmergencyManager || msg.sender == _strategyContainer, Errors.Unauthorized());
+        require(isEmergencyManager || msg.sender == strategyContainerCached, Errors.Unauthorized());
         _;
     }
 
@@ -77,16 +89,12 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         return stateNav(_currentStateId);
     }
 
-    function inputTokens() external view returns (address[] memory) {
+    function getInputTokens() external view override returns (address[] memory) {
         return _inputTokens.values();
     }
 
-    function outputTokens() external view returns (address[] memory) {
+    function getOutputTokens() external view override returns (address[] memory) {
         return _outputTokens.values();
-    }
-
-    function isEmergencyMode() public view returns (bool) {
-        return _emergencyMode;
     }
 
     function isNavResolutionMode() public view returns (bool) {
@@ -97,7 +105,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
     /* Configuration functions */
 
-    /* 
+    /*
     Post initialization hook
     Set strategy container and notion token
     */
@@ -113,7 +121,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     }
 
     function setInputTokens(address[] calldata inputTokens) external override onlyStrategyContainer {
-        require(inputTokens.length > 0, Errors.ZeroAddress());
+        require(inputTokens.length > 0, Errors.ZeroArrayLength());
         for (uint256 i = 0; i < inputTokens.length; ) {
             require(inputTokens[i] != address(0), Errors.ZeroAddress());
             require(_inputTokens.add(inputTokens[i]), Errors.TokenAlreadySet(inputTokens[i]));
@@ -125,7 +133,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     }
 
     function setOutputTokens(address[] calldata outputTokens) external override onlyStrategyContainer {
-        require(outputTokens.length > 0, Errors.ZeroAddress());
+        require(outputTokens.length > 0, Errors.ZeroArrayLength());
         for (uint256 i = 0; i < outputTokens.length; ) {
             require(outputTokens[i] != address(0), Errors.ZeroAddress());
             require(_outputTokens.add(outputTokens[i]), Errors.TokenAlreadySet(outputTokens[i]));
@@ -143,6 +151,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         bool isTokenState,
         uint8 height
     ) internal {
+        require(stateId != NO_ALLOCATION_STATE_ID, Errors.IncorrectInput());
         _stateBitmasks[stateId] = StrategyStateLib.createState(isTargetState, isProtocolState, isTokenState, height);
         if (isTargetState) {
             require(_targetStateId == bytes32(0), TargetStateAlreadySet());
@@ -159,10 +168,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         return (vars.stateToNavAfterEnter, vars.hasRemainder, vars.remainingAmounts);
     }
 
-    function reenterToState(
-        bytes32 stateId,
-        uint256 minNavDelta
-    ) external payable onlyStrategyContainerOrEmergencyManager nonReentrant {
+    function reenterToState(bytes32 stateId, uint256 minNavDelta) external payable onlyEmergencyManager nonReentrant {
         _enterToState(stateId, minNavDelta);
     }
 
@@ -186,14 +192,11 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
         vars.enterStateBitmask = _stateBitmasks[vars.enterStateId];
 
-        require(_stateIds.contains(vars.enterStateId), StateNotFound(vars.enterStateId));
-
         if (amounts.length > 0) {
             _takeFundsFromAgent(amounts);
         }
 
         if (vars.enterStateBitmask.isTargetState()) {
-            require(!_emergencyMode, EmergencyModeActivated());
             _enterTarget();
         } else {
             _enterState(vars.enterStateId);
@@ -222,13 +225,14 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     function _enterToState(bytes32 toStateId, uint256 minNavDelta) private {
         EnterToStateLocalVars memory vars;
 
+        require(toStateId != NO_ALLOCATION_STATE_ID, Errors.IncorrectInput());
+        require(_stateIds.contains(toStateId), StateNotFound(toStateId));
+
         vars.currentStateId = _currentStateId;
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.toStateBitmask = _stateBitmasks[toStateId];
 
-        require(toStateId != NO_ALLOCATION_STATE_ID, Errors.ZeroAddress());
         require(vars.toStateBitmask != 0, Errors.ZeroAmount());
-        require(_stateIds.contains(toStateId), StateNotFound(toStateId));
         require(vars.toStateBitmask.height() >= vars.currentStateBitmask.height(), Errors.IncorrectInput());
 
         if (vars.currentStateId != toStateId) {
@@ -238,8 +242,6 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.stateToNavBeforeEnter = stateNav(toStateId);
 
         if (vars.toStateBitmask.isTargetState()) {
-            _setEmergencyMode(false);
-            _setNavResolutionMode(false);
             _enterTarget();
         } else {
             _enterState(toStateId);
@@ -257,22 +259,28 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
     /* Emergency functions */
 
-    function acceptNav() public onlyStrategyContainerOrEmergencyManager {
+    function acceptNav(bytes32 acceptedStateId) public onlyEmergencyManager returns (uint256) {
         require(_navResolutionMode, NavResolutionModeNotActivated());
+        _setCurrentStateId(acceptedStateId);
         _setNavResolutionMode(false);
+        uint256 nav = stateNav(acceptedStateId);
+        IStrategyContainer(_strategyContainer).resolveStrategyNav(nav);
+        return nav;
     }
 
-    function _setNavResolutionMode(bool isNavResolutionMode) private {
-        if (isNavResolutionMode != _navResolutionMode) {
-            _navResolutionMode = isNavResolutionMode;
-            emit NavResolutionModeUpdated(isNavResolutionMode);
+    function _setNavResolutionMode(bool navResolutionModeUpdated) private {
+        if (navResolutionModeUpdated != _navResolutionMode) {
+            _navResolutionMode = navResolutionModeUpdated;
+            emit NavResolutionModeUpdated(navResolutionModeUpdated);
         }
     }
 
-    function _setEmergencyMode(bool isEmergencyMode) private {
-        if (isEmergencyMode != _emergencyMode) {
-            _emergencyMode = isEmergencyMode;
-            emit EmergencyModeUpdated(isEmergencyMode);
+    function _setCurrentStateId(bytes32 stateId) private {
+        require(_stateIds.contains(stateId), StateNotFound(stateId));
+        bytes32 oldStateId = _currentStateId;
+        if (stateId != oldStateId) {
+            _currentStateId = stateId;
+            emit StateUpdated(oldStateId, stateId, _stateBitmasks[stateId]);
         }
     }
 
@@ -321,7 +329,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         return (vars.outputTokens, vars.outputAmounts);
     }
 
-    function harvest() external payable onlyStrategyContainer nonReentrant returns (uint256) {
+    function harvest() external payable onlyStrategyContainerOrHarvestManager nonReentrant returns (uint256) {
         require(!_navResolutionMode, NavResolutionModeActivated());
         HarvestLocalVars memory vars;
 
@@ -330,13 +338,14 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
             return 0;
         }
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
-        vars.swapRouter = IContainer(_strategyContainer).swapRouter();
         vars.treasury = IStrategyContainer(_strategyContainer).treasury();
         vars.feePct = IStrategyContainer(_strategyContainer).feePct();
 
-        _harvest(vars.swapRouter, vars.treasury, vars.feePct);
+        require(vars.treasury != address(0), Errors.ZeroAddress());
+
+        _harvest(vars.currentStateId, vars.treasury, vars.feePct);
         vars.currentStateNav = stateNav(vars.currentStateId);
-        emit Harvested(vars.currentStateNav);
+        emit Harvested(vars.currentStateId, vars.currentStateNav);
         return vars.currentStateNav;
     }
 
@@ -345,6 +354,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         uint256 share
     ) public payable override onlyStrategyContainerOrEmergencyManager nonReentrant {
         require(share > 0 && share <= BPS, Errors.IncorrectAmount());
+        require(_stateIds.contains(toStateId), StateNotFound(toStateId));
 
         EmergencyExitLocalVars memory vars;
         vars.currentStateId = _currentStateId;
@@ -353,14 +363,10 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.isResolvingEmergency = IStrategyContainer(_strategyContainer).isResolvingEmergency();
 
         require(vars.toStateBitmask != 0, Errors.ZeroAmount());
-        require(_stateIds.contains(toStateId), StateNotFound(toStateId));
         require(vars.toStateBitmask.height() <= vars.currentStateBitmask.height(), Errors.IncorrectInput());
 
         if (!vars.isResolvingEmergency) {
             IStrategyContainer(_strategyContainer).startEmergencyResolution();
-        }
-        if (!_emergencyMode) {
-            _setEmergencyMode(true);
         }
         if (!_navResolutionMode) {
             _setNavResolutionMode(true);
@@ -371,8 +377,6 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         );
         // Silently ignore return data - emergency exit failure is handled by isExitSuccess flag
         if (vars.isExitSuccess) {
-            _currentStateId = toStateId;
-            emit StateUpdated(vars.currentStateId, toStateId, vars.toStateBitmask);
             emit EmergencyExitSucceeded(toStateId);
         } else {
             emit EmergencyExitFailed(toStateId);
@@ -399,23 +403,10 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
     /* Helper functions */
 
-    function priceOracle() public view returns (address) {
-        require(_strategyContainer != address(0), Errors.ZeroAddress());
-        address priceOracle = IStrategyContainer(_strategyContainer).priceOracle();
-        require(priceOracle != address(0), Errors.ZeroAddress());
-        return priceOracle;
-    }
-
     function getTokenAmountInNotion(address token, uint256 amount) public view returns (uint256) {
-        address priceOracle = priceOracle();
-        return IPriceOracleAggregator(priceOracle).getRelativeValueUnified(token, _notion, amount);
-    }
-
-    function treasury() external view returns (address) {
-        require(_strategyContainer != address(0), Errors.ZeroAddress());
-        address treasury = IStrategyContainer(_strategyContainer).treasury();
-        require(treasury != address(0), Errors.ZeroAddress());
-        return treasury;
+        address priceOracleCached = IStrategyContainer(_strategyContainer).priceOracle();
+        require(priceOracleCached != address(0), Errors.ZeroAddress());
+        return IPriceOracleAggregator(priceOracleCached).getRelativeValueUnified(token, _notion, amount);
     }
 
     function _takeFundsFromAgent(uint256[] memory amounts) private {
@@ -435,17 +426,17 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     function _prepareFundsAfterEnter() private returns (uint256[] memory, bool) {
         PrepareFundsAfterEnterLocalVars memory vars;
 
-        vars.outputTokens = _inputTokens.values();
-        vars.length = vars.outputTokens.length;
-        vars.outputAmounts = new uint256[](vars.length);
+        vars.tokens = _inputTokens.values();
+        vars.length = vars.tokens.length;
+        vars.amounts = new uint256[](vars.length);
         vars.container = _strategyContainer;
 
         for (uint256 i = 0; i < vars.length; ) {
-            uint256 balance = IERC20(vars.outputTokens[i]).balanceOf(address(this));
+            uint256 balance = IERC20(vars.tokens[i]).balanceOf(address(this));
 
             if (balance > 0) {
-                IERC20(vars.outputTokens[i]).forceApprove(vars.container, balance);
-                vars.outputAmounts[i] = balance;
+                IERC20(vars.tokens[i]).forceApprove(vars.container, balance);
+                vars.amounts[i] = balance;
             }
 
             if (balance > 0 && !vars.hasRemainder) {
@@ -455,7 +446,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
                 ++i;
             }
         }
-        return (vars.outputAmounts, vars.hasRemainder);
+        return (vars.amounts, vars.hasRemainder);
     }
 
     function _prepareFundsAfterExit(
@@ -508,14 +499,21 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         return amounts;
     }
 
-    function _swapToInputTokens(address tokenIn, address tokenOut) internal virtual {
+    function _swapToInputTokens(
+        address tokenIn,
+        address tokenOut,
+        uint256 minAmountOut,
+        bool mustSucceed
+    ) internal virtual {
         require(_inputTokens.contains(tokenOut), Errors.Unauthorized());
         uint256 amountIn = IERC20(tokenIn).balanceOf(address(this));
-        address swapRouter = IContainer(_strategyContainer).swapRouter();
         if (amountIn == 0) {
             return;
         }
-        ISwapRouter(swapRouter).tryPredefinedSwap(tokenIn, tokenOut, amountIn, 0);
+        address swapRouter = IContainer(_strategyContainer).swapRouter();
+        IERC20(tokenIn).forceApprove(swapRouter, amountIn);
+        (bool success, ) = ISwapRouter(swapRouter).tryPredefinedSwap(tokenIn, tokenOut, amountIn, minAmountOut);
+        if (mustSucceed && !success) revert Errors.SwapFailed(tokenIn, tokenOut, amountIn, minAmountOut);
     }
 
     function _enterTarget() internal virtual;
@@ -526,5 +524,5 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     function _exitFromState(bytes32 stateId, uint256 share) internal virtual;
     function _emergencyExit(bytes32 toStateId, uint256 share) internal virtual;
 
-    function _harvest(address swapRouter, address treasury, uint256 feePct) internal virtual {}
+    function _harvest(bytes32 _stateId, address _treasury, uint256 _feePct) internal virtual {}
 }

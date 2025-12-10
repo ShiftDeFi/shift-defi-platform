@@ -23,6 +23,7 @@ interface IBridgeAdapter {
     error BadBridgePath(address srcToken, uint256 chainTo);
     error BridgerNotWhitelisted(address bridger);
     error SlippageCapExceeded(uint256 slippageDeltaPct, uint256 slippageCapPct);
+    error NotPeer(address peer, address expectedPeer);
 
     /*
      * @dev Bridges the token from the source chain to the destination chain.

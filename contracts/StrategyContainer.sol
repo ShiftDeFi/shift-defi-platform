@@ -13,7 +13,6 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 import {Errors} from "./libraries/helpers/Errors.sol";
 import {IStrategyTemplate} from "./interfaces/IStrategyTemplate.sol";
 import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
-import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
 
 abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable, Container, IStrategyContainer {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -23,6 +22,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     bytes32 internal constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
     bytes32 internal constant STRATEGY_MANAGER_ROLE = keccak256("STRATEGY_MANAGER_ROLE");
     bytes32 internal constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
+    bytes32 internal constant HARVEST_MANAGER_ROLE = keccak256("HARVEST_MANAGER_ROLE");
 
     EnumerableSet.AddressSet internal _strategies;
 
@@ -37,16 +37,31 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     address internal _bridgeCollector; // address where funds stores after cross-chain migration
 
-    address public override treasury;
-    address public override priceOracle;
+    address public treasury;
+    address public priceOracle;
 
-    uint256 public override feePct;
+    uint256 public feePct;
 
     uint256 private constant BPS = 10_000;
-    uint256 private constant MAX_STRATEGIES = 256;
+    uint256 private constant MAX_STRATEGIES = 255;
 
     bool internal _reshufflingMode;
     bool internal _isResolvingEmergency;
+
+    modifier notResolvingEmergency() {
+        require(!_isResolvingEmergency, EmergencyResolutionInProgress());
+        _;
+    }
+
+    modifier notInReshufflingMode() {
+        require(!_reshufflingMode, ActionUnavailableInReshufflingMode());
+        _;
+    }
+
+    modifier onlyInReshufflingMode() {
+        require(_reshufflingMode, ActionUnavailableNotInReshufflingMode());
+        _;
+    }
 
     // ---- Configuration ----
 
@@ -58,12 +73,12 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         _setTreasury(newTreasury);
     }
 
-    function setFeePct(uint256 newFeePct) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        _setFeePct(newFeePct);
-    }
-
     function setPriceOracle(address newPriceOracle) external onlyRole(STRATEGY_MANAGER_ROLE) {
         _setPriceOracle(newPriceOracle);
+    }
+
+    function setFeePct(uint256 newFeePct) external onlyRole(STRATEGY_MANAGER_ROLE) {
+        _setFeePct(newFeePct);
     }
 
     function _setPriceOracle(address newPriceOracle) internal {
@@ -77,14 +92,14 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         require(newTreasury != address(0), Errors.ZeroAddress());
         address oldTreasury = treasury;
         treasury = newTreasury;
-        emit TreasuryUpdated(oldTreasury, treasury);
+        emit TreasuryUpdated(oldTreasury, newTreasury);
     }
 
     function _setFeePct(uint256 newFeePct) internal {
         require(newFeePct <= BPS, Errors.IncorrectAmount());
         uint256 previousFeePct = feePct;
         feePct = newFeePct;
-        emit FeePctUpdated(previousFeePct, feePct);
+        emit FeePctUpdated(previousFeePct, newFeePct);
     }
 
     function _setBridgeCollector(address newBridgeCollector) internal {
@@ -96,12 +111,24 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     // ---- Reshuffling mode management logic ----
 
-    function enableReshufflingMode() external onlyRole(STRATEGY_MANAGER_ROLE) {
+    function enableReshufflingMode()
+        external
+        notResolvingEmergency
+        notInReshufflingMode
+        onlyRole(RESHUFFLING_MANAGER_ROLE)
+    {
+        require(_getCurrentBatchType() == CurrentBatchType.NoBatch, Errors.IncorrectContainerStatus());
         _reshufflingMode = true;
         emit ReshufflingModeUpdated(true);
     }
 
-    function disableReshufflingMode() external onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    function disableReshufflingMode()
+        external
+        onlyInReshufflingMode
+        notResolvingEmergency
+        onlyRole(RESHUFFLING_MANAGER_ROLE)
+    {
+        require(_getCurrentBatchType() == CurrentBatchType.NoBatch, Errors.IncorrectContainerStatus());
         _reshufflingMode = false;
         emit ReshufflingModeUpdated(false);
     }
@@ -121,6 +148,18 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         address[] calldata inputTokens
     ) external onlyRole(STRATEGY_MANAGER_ROLE) {
         require(_isStrategy(strategy), StrategyNotFound());
+        _setStrategyInputTokens(strategy, inputTokens);
+    }
+
+    function setStrategyOutputTokens(
+        address strategy,
+        address[] calldata outputTokens
+    ) external onlyRole(STRATEGY_MANAGER_ROLE) {
+        require(_isStrategy(strategy), StrategyNotFound());
+        _setStrategyOutputTokens(strategy, outputTokens);
+    }
+
+    function _setStrategyInputTokens(address strategy, address[] calldata inputTokens) internal {
         uint256 inputTokenNumber = inputTokens.length;
         require(inputTokenNumber > 0, Errors.ZeroArrayLength());
 
@@ -133,11 +172,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         emit StrategyInputTokensUpdated(strategy);
     }
 
-    function setStrategyOutputTokens(
-        address strategy,
-        address[] calldata outputTokens
-    ) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        require(_isStrategy(strategy), StrategyNotFound());
+    function _setStrategyOutputTokens(address strategy, address[] calldata outputTokens) internal {
         uint256 outputTokenNumber = outputTokens.length;
         require(outputTokenNumber > 0, Errors.ZeroArrayLength());
 
@@ -152,28 +187,11 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     function _addStrategy(address strategy, address[] calldata inputTokens, address[] calldata outputTokens) internal {
         require(strategy != address(0), Errors.ZeroAddress());
-        uint256 inputTokenNumber = inputTokens.length;
-        require(inputTokenNumber > 0, Errors.ZeroArrayLength());
-        uint256 outputTokenNumber = outputTokens.length;
-        require(outputTokenNumber > 0, Errors.ZeroArrayLength());
         require(_strategies.length() < MAX_STRATEGIES, MaxStrategiesReached());
 
-        for (uint256 i = 0; i < inputTokenNumber; ++i) {
-            address inputToken = inputTokens[i];
-            require(inputToken != address(0), Errors.ZeroAddress());
-            require(_isTokenWhitelisted(inputToken), NotWhitelistedToken(inputToken));
-        }
-
-        for (uint256 i = 0; i < outputTokenNumber; ++i) {
-            address outputToken = outputTokens[i];
-            require(outputToken != address(0), Errors.ZeroAddress());
-            require(_isTokenWhitelisted(outputToken), NotWhitelistedToken(outputToken));
-        }
-
+        _setStrategyInputTokens(strategy, inputTokens);
+        _setStrategyOutputTokens(strategy, outputTokens);
         require(_strategies.add(strategy), StrategyAlreadyExists());
-
-        IStrategyTemplate(strategy).setInputTokens(inputTokens);
-        IStrategyTemplate(strategy).setOutputTokens(outputTokens);
 
         emit StrategyAdded(strategy);
     }
@@ -182,11 +200,11 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         require(strategy != address(0), Errors.ZeroAddress());
         require(_strategies.remove(strategy), StrategyNotFound());
 
-        address[] memory inputTokens = IStrategyTemplate(strategy).inputTokens();
+        address[] memory inputTokens = IStrategyTemplate(strategy).getInputTokens();
         uint256 length = inputTokens.length;
 
         for (uint256 i = 0; i < length; ++i) {
-            IERC20(inputTokens[i]).approve(strategy, 0);
+            IERC20(inputTokens[i]).forceApprove(strategy, 0);
         }
 
         emit StrategyRemoved(strategy);
@@ -196,27 +214,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         return _strategies.contains(strategy);
     }
 
-    // ---- NAV view logic ----
-
-    function getTotalNav0() external view returns (uint256) {
-        uint256 totalNav0 = 0;
-        for (uint256 i = 0; i < _strategies.length(); ++i) {
-            address strategy = _strategies.at(i);
-            totalNav0 += _strategyNav0[strategy];
-        }
-        return totalNav0;
-    }
-
-    function getTotalNav1() external view returns (uint256) {
-        uint256 totalNav1 = 0;
-        for (uint256 i = 0; i < _strategies.length(); ++i) {
-            address strategy = _strategies.at(i);
-            totalNav1 += _strategyNav1[strategy];
-        }
-        return totalNav1;
-    }
-
-    function _getTotalNavs() internal view returns (uint256, uint256) {
+    function getTotalNavs() public view returns (uint256, uint256) {
         uint256 totalNav0 = 0;
         uint256 totalNav1 = 0;
         uint256 length = _strategies.length();
@@ -239,11 +237,10 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     function _enterStrategy(address strategy, uint256[] calldata inputAmounts, uint256 minNavDelta) internal {
         require(_isStrategy(strategy), StrategyNotFound());
         require(!isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
-        require(!_reshufflingMode, ActionUnavailableInReshufflingMode());
 
         EnterStrategyLocalVars memory vars;
 
-        address[] memory inputTokens = IStrategyTemplate(strategy).inputTokens();
+        address[] memory inputTokens = IStrategyTemplate(strategy).getInputTokens();
         vars.tokenNumber = inputTokens.length;
         require(inputAmounts.length == vars.tokenNumber, Errors.ArrayLengthMismatch());
 
@@ -284,19 +281,11 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         address strategy,
         uint256[] calldata inputAmounts,
         uint256 minNavDelta
-    ) external nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
-        _enterStrategyInReshufflingMode(strategy, inputAmounts, minNavDelta);
-    }
-
-    function _enterStrategyInReshufflingMode(
-        address strategy,
-        uint256[] calldata inputAmounts,
-        uint256 minNavDelta
-    ) internal {
+    ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
         require(_isStrategy(strategy), StrategyNotFound());
-        require(_reshufflingMode, ActionUnavailableInReshufflingMode());
+        require(!isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
 
-        address[] memory inputTokens = IStrategyTemplate(strategy).inputTokens();
+        address[] memory inputTokens = IStrategyTemplate(strategy).getInputTokens();
         uint256 tokenNumber = inputTokens.length;
 
         require(tokenNumber == inputAmounts.length, Errors.ArrayLengthMismatch());
@@ -329,19 +318,11 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         address strategy,
         uint256 share,
         uint256 maxNavDelta
-    ) external nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
-        _exitStrategyInReshufflingMode(strategy, share, maxNavDelta);
-    }
-
-    function _allStrategiesExited() internal view returns (bool) {
-        return _strategyExitBitmask == (1 << _strategies.length()) - 1;
-    }
-
-    function _exitStrategyInReshufflingMode(address strategy, uint256 share, uint256 maxNavDelta) internal {
+    ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
         require(share > 0, Errors.ZeroAmount());
         require(share <= BPS, Errors.IncorrectAmount());
         require(_isStrategy(strategy), StrategyNotFound());
-        require(_reshufflingMode, ActionUnavailableInReshufflingMode());
+        require(!isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
 
         IStrategyTemplate(strategy).harvest();
         (address[] memory tokens, uint256[] memory amounts) = IStrategyTemplate(strategy).exit(share, maxNavDelta);
@@ -357,10 +338,13 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         emit StrategyExited(strategy, share);
     }
 
+    function _allStrategiesExited() internal view returns (bool) {
+        return _strategyExitBitmask == (1 << _strategies.length()) - 1;
+    }
+
     function _exitStrategy(address strategy, uint256 share, uint256 maxNavDelta) internal {
         require(_isStrategy(strategy), StrategyNotFound());
         require(!isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
-        require(!_reshufflingMode, ActionUnavailableInReshufflingMode());
 
         (, uint256 strategyIndex) = _strategies.indexOf(strategy);
         uint256 mask = 1 << strategyIndex;
@@ -417,7 +401,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         (, uint256 strategyIndex) = _strategies.indexOf(msg.sender);
         uint256 mask = 1 << strategyIndex;
         _strategyUnresolvedNavBitmask &= ~mask;
-        _strategyNav0[msg.sender] = resolvedNav;
+
         emit StrategyNavResolved(msg.sender, resolvedNav);
     }
 
@@ -426,6 +410,8 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         uint256 mask = 1 << strategyIndex;
         return _strategyUnresolvedNavBitmask & mask != 0;
     }
+
+    function _getCurrentBatchType() internal view virtual returns (CurrentBatchType);
 
     uint256[50] private __gap;
 }

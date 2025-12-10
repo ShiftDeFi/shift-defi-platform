@@ -11,15 +11,6 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Errors} from "./libraries/helpers/Errors.sol";
 import {IContainer} from "./interfaces/IContainer.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
-import {IVault} from "./interfaces/IVault.sol";
-
-struct ContainerInitParams {
-    address vault;
-    address notion;
-    address defaultAdmin;
-    address operator;
-    address swapRouter;
-}
 
 abstract contract Container is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IContainer {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -29,13 +20,13 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
     bytes32 internal constant TOKEN_MANAGER_ROLE = keccak256("TOKEN_MANAGER_ROLE");
 
     address public vault;
-    address public override notion;
+    address public notion;
 
-    address public override swapRouter;
+    address public swapRouter;
 
     EnumerableSet.AddressSet private _whitelistedTokens;
 
-    mapping(address => uint256) public _whitelistedTokensDustThresholds;
+    mapping(address => uint256) private _whitelistedTokensDustThresholds;
 
     modifier onlyVault() {
         require(msg.sender == vault, Errors.Unauthorized());
@@ -45,6 +36,7 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
     function __Container_init(ContainerInitParams memory params) internal onlyInitializing {
         require(params.vault != address(0), Errors.ZeroAddress());
         vault = params.vault;
+        require(params.notion != address(0), Errors.ZeroAddress());
         notion = params.notion;
 
         _whitelistedTokens.add(notion);
@@ -58,6 +50,10 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
     }
 
     // ---- Token management logic ----
+
+    function isTokenWhitelisted(address token) external view override returns (bool) {
+        return _isTokenWhitelisted(token);
+    }
 
     function whitelistToken(address token) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
@@ -81,20 +77,6 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
 
         _whitelistedTokensDustThresholds[token] = threshold;
         emit WhitelistedTokenDustThresholdUpdated(token, threshold);
-    }
-
-    function setSwapRouter(address newSwapRouter) external onlyRole(TOKEN_MANAGER_ROLE) {
-        require(newSwapRouter != address(0), Errors.ZeroAddress());
-        _setSwapRouter(newSwapRouter);
-    }
-
-    function prepareLiquidity(ISwapRouter.SwapInstruction[] calldata instructions) external onlyRole(OPERATOR_ROLE) {
-        require(instructions.length > 0, Errors.ZeroArrayLength());
-        _prepareLiquidity(instructions);
-    }
-
-    function isTokenWhitelisted(address token) external view override returns (bool) {
-        return _isTokenWhitelisted(token);
     }
 
     function _isTokenWhitelisted(address token) internal view returns (bool) {
@@ -125,6 +107,11 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         return _validateWhitelistedTokensBeforeReport(true, true) && IERC20(notion).balanceOf(address(this)) > 0;
     }
 
+    function setSwapRouter(address newSwapRouter) external onlyRole(TOKEN_MANAGER_ROLE) {
+        require(newSwapRouter != address(0), Errors.ZeroAddress());
+        _setSwapRouter(newSwapRouter);
+    }
+
     function _setSwapRouter(address newSwapRouter) internal {
         address previousSwapRouter = swapRouter;
         swapRouter = newSwapRouter;
@@ -133,6 +120,11 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         }
         _approveWhitelistedTokens(newSwapRouter);
         emit SwapRouterUpdated(previousSwapRouter, newSwapRouter);
+    }
+
+    function prepareLiquidity(ISwapRouter.SwapInstruction[] calldata instructions) external onlyRole(OPERATOR_ROLE) {
+        require(instructions.length > 0, Errors.ZeroArrayLength());
+        _prepareLiquidity(instructions);
     }
 
     function _prepareLiquidity(ISwapRouter.SwapInstruction[] calldata instructions) internal {

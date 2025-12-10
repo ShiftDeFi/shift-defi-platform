@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-interface IContainerLocal {
+import {IStrategyContainer} from "./IStrategyContainer.sol";
+
+interface IContainerLocal is IStrategyContainer {
     // ---- Enums ----
 
     enum ContainerLocalStatus {
@@ -18,6 +20,10 @@ interface IContainerLocal {
     event AllStrategiesExited();
 
     // ---- Functions ----
+
+    function status() external view returns (ContainerLocalStatus);
+
+    function registeredWithdrawShareAmount() external view returns (uint256);
 
     function registerDepositRequest(uint256 amount) external;
 

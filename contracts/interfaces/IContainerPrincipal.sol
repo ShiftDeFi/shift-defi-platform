@@ -45,6 +45,14 @@ interface IContainerPrincipal {
 
     // ---- Functions ----
 
+    function status() external view returns (ContainerPrincipalStatus);
+
+    function nav0() external view returns (uint256);
+
+    function nav1() external view returns (uint256);
+
+    function registeredWithdrawShareAmount() external view returns (uint256);
+
     function registerDepositRequest(uint256 amount) external;
 
     function registerWithdrawRequest(uint256 amount) external;
@@ -55,7 +63,13 @@ interface IContainerPrincipal {
         IBridgeAdapter.BridgeInstruction[] calldata bridgeInstructions
     ) external payable;
 
+    function sendWithdrawRequest(ICrossChainContainer.MessageInstruction memory messageInstruction) external payable;
+
     function reportDeposit() external payable;
 
+    function reportWithdrawal() external payable;
+
     function claim(address bridgeAdapter, address token) external;
+
+    function claimMultiple(address[] calldata bridgeAdapters, address[] calldata tokens) external;
 }

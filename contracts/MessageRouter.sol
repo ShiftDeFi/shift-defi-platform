@@ -42,29 +42,22 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
     }
 
     /// @inheritdoc IMessageRouter
-    function calculatePath(address sender, address receiver, uint256 chainId) public pure override returns (bytes32) {
+    function calculatePath(address sender, address receiver, uint256 chainId) public pure returns (bytes32) {
         return keccak256(abi.encode(sender, receiver, chainId));
     }
 
     /// @inheritdoc IMessageRouter
-    function encodeMessage(
-        uint256 nonce,
-        bytes32 path,
-        bytes memory message
-    ) public pure override returns (bytes memory) {
+    function encodeMessage(uint256 nonce, bytes32 path, bytes memory message) public pure returns (bytes memory) {
         return abi.encodePacked(nonce, path, message);
     }
 
     /// @inheritdoc IMessageRouter
-    function calculateCacheKey(
-        uint256 chainTo,
-        bytes memory rawMessageWithPathAndNonce
-    ) public pure override returns (bytes32) {
+    function calculateCacheKey(uint256 chainTo, bytes memory rawMessageWithPathAndNonce) public pure returns (bytes32) {
         return keccak256(abi.encode(chainTo, rawMessageWithPathAndNonce));
     }
 
     /// @inheritdoc IMessageRouter
-    function decodeMessage(bytes memory message) public view override returns (uint256, bytes32, bytes memory) {
+    function decodeMessage(bytes memory message) public view returns (uint256, bytes32, bytes memory) {
         require(message.length >= 64, MessageTooShort(message.length));
         // Extract nonce (uint256 = 32 bytes)
         uint256 nonce;
@@ -96,11 +89,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
     }
 
     /// @inheritdoc IMessageRouter
-    function whitelistPath(
-        address sender,
-        address receiver,
-        uint256 chainId
-    ) external override onlyRole(GOVERNANCE_ROLE) {
+    function whitelistPath(address sender, address receiver, uint256 chainId) external onlyRole(GOVERNANCE_ROLE) {
         require(sender != address(0), Errors.ZeroAddress());
         require(receiver != address(0), Errors.ZeroAddress());
         require(chainId > 0, Errors.ZeroAmount());
@@ -119,11 +108,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
     }
 
     /// @inheritdoc IMessageRouter
-    function blacklistPath(
-        address sender,
-        address receiver,
-        uint256 chainId
-    ) external override onlyRole(GOVERNANCE_ROLE) {
+    function blacklistPath(address sender, address receiver, uint256 chainId) external onlyRole(GOVERNANCE_ROLE) {
         bytes32 path = calculatePath(sender, receiver, chainId);
         PathData memory pathData = _paths[path];
         require(pathData.isWhitelisted, InvalidPath(path));
@@ -132,14 +117,14 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
     }
 
     /// @inheritdoc IMessageRouter
-    function whitelistMessageAdapter(address adapter) external override onlyRole(GOVERNANCE_ROLE) {
+    function whitelistMessageAdapter(address adapter) external onlyRole(GOVERNANCE_ROLE) {
         require(!_whitelistedMessageAdapters[adapter], Errors.AlreadyWhitelisted());
         _whitelistedMessageAdapters[adapter] = true;
         emit AdapterWhitelisted(adapter);
     }
 
     /// @inheritdoc IMessageRouter
-    function blacklistMessageAdapter(address adapter) external override onlyRole(GOVERNANCE_ROLE) {
+    function blacklistMessageAdapter(address adapter) external onlyRole(GOVERNANCE_ROLE) {
         require(_whitelistedMessageAdapters[adapter], Errors.AlreadyBlacklisted());
         _whitelistedMessageAdapters[adapter] = false;
         emit AdapterBlacklisted(adapter);
@@ -151,14 +136,14 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         uint256 nonce,
         bytes32 remotePath,
         bytes memory message
-    ) external view override returns (bool) {
+    ) external view returns (bool) {
         bytes memory messageWithNonceAndPath = encodeMessage(nonce, remotePath, message);
         bytes32 cacheKey = calculateCacheKey(chainTo, messageWithNonceAndPath);
         return _sendMessagesCache.exists(cacheKey);
     }
 
     /// @inheritdoc IMessageRouter
-    function send(address receiver, SendParams calldata sendParams) external payable override nonReentrant {
+    function send(address receiver, SendParams calldata sendParams) external payable nonReentrant {
         require(_whitelistedMessageAdapters[sendParams.adapter], UnsupportedAdapter(sendParams.adapter));
 
         SendLocalVars memory sendLocalVars;
@@ -196,7 +181,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
     }
 
     /// @inheritdoc IMessageRouter
-    function receiveMessage(bytes memory rawMessageWithPathAndNonce) external override nonReentrant {
+    function receiveMessage(bytes memory rawMessageWithPathAndNonce) external nonReentrant {
         (uint256 nonce, bytes32 path, bytes memory rawMessage) = decodeMessage(rawMessageWithPathAndNonce);
         PathData memory pathData = _paths[path];
 
@@ -217,7 +202,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         uint256 nonce,
         bytes32 path,
         SendParams calldata sendParams
-    ) external payable override nonReentrant onlyRole(MANAGER_ROLE) {
+    ) external payable nonReentrant onlyRole(MANAGER_ROLE) {
         require(_whitelistedMessageAdapters[sendParams.adapter], UnsupportedAdapter(sendParams.adapter));
 
         bytes memory messageWithPathAndNonce = encodeMessage(nonce, path, sendParams.message);
@@ -240,7 +225,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         uint256 chainTo,
         bytes32 path,
         bytes memory message
-    ) external override onlyRole(MANAGER_ROLE) {
+    ) external onlyRole(MANAGER_ROLE) {
         bytes memory messageWithPathAndNonce = encodeMessage(nonce, path, message);
         _removeFromCache(chainTo, messageWithPathAndNonce);
         emit MessageRemovedFromCache(_sendMessagesCache.id, nonce, chainTo, path);

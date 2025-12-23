@@ -52,7 +52,7 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
     // ---- Token management logic ----
 
     /// @inheritdoc IContainer
-    function isTokenWhitelisted(address token) external view override returns (bool) {
+    function isTokenWhitelisted(address token) external view returns (bool) {
         return _isTokenWhitelisted(token);
     }
 

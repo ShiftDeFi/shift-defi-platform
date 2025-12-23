@@ -92,12 +92,12 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     }
 
     /// @inheritdoc IStrategyTemplate
-    function getInputTokens() external view override returns (address[] memory) {
+    function getInputTokens() external view returns (address[] memory) {
         return _inputTokens.values();
     }
 
     /// @inheritdoc IStrategyTemplate
-    function getOutputTokens() external view override returns (address[] memory) {
+    function getOutputTokens() external view returns (address[] memory) {
         return _outputTokens.values();
     }
 
@@ -128,7 +128,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     }
 
     /// @inheritdoc IStrategyTemplate
-    function setInputTokens(address[] calldata inputTokens) external override onlyStrategyContainer {
+    function setInputTokens(address[] calldata inputTokens) external onlyStrategyContainer {
         require(inputTokens.length > 0, Errors.ZeroArrayLength());
         for (uint256 i = 0; i < inputTokens.length; ) {
             require(inputTokens[i] != address(0), Errors.ZeroAddress());
@@ -141,7 +141,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     }
 
     /// @inheritdoc IStrategyTemplate
-    function setOutputTokens(address[] calldata outputTokens) external override onlyStrategyContainer {
+    function setOutputTokens(address[] calldata outputTokens) external onlyStrategyContainer {
         require(outputTokens.length > 0, Errors.ZeroArrayLength());
         for (uint256 i = 0; i < outputTokens.length; ) {
             require(outputTokens[i] != address(0), Errors.ZeroAddress());
@@ -359,7 +359,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     function emergencyExit(
         bytes32 toStateId,
         uint256 share
-    ) public payable override onlyStrategyContainerOrEmergencyManager nonReentrant {
+    ) public payable onlyStrategyContainerOrEmergencyManager nonReentrant {
         require(share > 0 && share <= BPS, Errors.IncorrectAmount());
         require(_stateIds.contains(toStateId), StateNotFound(toStateId));
 
@@ -394,7 +394,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     function emergencyExitMultiple(
         bytes32[] calldata toStateIds,
         uint256[] calldata shares
-    ) external payable override onlyStrategyContainerOrEmergencyManager {
+    ) external payable onlyStrategyContainerOrEmergencyManager {
         require(toStateIds.length == shares.length, Errors.ArrayLengthMismatch());
         for (uint256 i = 0; i < toStateIds.length; ) {
             emergencyExit(toStateIds[i], shares[i]);
@@ -531,7 +531,9 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     function _enterState(bytes32 stateId) internal virtual;
 
     function _exitTarget(uint256 share) internal virtual;
+
     function _exitFromState(bytes32 stateId, uint256 share) internal virtual;
+
     function _emergencyExit(bytes32 toStateId, uint256 share) internal virtual;
 
     function _harvest(bytes32 _stateId, address _treasury, uint256 _feePct) internal virtual {}

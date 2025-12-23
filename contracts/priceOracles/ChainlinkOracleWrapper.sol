@@ -19,7 +19,7 @@ contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracle
     }
 
     /// @inheritdoc IChainlinkOracleWrapper
-    function setChainlinkFeed(address token, address feed) external override onlyRole(ORACLE_MANAGER_ROLE) {
+    function setChainlinkFeed(address token, address feed) external onlyRole(ORACLE_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(feed != address(0), Errors.ZeroAddress());
 
@@ -29,7 +29,7 @@ contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracle
     }
 
     /// @inheritdoc IPriceOracle
-    function getPrice(address token) external view override returns (uint256, uint8) {
+    function getPrice(address token) external view returns (uint256, uint8) {
         require(token != address(0), Errors.ZeroAddress());
         address chainlinkFeed = tokenToChainlinkFeed[token];
         require(chainlinkFeed != address(0), ChainlinkFeedNotFound(token));
@@ -40,7 +40,7 @@ contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracle
         return (uint256(price), IChainlinkPriceFeed(chainlinkFeed).decimals());
     }
 
-    function decimals() external pure override returns (uint8) {
+    function decimals() external pure returns (uint8) {
         revert Errors.NotImplemented();
     }
 }

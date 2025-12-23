@@ -18,10 +18,10 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
 
     bytes32 internal constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
 
-    mapping(address => mapping(uint256 => address)) public override bridgePaths;
-    mapping(address => mapping(address => uint256)) public override claimableAmounts;
-    mapping(address => bool) public override whitelistedBridgers;
-    mapping(uint256 => address) public override peers;
+    mapping(address => mapping(uint256 => address)) public bridgePaths;
+    mapping(address => mapping(address => uint256)) public claimableAmounts;
+    mapping(address => bool) public whitelistedBridgers;
+    mapping(uint256 => address) public peers;
 
     uint256 private _slippageCapPct;
     uint256 private constant MAX_SLIPPAGE_CAP_PCT = 10_000; // 100%
@@ -39,18 +39,14 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     }
 
     /// @inheritdoc IBridgeAdapter
-    function setSlippageCapPct(uint256 slippageCapPct) external override onlyRole(GOVERNANCE_ROLE) {
+    function setSlippageCapPct(uint256 slippageCapPct) external onlyRole(GOVERNANCE_ROLE) {
         require(slippageCapPct <= MAX_SLIPPAGE_CAP_PCT, Errors.IncorrectAmount());
         _slippageCapPct = slippageCapPct;
         emit SlippageCapPctUpdated(_slippageCapPct);
     }
 
     /// @inheritdoc IBridgeAdapter
-    function setBridgePath(
-        address tokenOnSrc,
-        uint256 chainId,
-        address tokenOnDst
-    ) external override onlyRole(GOVERNANCE_ROLE) {
+    function setBridgePath(address tokenOnSrc, uint256 chainId, address tokenOnDst) external onlyRole(GOVERNANCE_ROLE) {
         require(tokenOnSrc != address(0), Errors.ZeroAddress());
         require(chainId > 0, Errors.ZeroAmount());
         require(bridgePaths[tokenOnSrc][chainId] != tokenOnDst, Errors.AlreadySet());
@@ -60,7 +56,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     }
 
     /// @inheritdoc IBridgeAdapter
-    function setPeer(uint256 chainId, address peer) external override onlyRole(GOVERNANCE_ROLE) {
+    function setPeer(uint256 chainId, address peer) external onlyRole(GOVERNANCE_ROLE) {
         require(peer != address(0), Errors.ZeroAddress());
         require(chainId > 0, Errors.ZeroAmount());
         require(peers[chainId] != peer, Errors.AlreadySet());
@@ -70,7 +66,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     }
 
     /// @inheritdoc IBridgeAdapter
-    function whitelistBridger(address bridger) external override onlyRole(GOVERNANCE_ROLE) {
+    function whitelistBridger(address bridger) external onlyRole(GOVERNANCE_ROLE) {
         require(bridger != address(0), Errors.ZeroAddress());
         require(!whitelistedBridgers[bridger], Errors.AlreadyWhitelisted());
         whitelistedBridgers[bridger] = true;
@@ -78,7 +74,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     }
 
     /// @inheritdoc IBridgeAdapter
-    function blacklistBridger(address bridger) external override onlyRole(GOVERNANCE_ROLE) {
+    function blacklistBridger(address bridger) external onlyRole(GOVERNANCE_ROLE) {
         require(bridger != address(0), Errors.ZeroAddress());
         require(whitelistedBridgers[bridger], Errors.AlreadyBlacklisted());
         whitelistedBridgers[bridger] = false;
@@ -89,7 +85,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     function bridge(
         BridgeInstruction calldata instruction,
         address receiver
-    ) external virtual override nonReentrant returns (uint256) {
+    ) external virtual nonReentrant returns (uint256) {
         require(receiver != address(0), Errors.ZeroAddress());
         require(whitelistedBridgers[msg.sender], BridgerNotWhitelisted(msg.sender));
 
@@ -105,15 +101,12 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     }
 
     /// @inheritdoc IBridgeAdapter
-    function claim(address token) external virtual override nonReentrant returns (uint256) {
+    function claim(address token) external virtual nonReentrant returns (uint256) {
         return _claim(msg.sender, token);
     }
 
     /// @inheritdoc IBridgeAdapter
-    function retryBridge(
-        BridgeInstruction calldata instruction,
-        address receiver
-    ) external virtual override nonReentrant {
+    function retryBridge(BridgeInstruction calldata instruction, address receiver) external virtual nonReentrant {
         require(whitelistedBridgers[msg.sender], BridgerNotWhitelisted(msg.sender));
 
         _validateBridgeInstruction(instruction);
@@ -180,6 +173,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
             SlippageCapExceeded(slippageDelta, _slippageCapPct)
         );
     }
+
     function _bridge(
         BridgeInstruction calldata bridgeInstruction,
         address receiver,

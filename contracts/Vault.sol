@@ -225,7 +225,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     // ---- Container Management ----
 
     /// @inheritdoc IVault
-    function getContainers() external view override returns (address[] memory, uint256[] memory) {
+    function getContainers() external view returns (address[] memory, uint256[] memory) {
         uint256 length = _containers.length();
         address[] memory containers = new address[](length);
         uint256[] memory weights = new uint256[](length);
@@ -286,7 +286,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     }
 
     /// @inheritdoc IVault
-    function isContainer(address container) external view override returns (bool) {
+    function isContainer(address container) external view returns (bool) {
         return _isContainer(container);
     }
 

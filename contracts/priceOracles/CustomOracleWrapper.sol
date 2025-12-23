@@ -13,28 +13,39 @@ contract CustomOracleWrapper is AccessControl, IPriceOracle, ICustomOracleWrappe
 
     mapping(address => uint256) public tokenToPrice;
 
+    /**
+     * @notice Initializes the CustomOracleWrapper contract.
+     * @dev Sets up access control and grants roles to default admin and governance.
+     * @param defaultAdmin The address to receive DEFAULT_ADMIN_ROLE.
+     * @param governance The address to receive GOVERNANCE_ROLE.
+     */
     constructor(address defaultAdmin, address governance) AccessControl() {
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(GOVERNANCE_ROLE, governance);
     }
 
+    /// @inheritdoc ICustomOracleWrapper
     function whitelistFeeder(address feeder) external onlyRole(GOVERNANCE_ROLE) {
         _grantRole(FEEDER_ROLE, feeder);
     }
 
+    /// @inheritdoc ICustomOracleWrapper
     function blacklistFeeder(address feeder) external onlyRole(GOVERNANCE_ROLE) {
         _revokeRole(FEEDER_ROLE, feeder);
     }
 
+    /// @inheritdoc ICustomOracleWrapper
     function submitPrice(address token, uint256 price) external onlyRole(FEEDER_ROLE) {
         tokenToPrice[token] = price;
         emit PriceSubmitted(token, price);
     }
 
+    /// @inheritdoc IPriceOracle
     function getPrice(address token) external view returns (uint256, uint8) {
         return (tokenToPrice[token], DEFAULT_PRICE_DECIMALS);
     }
 
+    /// @inheritdoc IPriceOracle
     function decimals() external pure returns (uint8) {
         return DEFAULT_PRICE_DECIMALS;
     }

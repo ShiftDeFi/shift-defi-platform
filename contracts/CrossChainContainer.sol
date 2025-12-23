@@ -48,10 +48,12 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
 
     // ---- Messaging logic ----
 
+    /// @inheritdoc ICrossChainContainer
     function setMessageRouter(address newMessageRouter) external onlyRole(MESSENGER_MANAGER_ROLE) {
         _setMessageRouter(newMessageRouter);
     }
 
+    /// @inheritdoc ICrossChainContainer
     function setPeerContainer(address newPeerContainer) external onlyRole(MESSENGER_MANAGER_ROLE) {
         address previousPeerContainer = peerContainer;
         require(previousPeerContainer == address(0), PeerContainerAlreadySet());
@@ -93,6 +95,7 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
 
     // ---- Bridge logic ----
 
+    /// @inheritdoc ICrossChainContainer
     function setBridgeAdapter(address bridgeAdapter, bool isSupported) external onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
         require(bridgeAdapter != address(0), Errors.ZeroAddress());
         require(_isBridgeAdapterSupported[bridgeAdapter] != isSupported, SameBridgeAdapterStatus());
@@ -101,6 +104,7 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
         emit BridgeAdapterUpdated(bridgeAdapter, isSupported);
     }
 
+    /// @inheritdoc ICrossChainContainer
     function isBridgeAdapterSupported(address bridgeAdapter) external view returns (bool) {
         return _isBridgeAdapterSupported[bridgeAdapter];
     }

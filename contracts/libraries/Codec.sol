@@ -81,10 +81,12 @@ library Codec {
     /// @notice Error thrown when message type doesn't match expected type
     error WrongMessageType(uint8 messageType);
 
-    /// @notice Encodes a deposit request into a byte array
-    /// @param request The deposit request to encode
-    /// @return Encoded byte array containing message type, token count, addresses, and amounts
-    /// @dev Validates that numTokens < MAX_TOKENS, arrays have matching lengths, and numTokens > 0
+    /**
+     * @notice Encodes a deposit request into a byte array.
+     * @dev Reverts if token list is empty, exceeds MAX_TOKENS, or lengths mismatch.
+     * @param request The deposit request to encode.
+     * @return Encoded byte array containing message type, token count, addresses, and amounts.
+     */
     function encode(DepositRequest memory request) internal pure returns (bytes memory) {
         uint256 numTokens = request.tokens.length;
 
@@ -104,10 +106,12 @@ library Codec {
         return buffer;
     }
 
-    /// @notice Encodes a deposit response into a byte array
-    /// @param response The deposit response to encode
-    /// @return Encoded byte array containing message type, token count, addresses, amounts, and NAV values
-    /// @dev Validates that numTokens < MAX_TOKENS, arrays have matching lengths, and NAV values fit in uint128
+    /**
+     * @notice Encodes a deposit response into a byte array.
+     * @dev Reverts if token count exceeds MAX_TOKENS, lengths mismatch, or NAV values exceed uint128.
+     * @param response The deposit response to encode.
+     * @return Encoded byte array containing message type, token count, addresses, amounts, and NAV values.
+     */
     function encode(DepositResponse memory response) internal pure returns (bytes memory) {
         uint256 numTokens = response.tokens.length;
 
@@ -134,10 +138,12 @@ library Codec {
         return buffer;
     }
 
-    /// @notice Encodes a withdrawal request into a byte array
-    /// @param request The withdrawal request to encode
-    /// @return Encoded byte array containing message type and share amount
-    /// @dev Validates that share amount fits in uint128
+    /**
+     * @notice Encodes a withdrawal request into a byte array.
+     * @dev Reverts if share does not fit in uint128.
+     * @param request The withdrawal request to encode.
+     * @return Encoded byte array containing message type and share amount.
+     */
     function encode(WithdrawalRequest memory request) internal pure returns (bytes memory) {
         require(request.share <= type(uint128).max, Errors.IncorrectAmount());
         uint256 packageSize = UINT8_SIZE + UINT128_SIZE;
@@ -149,10 +155,12 @@ library Codec {
         return buffer;
     }
 
-    /// @notice Encodes a withdrawal response into a byte array
-    /// @param response The withdrawal response to encode
-    /// @return Encoded byte array containing message type, token count, addresses, and amounts
-    /// @dev Validates that numTokens < MAX_TOKENS and arrays have matching lengths
+    /**
+     * @notice Encodes a withdrawal response into a byte array.
+     * @dev Reverts if token list is empty, exceeds MAX_TOKENS, or lengths mismatch.
+     * @param response The withdrawal response to encode.
+     * @return Encoded byte array containing message type, token count, addresses, and amounts.
+     */
     function encode(WithdrawalResponse memory response) internal pure returns (bytes memory) {
         uint256 numTokens = response.tokens.length;
 
@@ -174,10 +182,12 @@ library Codec {
         return buffer;
     }
 
-    /// @notice Decodes a deposit request from a byte array
-    /// @param data The encoded byte array to decode
-    /// @return request Decoded deposit request structure
-    /// @dev Validates message type, data length, and token count
+    /**
+     * @notice Decodes a deposit request from a byte array.
+     * @dev Reverts on incorrect type, length, or token count.
+     * @param data The encoded byte array to decode.
+     * @return request Decoded deposit request structure.
+     */
     function decodeDepositRequest(bytes memory data) internal pure returns (DepositRequest memory) {
         uint8 messageType = fetchMessageType(data);
         uint8 numTokens = fetchNumTokens(data);
@@ -189,10 +199,12 @@ library Codec {
         return DepositRequest(fetchAddressArray(data, numTokens), fetchUint128Array(data, numTokens));
     }
 
-    /// @notice Decodes a deposit response from a byte array
-    /// @param data The encoded byte array to decode
-    /// @return response Decoded deposit response structure
-    /// @dev Validates message type, data length, and token count
+    /**
+     * @notice Decodes a deposit response from a byte array.
+     * @dev Reverts on incorrect type, length, or token count.
+     * @param data The encoded byte array to decode.
+     * @return response Decoded deposit response structure.
+     */
     function decodeDepositResponse(bytes memory data) internal pure returns (DepositResponse memory) {
         uint8 messageType = fetchMessageType(data);
         uint8 numTokens = fetchNumTokens(data);
@@ -213,10 +225,12 @@ library Codec {
             );
     }
 
-    /// @notice Decodes a withdrawal request from a byte array
-    /// @param data The encoded byte array to decode
-    /// @return request Decoded withdrawal request structure
-    /// @dev Validates message type and data length
+    /**
+     * @notice Decodes a withdrawal request from a byte array.
+     * @dev Reverts on incorrect type or invalid length.
+     * @param data The encoded byte array to decode.
+     * @return request Decoded withdrawal request structure.
+     */
     function decodeWithdrawalRequest(bytes memory data) internal pure returns (WithdrawalRequest memory) {
         uint8 messageType = fetchMessageType(data);
         require(messageType == WITHDRAWAL_REQUEST_TYPE, IncorrectMessageType(messageType));
@@ -225,10 +239,12 @@ library Codec {
         return WithdrawalRequest(fetchUint128(data, SHARE_POSITION));
     }
 
-    /// @notice Decodes a withdrawal response from a byte array
-    /// @param data The encoded byte array to decode
-    /// @return response Decoded withdrawal response structure
-    /// @dev Validates message type, data length, and token count
+    /**
+     * @notice Decodes a withdrawal response from a byte array.
+     * @dev Reverts on incorrect type, length, or token count.
+     * @param data The encoded byte array to decode.
+     * @return response Decoded withdrawal response structure.
+     */
     function decodeWithdrawalResponse(bytes memory data) internal pure returns (WithdrawalResponse memory) {
         uint8 messageType = fetchMessageType(data);
         uint8 numTokens = fetchNumTokens(data);
@@ -240,11 +256,13 @@ library Codec {
         return WithdrawalResponse(fetchAddressArray(data, numTokens), fetchUint128Array(data, numTokens));
     }
 
-    /// @notice Writes a uint8 value to a specific position in the buffer
-    /// @param buffer The byte array buffer to write to
-    /// @param value The uint8 value to write
-    /// @param variablePosition The position in the buffer to write the value
-    /// @dev Uses assembly for gas efficiency. Skips the length prefix (WORD_SIZE) when calculating offset.
+    /**
+     * @notice Writes a uint8 value to a specific position in the buffer.
+     * @dev Uses assembly for gas efficiency. Skips the length prefix (WORD_SIZE) when calculating offset.
+     * @param buffer The byte array buffer to write to.
+     * @param value The uint8 value to write.
+     * @param variablePosition The position in the buffer to write the value.
+     */
     function _writeUint8(bytes memory buffer, uint8 value, uint256 variablePosition) internal pure {
         assembly {
             // Calculate offset: buffer pointer + WORD_SIZE (skip length) + position
@@ -254,12 +272,14 @@ library Codec {
         }
     }
 
-    /// @notice Writes a uint128 value to a specific position range in the buffer
-    /// @param buffer The byte array buffer to write to
-    /// @param value The uint128 value to write
-    /// @param startPosition The starting position in the buffer
-    /// @param endPosition The ending position in the buffer (exclusive)
-    /// @dev Uses assembly for gas efficiency. Writes the 16 least significant bytes of the value.
+    /**
+     * @notice Writes a uint128 value to a specific position range in the buffer.
+     * @dev Writes the lower 16 bytes of `value` into [startPosition, endPosition). Requires range length 16 bytes.
+     * @param buffer The byte array buffer to write to.
+     * @param value The uint128 value to write.
+     * @param startPosition The starting position in the buffer.
+     * @param endPosition The ending position in the buffer (exclusive).
+     */
     function _writeUint128(
         bytes memory buffer,
         uint128 value,
@@ -284,11 +304,13 @@ library Codec {
         }
     }
 
-    /// @notice Writes an array of addresses to a specific position in the buffer
-    /// @param buffer The byte array buffer to write to
-    /// @param addresses The array of addresses to write
-    /// @param variablePosition The starting position in the buffer
-    /// @dev Uses assembly for gas efficiency. Each address is written as 20 bytes (skipping 12 leading zero bytes).
+    /**
+     * @notice Writes an array of addresses to a specific position in the buffer.
+     * @dev Writes each address as 20 bytes (no length prefix). Assumes data region is large enough.
+     * @param buffer The byte array buffer to write to.
+     * @param addresses The array of addresses to write.
+     * @param variablePosition The starting position in the buffer.
+     */
     function _writeAddressArray(
         bytes memory buffer,
         address[] memory addresses,
@@ -322,11 +344,13 @@ library Codec {
         }
     }
 
-    /// @notice Writes an array of uint256 values as uint128 to a specific position in the buffer
-    /// @param buffer The byte array buffer to write to
-    /// @param values The array of uint256 values to write (must fit in uint128)
-    /// @param variablePosition The starting position in the buffer
-    /// @dev Uses assembly for gas efficiency. Validates that each value fits in uint128 before writing.
+    /**
+     * @notice Writes an array of uint256 values as uint128 to a specific position in the buffer.
+     * @dev Reverts if any value exceeds uint128. Writes 16 bytes per value starting at variablePosition.
+     * @param buffer The byte array buffer to write to.
+     * @param values The array of uint256 values to write (must fit in uint128).
+     * @param variablePosition The starting position in the buffer.
+     */
     function _writeUint128Array(bytes memory buffer, uint256[] memory values, uint256 variablePosition) internal pure {
         uint256 numValues = values.length;
         for (uint256 i = 0; i < numValues; ++i) {
@@ -361,10 +385,12 @@ library Codec {
         }
     }
 
-    /// @notice Fetches the message type from encoded data
-    /// @param data The encoded byte array
-    /// @return messageType The message type (0-3)
-    /// @dev Validates that data has at least 1 byte before reading
+    /**
+     * @notice Fetches the message type from encoded data.
+     * @dev Reverts if data too short or message type is outside 0-3 range.
+     * @param data The encoded byte array.
+     * @return messageType The message type (0-3).
+     */
     function fetchMessageType(bytes memory data) internal pure returns (uint8) {
         require(data.length > MESSAGE_TYPE_POSITION, InvalidDataLength());
         uint8 messageType = uint8(data[0]);
@@ -372,10 +398,12 @@ library Codec {
         return messageType;
     }
 
-    /// @notice Fetches the number of tokens from encoded data
-    /// @param data The encoded byte array
-    /// @return numTokens The number of tokens (must be < MAX_TOKENS)
-    /// @dev Validates that data has at least 2 bytes and numTokens < MAX_TOKENS
+    /**
+     * @notice Fetches the number of tokens from encoded data.
+     * @dev Reverts if data too short or token count >= MAX_TOKENS.
+     * @param data The encoded byte array.
+     * @return numTokens The number of tokens (must be < MAX_TOKENS).
+     */
     function fetchNumTokens(bytes memory data) internal pure returns (uint8) {
         require(data.length > NUM_TOKENS_POSITION, InvalidDataLength());
         uint8 numTokens = uint8(data[1]);
@@ -383,11 +411,13 @@ library Codec {
         return numTokens;
     }
 
-    /// @notice Fetches an array of addresses from encoded data
-    /// @param data The encoded byte array
-    /// @param numTokens The number of addresses to read
-    /// @return addresses Array of decoded addresses
-    /// @dev Validates data length before reading. Uses assembly for gas efficiency.
+    /**
+     * @notice Fetches an array of addresses from encoded data.
+     * @dev Validates data length before reading. Uses assembly for gas efficiency.
+     * @param data The encoded byte array.
+     * @param numTokens The number of addresses to read.
+     * @return addresses Array of decoded addresses.
+     */
     function fetchAddressArray(bytes memory data, uint8 numTokens) internal pure returns (address[] memory) {
         uint256 expectedLength = ADDRESS_ARRAY_START_POSITION + numTokens * ADDRESS_SIZE;
         require(data.length >= expectedLength, InvalidDataLength());
@@ -420,12 +450,14 @@ library Codec {
         return addresses;
     }
 
-    /// @notice Fetches a uint128 value from encoded data at a specific position
-    /// @param data The encoded byte array
-    /// @param position The byte position to read from
-    /// @return value The decoded uint128 value (returned as uint256)
-    /// @dev Validates data length before reading. Uses assembly for gas efficiency.
-    ///      Reads 32 bytes and shifts to extract the 16 bytes of uint128.
+    /**
+     * @notice Fetches a uint128 value from encoded data at a specific position.
+     * @dev Validates data length before reading. Uses assembly for gas efficiency.
+     *      Reads 32 bytes and shifts to extract the 16 bytes of uint128.
+     * @param data The encoded byte array.
+     * @param position The byte position to read from.
+     * @return value The decoded uint128 value (returned as uint256).
+     */
     function fetchUint128(bytes memory data, uint256 position) internal pure returns (uint256) {
         // Validate that we have enough data to read UINT128_SIZE bytes starting at position
         require(data.length >= position + UINT128_SIZE, InvalidDataLength());
@@ -442,12 +474,14 @@ library Codec {
         return word;
     }
 
-    /// @notice Fetches an array of uint128 values from encoded data
-    /// @param data The encoded byte array
-    /// @param numTokens The number of uint128 values to read
-    /// @return amounts Array of decoded uint128 values (returned as uint256[])
-    /// @dev Validates data length before reading. Uses assembly for gas efficiency.
-    ///      Assumes addresses come before amounts in the data layout.
+    /**
+     * @notice Fetches an array of uint128 values from encoded data.
+     * @dev Validates data length before reading. Uses assembly for gas efficiency.
+     *      Assumes addresses come before amounts in the data layout.
+     * @param data The encoded byte array.
+     * @param numTokens The number of uint128 values to read.
+     * @return amounts Array of decoded uint128 values (returned as uint256[]).
+     */
     function fetchUint128Array(bytes memory data, uint8 numTokens) internal pure returns (uint256[] memory) {
         uint256 expectedLength = ADDRESS_ARRAY_START_POSITION + numTokens * (ADDRESS_SIZE + UINT128_SIZE);
         require(data.length >= expectedLength, InvalidDataLength());

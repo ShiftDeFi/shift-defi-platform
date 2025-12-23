@@ -41,19 +41,30 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         _sendMessagesCache.initialize(keccak256("SEND_CACHE"), maxCacheSize);
     }
 
-    function calculatePath(address sender, address receiver, uint256 chainId) public pure returns (bytes32) {
+    /// @inheritdoc IMessageRouter
+    function calculatePath(address sender, address receiver, uint256 chainId) public pure override returns (bytes32) {
         return keccak256(abi.encode(sender, receiver, chainId));
     }
 
-    function encodeMessage(uint256 nonce, bytes32 path, bytes memory message) public pure returns (bytes memory) {
+    /// @inheritdoc IMessageRouter
+    function encodeMessage(
+        uint256 nonce,
+        bytes32 path,
+        bytes memory message
+    ) public pure override returns (bytes memory) {
         return abi.encodePacked(nonce, path, message);
     }
 
-    function calculateCacheKey(uint256 chainTo, bytes memory rawMessageWithPathAndNonce) public pure returns (bytes32) {
+    /// @inheritdoc IMessageRouter
+    function calculateCacheKey(
+        uint256 chainTo,
+        bytes memory rawMessageWithPathAndNonce
+    ) public pure override returns (bytes32) {
         return keccak256(abi.encode(chainTo, rawMessageWithPathAndNonce));
     }
 
-    function decodeMessage(bytes memory message) public view returns (uint256, bytes32, bytes memory) {
+    /// @inheritdoc IMessageRouter
+    function decodeMessage(bytes memory message) public view override returns (uint256, bytes32, bytes memory) {
         require(message.length >= 64, MessageTooShort(message.length));
         // Extract nonce (uint256 = 32 bytes)
         uint256 nonce;
@@ -84,7 +95,12 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         return (nonce, pathOnRemoteChain, messageData);
     }
 
-    function whitelistPath(address sender, address receiver, uint256 chainId) external onlyRole(GOVERNANCE_ROLE) {
+    /// @inheritdoc IMessageRouter
+    function whitelistPath(
+        address sender,
+        address receiver,
+        uint256 chainId
+    ) external override onlyRole(GOVERNANCE_ROLE) {
         require(sender != address(0), Errors.ZeroAddress());
         require(receiver != address(0), Errors.ZeroAddress());
         require(chainId > 0, Errors.ZeroAmount());
@@ -102,7 +118,12 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         emit PathWhitelisted(sender, receiver, chainId, path);
     }
 
-    function blacklistPath(address sender, address receiver, uint256 chainId) external onlyRole(GOVERNANCE_ROLE) {
+    /// @inheritdoc IMessageRouter
+    function blacklistPath(
+        address sender,
+        address receiver,
+        uint256 chainId
+    ) external override onlyRole(GOVERNANCE_ROLE) {
         bytes32 path = calculatePath(sender, receiver, chainId);
         PathData memory pathData = _paths[path];
         require(pathData.isWhitelisted, InvalidPath(path));
@@ -110,18 +131,21 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         emit PathBlacklisted(pathData.sender, pathData.receiver, pathData.chainId, path);
     }
 
-    function whitelistMessageAdapter(address adapter) external onlyRole(GOVERNANCE_ROLE) {
+    /// @inheritdoc IMessageRouter
+    function whitelistMessageAdapter(address adapter) external override onlyRole(GOVERNANCE_ROLE) {
         require(!_whitelistedMessageAdapters[adapter], Errors.AlreadyWhitelisted());
         _whitelistedMessageAdapters[adapter] = true;
         emit AdapterWhitelisted(adapter);
     }
 
-    function blacklistMessageAdapter(address adapter) external onlyRole(GOVERNANCE_ROLE) {
+    /// @inheritdoc IMessageRouter
+    function blacklistMessageAdapter(address adapter) external override onlyRole(GOVERNANCE_ROLE) {
         require(_whitelistedMessageAdapters[adapter], Errors.AlreadyBlacklisted());
         _whitelistedMessageAdapters[adapter] = false;
         emit AdapterBlacklisted(adapter);
     }
 
+    /// @inheritdoc IMessageRouter
     function isMessageCached(
         uint256 chainTo,
         uint256 nonce,
@@ -133,6 +157,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         return _sendMessagesCache.exists(cacheKey);
     }
 
+    /// @inheritdoc IMessageRouter
     function send(address receiver, SendParams calldata sendParams) external payable override nonReentrant {
         require(_whitelistedMessageAdapters[sendParams.adapter], UnsupportedAdapter(sendParams.adapter));
 
@@ -170,6 +195,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         );
     }
 
+    /// @inheritdoc IMessageRouter
     function receiveMessage(bytes memory rawMessageWithPathAndNonce) external override nonReentrant {
         (uint256 nonce, bytes32 path, bytes memory rawMessage) = decodeMessage(rawMessageWithPathAndNonce);
         PathData memory pathData = _paths[path];
@@ -186,6 +212,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         emit MessageReceived(nonce, pathData.chainId, pathData.sender, pathData.receiver, msg.sender, path);
     }
 
+    /// @inheritdoc IMessageRouter
     function retryCachedMessage(
         uint256 nonce,
         bytes32 path,
@@ -207,6 +234,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         emit MessageRetried(nonce, sendParams.chainTo, path, sendParams.adapter);
     }
 
+    /// @inheritdoc IMessageRouter
     function removeMessageFromCache(
         uint256 nonce,
         uint256 chainTo,

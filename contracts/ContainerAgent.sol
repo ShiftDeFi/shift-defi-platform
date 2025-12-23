@@ -7,6 +7,10 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {CrossChainContainer} from "./CrossChainContainer.sol";
 import {Errors} from "./libraries/helpers/Errors.sol";
 import {Codec} from "./libraries/Codec.sol";
+
+import {IContainer} from "./interfaces/IContainer.sol";
+import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
+import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
 import {IContainerAgent} from "./interfaces/IContainerAgent.sol";
 import {StrategyContainer} from "./StrategyContainer.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
@@ -35,6 +39,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
 
     // ---- Strategy management logic ----
 
+    /// @inheritdoc IStrategyContainer
     function addStrategy(
         address strategy,
         address[] calldata inputTokens,
@@ -44,6 +49,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         _addStrategy(strategy, inputTokens, outputTokens);
     }
 
+    /// @inheritdoc IStrategyContainer
     function removeStrategy(
         address strategy
     ) external nonReentrant notResolvingEmergency onlyRole(STRATEGY_MANAGER_ROLE) {
@@ -53,6 +59,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
 
     // ---- Container Agent logic ----
 
+    /// @inheritdoc IContainerAgent
     function enterStrategy(
         address strategy,
         uint256[] calldata inputAmounts,
@@ -68,6 +75,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         }
     }
 
+    /// @inheritdoc IContainerAgent
     function enterStrategyMultiple(
         address[] calldata strategies,
         uint256[][] calldata inputAmounts,
@@ -89,6 +97,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         }
     }
 
+    /// @inheritdoc IContainerAgent
     function exitStrategy(
         address strategy,
         uint256 minNavDelta
@@ -105,6 +114,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         }
     }
 
+    /// @inheritdoc IContainerAgent
     function exitStrategyMultiple(
         address[] calldata strategies,
         uint256[] calldata minNavDeltas
@@ -127,6 +137,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         }
     }
 
+    /// @inheritdoc IContainerAgent
     function reportDeposit(
         MessageInstruction calldata messageInstruction,
         address[] calldata bridgeAdapters,
@@ -179,6 +190,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         emit DepositReported(vars.nav0, vars.nav1);
     }
 
+    /// @inheritdoc IContainerAgent
     function reportWithdrawal(
         MessageInstruction calldata messageInstruction,
         address[] calldata bridgeAdapters,
@@ -222,6 +234,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
 
     // ---- Messaging logic ----
 
+    /// @inheritdoc ICrossChainContainer
     function receiveMessage(
         bytes memory rawMessage
     ) external notResolvingEmergency notInReshufflingMode onlyMessageRouter {
@@ -253,6 +266,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
 
     // ---- Bridge logic ----
 
+    /// @inheritdoc IContainerAgent
     function claim(
         address bridgeAdapter,
         address token
@@ -265,6 +279,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         }
     }
 
+    /// @inheritdoc IContainerAgent
     function claimInReshufflingMode(
         address bridgeAdapter,
         address token
@@ -274,6 +289,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         IBridgeAdapter(bridgeAdapter).claim(token);
     }
 
+    /// @inheritdoc IContainerAgent
     function claimMultiple(
         address[] calldata bridgeAdapters,
         address[] calldata tokens
@@ -292,6 +308,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         }
     }
 
+    /// @inheritdoc IContainerAgent
     function withdrawToReshufflingGateway(
         address[] memory bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata instructions
@@ -312,6 +329,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         }
     }
 
+    /// @inheritdoc IContainer
     function containerType() external pure override returns (ContainerType) {
         return ContainerType.Agent;
     }

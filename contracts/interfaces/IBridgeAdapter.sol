@@ -26,6 +26,12 @@ interface IBridgeAdapter {
     error NotPeer(address peer, address expectedPeer);
 
     /*
+     * @dev Sets slippage cap percentage (basis points).
+     * @param slippageCapPct Max allowed slippage delta percentage.
+     */
+    function setSlippageCapPct(uint256 slippageCapPct) external;
+
+    /*
      * @dev Bridges the token from the source chain to the destination chain.
      * @param bridgeInstruction The instruction for the bridge.
      * @param receiver The address to receive the bridged token on the destination chain.
@@ -74,6 +80,25 @@ interface IBridgeAdapter {
      * @param path The path to bridge the token.
      */
     function setBridgePath(address token, uint256 chain, address path) external;
+
+    /*
+     * @dev Sets the peer bridge adapter for a chain.
+     * @param chainId Destination chain id.
+     * @param peer Peer bridge adapter address.
+     */
+    function setPeer(uint256 chainId, address peer) external;
+
+    /*
+     * @dev Whitelists a bridger address.
+     * @param bridger Bridger address to whitelist.
+     */
+    function whitelistBridger(address bridger) external;
+
+    /*
+     * @dev Blacklists a bridger address.
+     * @param bridger Bridger address to blacklist.
+     */
+    function blacklistBridger(address bridger) external;
 
     /*
      * @dev Retries the bridge for a given instruction and receiver.

@@ -65,6 +65,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     // ---- Configuration ----
 
+    /// @inheritdoc IStrategyContainer
     function setBridgeCollector(address newBridgeCollector) external onlyRole(STRATEGY_MANAGER_ROLE) {
         require(newBridgeCollector != address(0), Errors.ZeroAddress());
         address oldBridgeCollector = _bridgeCollector;
@@ -72,14 +73,17 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         emit BridgeCollectorUpdated(oldBridgeCollector, newBridgeCollector);
     }
 
+    /// @inheritdoc IStrategyContainer
     function setTreasury(address newTreasury) external onlyRole(STRATEGY_MANAGER_ROLE) {
         _setTreasury(newTreasury);
     }
 
+    /// @inheritdoc IStrategyContainer
     function setPriceOracle(address newPriceOracle) external onlyRole(STRATEGY_MANAGER_ROLE) {
         _setPriceOracle(newPriceOracle);
     }
 
+    /// @inheritdoc IStrategyContainer
     function setFeePct(uint256 newFeePct) external onlyRole(STRATEGY_MANAGER_ROLE) {
         _setFeePct(newFeePct);
     }
@@ -107,6 +111,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     // ---- Reshuffling mode management logic ----
 
+    /// @inheritdoc IStrategyContainer
     function enableReshufflingMode()
         external
         notResolvingEmergency
@@ -118,6 +123,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         emit ReshufflingModeUpdated(true);
     }
 
+    /// @inheritdoc IStrategyContainer
     function disableReshufflingMode()
         external
         onlyInReshufflingMode
@@ -131,14 +137,17 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     // ---- Strategies management logic ----
 
+    /// @inheritdoc IStrategyContainer
     function getStrategies() external view returns (address[] memory) {
         return _strategies.values();
     }
 
+    /// @inheritdoc IStrategyContainer
     function isStrategy(address strategy) external view returns (bool) {
         return _isStrategy(strategy);
     }
 
+    /// @inheritdoc IStrategyContainer
     function setStrategyInputTokens(
         address strategy,
         address[] calldata inputTokens
@@ -147,6 +156,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         _setStrategyInputTokens(strategy, inputTokens);
     }
 
+    /// @inheritdoc IStrategyContainer
     function setStrategyOutputTokens(
         address strategy,
         address[] calldata outputTokens
@@ -210,6 +220,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         return _strategies.contains(strategy);
     }
 
+    /// @inheritdoc IStrategyContainer
     function getTotalNavs() public view returns (uint256, uint256) {
         uint256 totalNav0 = 0;
         uint256 totalNav1 = 0;
@@ -273,6 +284,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         emit StrategyEntered(strategy, vars.nav0, vars.nav1, vars.hasRemainder);
     }
 
+    /// @inheritdoc IStrategyContainer
     function enterInReshufflingMode(
         address strategy,
         uint256[] calldata inputAmounts,
@@ -310,6 +322,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     // ---- Strategy exit logic ----
 
+    /// @inheritdoc IStrategyContainer
     function exitInReshufflingMode(
         address strategy,
         uint256 share,
@@ -366,6 +379,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     // ---- Emergency resolution logic ----
 
+    /// @inheritdoc IStrategyContainer
     function startEmergencyResolution() external {
         require(_isStrategy(msg.sender), StrategyNotFound());
 
@@ -379,10 +393,12 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         }
     }
 
+    /// @inheritdoc IStrategyContainer
     function isResolvingEmergency() external view returns (bool) {
         return _isResolvingEmergency;
     }
 
+    /// @inheritdoc IStrategyContainer
     function completeEmergencyResolution() external onlyRole(EMERGENCY_MANAGER_ROLE) {
         require(_isResolvingEmergency, NotResolvingEmergency());
         _isResolvingEmergency = false;
@@ -390,6 +406,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         emit EmergencyResolutionCompleted();
     }
 
+    /// @inheritdoc IStrategyContainer
     function resolveStrategyNav(uint256 resolvedNav) external {
         require(_isStrategy(msg.sender), StrategyNotFound());
         require(isStrategyNavUnresolved(msg.sender), StrategyNavAlreadyResolved(msg.sender));
@@ -401,6 +418,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         emit StrategyNavResolved(msg.sender, resolvedNav);
     }
 
+    /// @inheritdoc IStrategyContainer
     function isStrategyNavUnresolved(address strategy) public view returns (bool) {
         (, uint256 strategyIndex) = _strategies.indexOf(strategy);
         uint256 mask = 1 << strategyIndex;

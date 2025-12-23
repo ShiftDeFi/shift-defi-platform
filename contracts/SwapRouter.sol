@@ -29,24 +29,32 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
         _disableInitializers();
     }
 
+    /**
+     * @notice Initializes the SwapRouter contract.
+     * @dev Sets up access control and grants DEFAULT_ADMIN_ROLE to the default admin.
+     * @param defaultAdmin The address to receive DEFAULT_ADMIN_ROLE.
+     */
     function initialize(address defaultAdmin) external initializer {
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         __AccessControl_init();
         __ReentrancyGuard_init();
     }
 
+    /// @inheritdoc ISwapRouter
     function whitelistSwapAdapter(address adapter) external onlyWhitelistManager {
         require(!whitelistedAdapters[adapter], Errors.AlreadyWhitelisted());
         whitelistedAdapters[adapter] = true;
         emit SwapAdapterWhitelisted(adapter);
     }
 
+    /// @inheritdoc ISwapRouter
     function blacklistSwapAdapter(address adapter) external onlyWhitelistManager {
         require(whitelistedAdapters[adapter], Errors.AlreadyBlacklisted());
         whitelistedAdapters[adapter] = false;
         emit SwapAdapterBlacklisted(adapter);
     }
 
+    /// @inheritdoc ISwapRouter
     function setPredefinedSwapParameters(
         address tokenIn,
         address tokenOut,
@@ -61,6 +69,7 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
         emit PredefinedSwapParametersSet(tokenIn, tokenOut, adapter, payload);
     }
 
+    /// @inheritdoc ISwapRouter
     function tryPredefinedSwap(
         address tokenIn,
         address tokenOut,
@@ -87,6 +96,7 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
         );
     }
 
+    /// @inheritdoc ISwapRouter
     function swap(SwapInstruction memory instruction) public payable nonReentrant returns (uint256) {
         require(whitelistedAdapters[instruction.adapter], AdapterNotWhitelisted(instruction.adapter));
 

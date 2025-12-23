@@ -18,6 +18,7 @@ contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracle
         _grantRole(ORACLE_MANAGER_ROLE, oracleManager);
     }
 
+    /// @inheritdoc IChainlinkOracleWrapper
     function setChainlinkFeed(address token, address feed) external override onlyRole(ORACLE_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(feed != address(0), Errors.ZeroAddress());
@@ -27,6 +28,7 @@ contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracle
         emit ChainlinkFeedSet(token, feed);
     }
 
+    /// @inheritdoc IPriceOracle
     function getPrice(address token) external view override returns (uint256, uint8) {
         require(token != address(0), Errors.ZeroAddress());
         address chainlinkFeed = tokenToChainlinkFeed[token];

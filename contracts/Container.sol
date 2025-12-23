@@ -51,10 +51,12 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
 
     // ---- Token management logic ----
 
+    /// @inheritdoc IContainer
     function isTokenWhitelisted(address token) external view override returns (bool) {
         return _isTokenWhitelisted(token);
     }
 
+    /// @inheritdoc IContainer
     function whitelistToken(address token) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(_whitelistedTokens.add(token), AlreadyWhitelistedToken());
@@ -62,6 +64,7 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         emit TokenWhitelistUpdated(token, true);
     }
 
+    /// @inheritdoc IContainer
     function blacklistToken(address token) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(_whitelistedTokens.remove(token), NotWhitelistedToken(token));
@@ -70,6 +73,7 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         emit TokenWhitelistUpdated(token, false);
     }
 
+    /// @inheritdoc IContainer
     function setWhitelistedTokenDustThreshold(address token, uint256 threshold) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(threshold > 0, Errors.ZeroAmount());
@@ -107,6 +111,7 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         return _validateWhitelistedTokensBeforeReport(true, true) && IERC20(notion).balanceOf(address(this)) > 0;
     }
 
+    /// @inheritdoc IContainer
     function setSwapRouter(address newSwapRouter) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(newSwapRouter != address(0), Errors.ZeroAddress());
         _setSwapRouter(newSwapRouter);
@@ -122,6 +127,7 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         emit SwapRouterUpdated(previousSwapRouter, newSwapRouter);
     }
 
+    /// @inheritdoc IContainer
     function prepareLiquidity(ISwapRouter.SwapInstruction[] calldata instructions) external onlyRole(OPERATOR_ROLE) {
         require(instructions.length > 0, Errors.ZeroArrayLength());
         _prepareLiquidity(instructions);
@@ -134,10 +140,6 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         }
     }
 
-    /**
-     * @dev Performs a single swap using the swap router.
-     * @param instruction The swap instruction containing tokenIn, tokenOut, amountIn, etc.
-     */
     function _swap(ISwapRouter.SwapInstruction calldata instruction) internal {
         require(_isTokenWhitelisted(instruction.tokenIn), NotWhitelistedToken(instruction.tokenIn));
         require(_isTokenWhitelisted(instruction.tokenOut), NotWhitelistedToken(instruction.tokenOut));

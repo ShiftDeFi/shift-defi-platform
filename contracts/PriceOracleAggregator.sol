@@ -31,6 +31,7 @@ contract PriceOracleAggregator is Initializable, AccessControlUpgradeable, IPric
         _grantRole(ORACLE_MANAGER_ROLE, oracleManager);
     }
 
+    /// @inheritdoc IPriceOracleAggregator
     function setPriceOracle(address token, address priceOracle) external override onlyRole(ORACLE_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(priceOracle != address(0), Errors.ZeroAddress());
@@ -40,6 +41,7 @@ contract PriceOracleAggregator is Initializable, AccessControlUpgradeable, IPric
         emit PriceOracleSet(token, priceOracle);
     }
 
+    /// @inheritdoc IPriceOracleAggregator
     function fetchTokenPrice(address token) external view override returns (uint256) {
         require(token != address(0), Errors.ZeroAddress());
         address priceOracle = priceOracles[token];
@@ -50,7 +52,12 @@ contract PriceOracleAggregator is Initializable, AccessControlUpgradeable, IPric
         return _normalizePrice(price, decimals);
     }
 
-    function getRelativeValueUnified(address token0, address token1, uint256 value0) external view returns (uint256) {
+    /// @inheritdoc IPriceOracleAggregator
+    function getRelativeValueUnified(
+        address token0,
+        address token1,
+        uint256 value0
+    ) external view override returns (uint256) {
         require(token0 != address(0), Errors.ZeroAddress());
         require(token1 != address(0), Errors.ZeroAddress());
         if (value0 == 0) return 0;

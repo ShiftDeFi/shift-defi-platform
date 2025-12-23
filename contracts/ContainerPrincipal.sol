@@ -5,6 +5,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import {CrossChainContainer} from "./CrossChainContainer.sol";
+import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
 import {IContainerPrincipal} from "./interfaces/IContainerPrincipal.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
@@ -40,6 +41,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
 
     // ---- Container Principal logic ----
 
+    /// @inheritdoc IContainerPrincipal
     function registerDepositRequest(uint256 amount) external nonReentrant onlyVault {
         require(status == ContainerPrincipalStatus.Idle, Errors.IncorrectContainerStatus());
         require(amount > 0, Errors.ZeroAmount());
@@ -49,6 +51,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         emit DepositRequestRegistered(amount);
     }
 
+    /// @inheritdoc IContainerPrincipal
     function registerWithdrawRequest(uint256 amount) external onlyVault {
         require(status == ContainerPrincipalStatus.Idle, Errors.IncorrectContainerStatus());
         require(amount > 0, Errors.ZeroAmount());
@@ -58,6 +61,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         emit WithdrawalRequestRegistered(amount);
     }
 
+    /// @inheritdoc IContainerPrincipal
     function sendDepositRequest(
         MessageInstruction memory messageInstruction,
         address[] calldata bridgeAdapters,
@@ -103,6 +107,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         emit DepositRequestSent();
     }
 
+    /// @inheritdoc IContainerPrincipal
     function sendWithdrawRequest(
         MessageInstruction memory messageInstruction
     ) external payable nonReentrant onlyRole(OPERATOR_ROLE) {
@@ -130,6 +135,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         emit WithdrawalRequestSent(registeredWithdrawShareAmountCached);
     }
 
+    /// @inheritdoc IContainerPrincipal
     function reportDeposit() external payable nonReentrant onlyRole(OPERATOR_ROLE) {
         require(
             status == ContainerPrincipalStatus.BridgeClaimed ||
@@ -152,6 +158,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         emit DepositReported(vars.nav0, vars.nav1, vars.remainder);
     }
 
+    /// @inheritdoc IContainerPrincipal
     function reportWithdrawal() external payable nonReentrant onlyRole(OPERATOR_ROLE) {
         require(status == ContainerPrincipalStatus.BridgeClaimed, Errors.IncorrectContainerStatus());
         require(registeredWithdrawShareAmount > 0, Errors.ZeroAmount());
@@ -168,6 +175,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
 
     // ---- Messaging logic ----
 
+    /// @inheritdoc ICrossChainContainer
     function receiveMessage(bytes memory rawMessage) external nonReentrant onlyMessageRouter {
         require(
             status == ContainerPrincipalStatus.DepositRequestSent ||
@@ -203,6 +211,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
 
     // ---- Bridge logic ----
 
+    /// @inheritdoc IContainerPrincipal
     function claim(address bridgeAdapter, address token) external nonReentrant onlyRole(OPERATOR_ROLE) {
         require(
             status == ContainerPrincipalStatus.DepositResponseReceived ||
@@ -217,6 +226,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         }
     }
 
+    /// @inheritdoc IContainerPrincipal
     function claimMultiple(
         address[] calldata bridgeAdapters,
         address[] calldata tokens

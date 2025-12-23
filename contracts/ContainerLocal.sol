@@ -6,6 +6,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {Container} from "./Container.sol";
 import {StrategyContainer} from "./StrategyContainer.sol";
+import {IContainer} from "./interfaces/IContainer.sol";
+import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
 import {IContainerLocal} from "./interfaces/IContainerLocal.sol";
 import {Errors} from "./libraries/helpers/Errors.sol";
 import {IVault} from "./interfaces/IVault.sol";
@@ -27,12 +29,14 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
 
     // ---- Container logic ----
 
+    /// @inheritdoc IContainer
     function containerType() external pure override returns (ContainerType) {
         return ContainerType.Local;
     }
 
     // ---- Vault interaction ----
 
+    /// @inheritdoc IContainerLocal
     function registerDepositRequest(
         uint256 amount
     ) external nonReentrant notResolvingEmergency notInReshufflingMode onlyVault {
@@ -42,6 +46,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         IERC20(notion).safeTransferFrom(vault, address(this), amount);
     }
 
+    /// @inheritdoc IContainerLocal
     function registerWithdrawRequest(
         uint256 amount
     ) external nonReentrant notResolvingEmergency notInReshufflingMode onlyVault {
@@ -51,6 +56,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         registeredWithdrawShareAmount = amount;
     }
 
+    /// @inheritdoc IContainerLocal
     function reportDeposit() external nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.AllStrategiesEntered, Errors.IncorrectContainerStatus());
 
@@ -67,6 +73,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         );
     }
 
+    /// @inheritdoc IContainerLocal
     function reportWithdraw() external nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.AllStrategiesExited, Errors.IncorrectContainerStatus());
 
@@ -79,6 +86,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
 
     // ---- Strategy management logic ----
 
+    /// @inheritdoc IStrategyContainer
     function addStrategy(
         address strategy,
         address[] calldata inputTokens,
@@ -88,6 +96,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         _addStrategy(strategy, inputTokens, outputTokens);
     }
 
+    /// @inheritdoc IStrategyContainer
     function removeStrategy(
         address strategy
     ) external nonReentrant notResolvingEmergency onlyRole(STRATEGY_MANAGER_ROLE) {
@@ -97,6 +106,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
 
     // ---- Enter strategy logic ----
 
+    /// @inheritdoc IContainerLocal
     function enterStrategy(
         address strategy,
         uint256[] calldata inputAmounts,
@@ -111,6 +121,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         }
     }
 
+    /// @inheritdoc IContainerLocal
     function enterStrategyMultiple(
         address[] calldata strategies,
         uint256[][] calldata inputAmounts,
@@ -133,6 +144,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
 
     // ---- Exit strategy logic ----
 
+    /// @inheritdoc IContainerLocal
     function exitStrategy(
         address strategy,
         uint256 maxNavDelta
@@ -148,6 +160,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         }
     }
 
+    /// @inheritdoc IContainerLocal
     function exitStrategyMultiple(
         address[] calldata strategies,
         uint256[] calldata maxNavDeltas
@@ -192,6 +205,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         revert Errors.IncorrectContainerStatus();
     }
 
+    /// @inheritdoc IContainerLocal
     function withdrawToReshufflingGateway(
         address[] memory tokens,
         uint256[] memory amounts

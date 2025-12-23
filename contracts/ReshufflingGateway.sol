@@ -52,6 +52,14 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         _disableInitializers();
     }
 
+    /**
+     * @notice Initializes the ReshufflingGateway contract.
+     * @dev Sets up the vault, notion token, swap router, and grants DEFAULT_ADMIN_ROLE to the default admin.
+     * @param _vault The address of the vault contract.
+     * @param _notion The address of the notion token.
+     * @param _swapRouter The address of the swap router contract.
+     * @param _defaultAdmin The address to receive DEFAULT_ADMIN_ROLE.
+     */
     function initialize(
         address _vault,
         address _notion,
@@ -67,26 +75,31 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
     }
 
+    /// @inheritdoc IReshufflingGateway
     function whitelistToken(address token) external onlyRole(WHITELIST_MANAGER_ROLE) {
         _whitelistedTokens.add(token);
         emit TokenWhitelisted(token);
     }
 
+    /// @inheritdoc IReshufflingGateway
     function whitelistBridgeAdapter(address bridgeAdapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
         _whitelistedBridgeAdapters.add(bridgeAdapter);
         emit BridgeAdapterWhitelisted(bridgeAdapter);
     }
 
+    /// @inheritdoc IReshufflingGateway
     function blacklistToken(address token) external onlyRole(WHITELIST_MANAGER_ROLE) {
         _whitelistedTokens.remove(token);
         emit TokenBlacklisted(token);
     }
 
+    /// @inheritdoc IReshufflingGateway
     function blacklistBridgeAdapter(address bridgeAdapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
         _whitelistedBridgeAdapters.remove(bridgeAdapter);
         emit BridgeAdapterBlacklisted(bridgeAdapter);
     }
 
+    /// @inheritdoc IReshufflingGateway
     function claimBridge(address bridgeAdapter, address token) external nonReentrant returns (uint256) {
         require(_whitelistedBridgeAdapters.contains(bridgeAdapter), NotWhitelistedBridgeAdapter(bridgeAdapter));
         require(_whitelistedTokens.contains(token), NotWhitelistedToken(token));
@@ -94,6 +107,7 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         return IBridgeAdapter(bridgeAdapter).claim(token);
     }
 
+    /// @inheritdoc IReshufflingGateway
     function prepareLiquidity(
         ISwapRouter.SwapInstruction[] calldata swapInstructions
     ) external nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
@@ -114,6 +128,7 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         }
     }
 
+    /// @inheritdoc IReshufflingGateway
     function sendToCrossChainContainer(
         address container,
         address[] memory bridgeAdapters,
@@ -161,6 +176,7 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         }
     }
 
+    /// @inheritdoc IReshufflingGateway
     function sendToLocalContainer(
         address container,
         address[] memory tokens,
@@ -188,6 +204,7 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         }
     }
 
+    /// @inheritdoc IReshufflingGateway
     function withdraw(address account) external onlyRepairingMode nonReentrant onlyVault {
         require(account != address(0), Errors.ZeroAddress());
         uint256 shares = IERC20(vault).balanceOf(account);

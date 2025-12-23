@@ -81,34 +81,41 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
     /* Views */
 
+    /// @inheritdoc IStrategyTemplate
     function currentStateId() public view returns (bytes32) {
         return _currentStateId;
     }
 
+    /// @inheritdoc IStrategyTemplate
     function currentStateNav() public view returns (uint256) {
         return stateNav(_currentStateId);
     }
 
+    /// @inheritdoc IStrategyTemplate
     function getInputTokens() external view override returns (address[] memory) {
         return _inputTokens.values();
     }
 
+    /// @inheritdoc IStrategyTemplate
     function getOutputTokens() external view override returns (address[] memory) {
         return _outputTokens.values();
     }
 
+    /// @inheritdoc IStrategyTemplate
     function isNavResolutionMode() public view returns (bool) {
         return _navResolutionMode;
     }
 
+    /// @inheritdoc IStrategyTemplate
     function stateNav(bytes32 stateId) public view virtual returns (uint256);
 
     /* Configuration functions */
 
-    /*
-    Post initialization hook
-    Set strategy container and notion token
-    */
+    /**
+     * @notice Post-initialization hook to set strategy container and notion token.
+     * @dev Callable only during initialization. Reverts on zero addresses.
+     * @param strategyContainer Address of the strategy container.
+     */
     function __StrategyTemplate_init(address strategyContainer) internal onlyInitializing {
         require(strategyContainer != address(0), Errors.ZeroAddress());
         address notion = IContainer(strategyContainer).notion();
@@ -120,6 +127,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         __ReentrancyGuard_init();
     }
 
+    /// @inheritdoc IStrategyTemplate
     function setInputTokens(address[] calldata inputTokens) external override onlyStrategyContainer {
         require(inputTokens.length > 0, Errors.ZeroArrayLength());
         for (uint256 i = 0; i < inputTokens.length; ) {
@@ -132,6 +140,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         }
     }
 
+    /// @inheritdoc IStrategyTemplate
     function setOutputTokens(address[] calldata outputTokens) external override onlyStrategyContainer {
         require(outputTokens.length > 0, Errors.ZeroArrayLength());
         for (uint256 i = 0; i < outputTokens.length; ) {
@@ -160,6 +169,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         require(_stateIds.add(stateId), StateAlreadyExists(stateId));
     }
 
+    /// @inheritdoc IStrategyTemplate
     function enter(
         uint256[] calldata amounts,
         uint256 minNavDelta
@@ -284,12 +294,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         }
     }
 
-    /*
-    Allow to:
-    1. Exit from target state
-    2. Exit from intermediate state
-    3. Withdraw tokens proportionally to share
-    */
+    /// @inheritdoc IStrategyTemplate
     function exit(
         uint256 share,
         uint256 maxNavDelta
@@ -329,6 +334,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         return (vars.outputTokens, vars.outputAmounts);
     }
 
+    /// @inheritdoc IStrategyTemplate
     function harvest() external payable onlyStrategyContainerOrHarvestManager nonReentrant returns (uint256) {
         require(!_navResolutionMode, NavResolutionModeActivated());
         HarvestLocalVars memory vars;
@@ -349,6 +355,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         return vars.currentStateNav;
     }
 
+    /// @inheritdoc IStrategyTemplate
     function emergencyExit(
         bytes32 toStateId,
         uint256 share
@@ -383,6 +390,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         }
     }
 
+    /// @inheritdoc IStrategyTemplate
     function emergencyExitMultiple(
         bytes32[] calldata toStateIds,
         uint256[] calldata shares
@@ -396,6 +404,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         }
     }
 
+    /// @inheritdoc IStrategyTemplate
     function tryEmergencyExit(bytes32 toStateId, uint256 share) external {
         require(msg.sender == address(this), Errors.Unauthorized());
         _emergencyExit(toStateId, share);
@@ -403,6 +412,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
     /* Helper functions */
 
+    /// @inheritdoc IStrategyTemplate
     function getTokenAmountInNotion(address token, uint256 amount) public view returns (uint256) {
         address priceOracleCached = IStrategyContainer(_strategyContainer).priceOracle();
         require(priceOracleCached != address(0), Errors.ZeroAddress());

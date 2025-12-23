@@ -2,6 +2,8 @@
 pragma solidity ^0.8.28;
 
 interface IStrategyTemplate {
+    // ---- Structs ----
+
     struct EnterLocalVars {
         bytes32 currentStateId;
         bytes32 enterStateId;
@@ -74,6 +76,8 @@ interface IStrategyTemplate {
         bool isExitSuccess;
     }
 
+    // ---- Events ----
+
     event Entered(uint256 navBefore, uint256 navAfter, bool hasRemainder);
     event Exited(uint256 navBefore, uint256 navAfter, bytes32 stateId);
     event EmergencyExited(bytes32 toStateId);
@@ -87,6 +91,8 @@ interface IStrategyTemplate {
     event InputTokenSet(address);
     event OutputTokenSet(address);
 
+    // ---- Errors ----
+
     error EnterUnavailable();
     error ExitUnavailable();
     error EmergencyExitUnavailable();
@@ -99,22 +105,35 @@ interface IStrategyTemplate {
     error StateAlreadyExists(bytes32 stateId);
     error TargetStateAlreadySet();
 
+    // ---- Functions ----
+
+    function currentStateId() external view returns (bytes32);
+
+    function currentStateNav() external view returns (uint256);
+
     function enter(
         uint256[] memory inputAmounts,
         uint256 minNavDelta
     ) external payable returns (uint256, bool, uint256[] memory);
+
     function exit(
         uint256 share,
         uint256 minLiquidityAfterExit
     ) external payable returns (address[] memory, uint256[] memory);
+
     function harvest() external payable returns (uint256);
+
     function emergencyExit(bytes32 toStateId, uint256 share) external payable;
+
     function emergencyExitMultiple(bytes32[] calldata toStateIds, uint256[] calldata shares) external payable;
 
     function setInputTokens(address[] memory inputTokens) external;
+
     function setOutputTokens(address[] memory outputTokens) external;
 
     function stateNav(bytes32 stateId) external view returns (uint256);
+
     function getInputTokens() external view returns (address[] memory);
+
     function getOutputTokens() external view returns (address[] memory);
 }

@@ -25,7 +25,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     bytes32 private constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
-    bytes32 private constant HARVEST_MANAGER_ROLE = keccak256("HARVEST_MANAGER_ROLE");
+    bytes32 internal constant HARVEST_MANAGER_ROLE = keccak256("HARVEST_MANAGER_ROLE");
 
     bytes32 internal constant NO_ALLOCATION_STATE_ID = bytes32(0);
     uint256 internal constant BPS = 10_000;

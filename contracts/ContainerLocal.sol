@@ -191,4 +191,26 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
 
         revert Errors.IncorrectContainerStatus();
     }
+
+    function withdrawToReshufflingGateway(
+        address[] memory tokens,
+        uint256[] memory amounts
+    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
+        uint256 length = tokens.length;
+        require(tokens.length == amounts.length, Errors.ArrayLengthMismatch());
+        require(tokens.length > 0, Errors.ZeroArrayLength());
+
+        address bridgeCollectorCached = _bridgeCollector;
+        require(bridgeCollectorCached != address(0), Errors.ZeroAddress());
+
+        for (uint256 i = 0; i < length; ++i) {
+            address token = tokens[i];
+            uint256 amount = amounts[i];
+
+            require(_isTokenWhitelisted(token), NotWhitelistedToken(token));
+            if (amount > 0) {
+                IERC20(token).safeTransfer(bridgeCollectorCached, amount);
+            }
+        }
+    }
 }

@@ -66,7 +66,10 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     // ---- Configuration ----
 
     function setBridgeCollector(address newBridgeCollector) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        _setBridgeCollector(newBridgeCollector);
+        require(newBridgeCollector != address(0), Errors.ZeroAddress());
+        address oldBridgeCollector = _bridgeCollector;
+        _bridgeCollector = newBridgeCollector;
+        emit BridgeCollectorUpdated(oldBridgeCollector, newBridgeCollector);
     }
 
     function setTreasury(address newTreasury) external onlyRole(STRATEGY_MANAGER_ROLE) {
@@ -100,13 +103,6 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         uint256 previousFeePct = feePct;
         feePct = newFeePct;
         emit FeePctUpdated(previousFeePct, newFeePct);
-    }
-
-    function _setBridgeCollector(address newBridgeCollector) internal {
-        require(newBridgeCollector != address(0), Errors.ZeroAddress());
-        address oldBridgeCollector = _bridgeCollector;
-        _bridgeCollector = newBridgeCollector;
-        emit BridgeCollectorUpdated(oldBridgeCollector, newBridgeCollector);
     }
 
     // ---- Reshuffling mode management logic ----

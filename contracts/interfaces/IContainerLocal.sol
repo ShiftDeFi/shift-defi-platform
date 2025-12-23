@@ -44,4 +44,6 @@ interface IContainerLocal is IStrategyContainer {
     function exitStrategy(address strategy, uint256 maxNavDelta) external;
 
     function exitStrategyMultiple(address[] calldata strategies, uint256[] calldata maxNavDeltas) external;
+
+    function withdrawToReshufflingGateway(address[] memory tokens, uint256[] memory amounts) external;
 }

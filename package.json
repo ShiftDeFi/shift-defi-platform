@@ -1,0 +1,49 @@
+{
+  "name": "@shift-defi/core",
+  "version": "0.2.0",
+  "description": "Core smart contracts suite for Shift DeFi Platform",
+  "author": "ShiftDeFi",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ShiftDeFi/shift-defi-platform"
+  },
+  "homepage": "https://shiftdefi.com/",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "files": [
+    "contracts/dependencies/**/*.sol",
+    "contracts/interfaces/*.sol",
+    "contracts/libraries/**/*.sol",
+    "contracts/priceOracles/*.sol",
+    "contracts/BridgeAdapter.sol",
+    "contracts/Container.sol",
+    "contracts/ContainerAgent.sol",
+    "contracts/ContainerPrincipal.sol",
+    "contracts/CrossChainContainer.sol",
+    "contracts/MessageRouter.sol",
+    "contracts/PriceOracleAggregator.sol",
+    "contracts/ReshufflingGateway.sol",
+    "contracts/StrategyContainer.sol",
+    "contracts/StrategyTemplate.sol",
+    "contracts/SwapRouter.sol",
+    "contracts/Vault.sol"
+  ],
+  "devDependencies": {
+    "@commitlint/cli": "^20.2.0",
+    "@commitlint/config-conventional": "^20.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.7.4",
+    "prettier-plugin-solidity": "^2.2.1"
+  },
+  "lint-staged": {
+    "*.sol": [
+      "prettier --write --plugin=prettier-plugin-solidity"
+    ],
+    "*.{ts,json,md,yml,yaml}": [
+      "prettier . --write"
+    ]
+  }
+}

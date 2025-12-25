@@ -375,20 +375,168 @@ interface IVault {
     function resolveWithdrawBatch() external;
 
     /**
+     * @notice Returns the current vault status.
+     * @return The current status of the vault (Idle, DepositBatchProcessingStarted, DepositBatchProcessingFinished, or WithdrawBatchProcessingStarted)
+     */
+    function status() external view returns (VaultStatus);
+
+    /**
+     * @notice Returns the maximum deposit amount per transaction.
+     * @return The maximum amount that can be deposited in a single transaction
+     */
+    function maxDepositAmount() external view returns (uint256);
+
+    /**
+     * @notice Returns the minimum deposit amount.
+     * @return The minimum amount required for a deposit transaction
+     */
+    function minDepositAmount() external view returns (uint256);
+
+    /**
+     * @notice Returns the maximum deposit batch size.
+     * @return The maximum total amount that can be accumulated in a deposit batch
+     */
+    function maxDepositBatchSize() external view returns (uint256);
+
+    /**
+     * @notice Returns the minimum deposit batch size.
+     * @return The minimum total amount required to start processing a deposit batch
+     */
+    function minDepositBatchSize() external view returns (uint256);
+
+    /**
+     * @notice Returns the minimum withdraw batch ratio.
+     * @return The minimum percentage of total shares that must be withdrawn to start processing a withdraw batch, in basis points
+     */
+    function minWithdrawBatchRatio() external view returns (uint256);
+
+    /**
      * @notice Returns the notion token contract address.
      * @return The IERC20 token contract representing the notion token
      */
     function notion() external view returns (IERC20);
 
     /**
-     * @notice Returns whether the vault is in repairing mode.
-     * @return True if the vault is in repairing mode, false otherwise
+     * @notice Returns the current deposit batch ID.
+     * @return The ID of the current deposit batch being processed
      */
-    function isRepairing() external view returns (bool);
+    function depositBatchId() external view returns (uint256);
+
+    /**
+     * @notice Returns the last resolved deposit batch ID.
+     * @return The ID of the most recently resolved deposit batch
+     */
+    function lastResolvedDepositBatchId() external view returns (uint256);
+
+    /**
+     * @notice Returns the total amount of buffered deposits waiting to be processed.
+     * @return The total amount of notion tokens currently buffered for the next deposit batch
+     */
+    function bufferedDeposits() external view returns (uint256);
+
+    /**
+     * @notice Returns the pending deposit amount for a specific user in a specific batch.
+     * @param batchId The ID of the deposit batch
+     * @param user The address of the user
+     * @return The amount of notion tokens pending for the user in the specified batch
+     */
+    function pendingBatchDeposits(uint256 batchId, address user) external view returns (uint256);
+
+    /**
+     * @notice Returns the total notion amount for a specific deposit batch.
+     * @param batchId The ID of the deposit batch
+     * @return The total amount of notion tokens in the specified deposit batch
+     */
+    function depositBatchTotalNotion(uint256 batchId) external view returns (uint256);
+
+    /**
+     * @notice Returns the total shares minted for a specific deposit batch.
+     * @param batchId The ID of the deposit batch
+     * @return The total amount of vault shares minted for the specified deposit batch
+     */
+    function depositBatchTotalShares(uint256 batchId) external view returns (uint256);
+
+    /**
+     * @notice Returns the notion remainder for a specific deposit batch.
+     * @param batchId The ID of the deposit batch
+     * @return The amount of notion tokens that couldn't be deposited and should be returned to users
+     */
+    function batchNotionRemainder(uint256 batchId) external view returns (uint256);
+
+    /**
+     * @notice Returns the total unclaimed notion remainder across all batches.
+     * @return The total amount of notion remainder that has not yet been claimed by users
+     */
+    function totalUnclaimedNotionRemainder() external view returns (uint256);
+
+    /**
+     * @notice Returns the current withdraw batch ID.
+     * @return The ID of the current withdraw batch being processed
+     */
+    function withdrawBatchId() external view returns (uint256);
+
+    /**
+     * @notice Returns the last resolved withdraw batch ID.
+     * @return The ID of the most recently resolved withdraw batch
+     */
+    function lastResolvedWithdrawBatchId() external view returns (uint256);
+
+    /**
+     * @notice Returns the total amount of buffered shares waiting to be withdrawn.
+     * @return The total amount of vault shares currently buffered for the next withdraw batch
+     */
+    function bufferedSharesToWithdraw() external view returns (uint256);
+
+    /**
+     * @notice Returns the pending withdrawal amount for a specific user in a specific batch.
+     * @param batchId The ID of the withdraw batch
+     * @param user The address of the user
+     * @return The amount of vault shares pending for withdrawal by the user in the specified batch
+     */
+    function pendingBatchWithdrawals(uint256 batchId, address user) external view returns (uint256);
+
+    /**
+     * @notice Returns the total shares for a specific withdraw batch.
+     * @param batchId The ID of the withdraw batch
+     * @return The total amount of vault shares in the specified withdraw batch
+     */
+    function withdrawBatchTotalShares(uint256 batchId) external view returns (uint256);
+
+    /**
+     * @notice Returns the total notion amount for a specific withdraw batch.
+     * @param batchId The ID of the withdraw batch
+     * @return The total amount of notion tokens available for withdrawal in the specified batch
+     */
+    function withdrawBatchTotalNotion(uint256 batchId) external view returns (uint256);
+
+    /**
+     * @notice Returns the total unclaimed notion for withdrawals across all batches.
+     * @return The total amount of notion tokens available for withdrawal that have not yet been claimed by users
+     */
+    function totalUnclaimedNotionForWithdraw() external view returns (uint256);
+
+    /**
+     * @notice Returns the weight of a specific container.
+     * @param container The address of the container
+     * @return The weight of the container in basis points (10000 = 100%)
+     */
+    function containerWeights(address container) external view returns (uint256);
+
+    /**
+     * @notice Returns the reshuffling gateway address.
+     * @return The address of the reshuffling gateway contract, or zero address if not set
+     */
+    function reshufflingGateway() external view returns (address);
 
     /**
      * @notice Returns whether the vault is in reshuffling mode.
      * @return True if the vault is in reshuffling mode, false otherwise
      */
     function isReshuffling() external view returns (bool);
+
+    /**
+     * @notice Returns whether the vault is in repairing mode.
+     * @return True if the vault is in repairing mode, false otherwise
+     */
+    function isRepairing() external view returns (bool);
 }

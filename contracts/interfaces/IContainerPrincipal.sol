@@ -5,7 +5,7 @@ import {ISwapRouter} from "./ISwapRouter.sol";
 import {IBridgeAdapter} from "./IBridgeAdapter.sol";
 import {ICrossChainContainer} from "./ICrossChainContainer.sol";
 
-interface IContainerPrincipal {
+interface IContainerPrincipal is ICrossChainContainer {
     // ---- Enums ----
 
     enum ContainerPrincipalStatus {

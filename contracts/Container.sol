@@ -60,7 +60,7 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
     function whitelistToken(address token) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(_whitelistedTokens.add(token), AlreadyWhitelistedToken());
-        IERC20(token).safeIncreaseAllowance(swapRouter, type(uint256).max);
+        IERC20(token).forceApprove(swapRouter, type(uint256).max);
         emit TokenWhitelistUpdated(token, true);
     }
 
@@ -159,7 +159,7 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         uint256 length = _whitelistedTokens.length();
         for (uint256 i = 0; i < length; i++) {
             address token = _whitelistedTokens.at(i);
-            IERC20(token).safeIncreaseAllowance(addr, type(uint256).max);
+            IERC20(token).forceApprove(addr, type(uint256).max);
         }
     }
 }

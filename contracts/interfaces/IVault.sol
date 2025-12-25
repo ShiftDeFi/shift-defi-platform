@@ -165,6 +165,8 @@ interface IVault {
     error MissingContainerReport();
     error NotionNotAllocated();
     error NothingToClaim();
+    error ContainerWeightZero(address container);
+    error IncorrectContainerAmount(address container);
 
     // ---- Functions ----
 

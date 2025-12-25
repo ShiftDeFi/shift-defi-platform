@@ -454,8 +454,10 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         for (uint256 i = 0; i < vars.containersNumber; ++i) {
             address container = _containers.at(i);
             uint256 containerWeight = containerWeights[container];
+            require(containerWeight > 0, ContainerWeightZero(container));
 
             vars.containerAmount = vars.undistributedNotionAmount.mulDiv(containerWeight, vars.undistributedWeight);
+            require(vars.containerAmount > 0, IncorrectContainerAmount(container));
 
             vars.undistributedWeight -= containerWeight;
             vars.undistributedNotionAmount -= vars.containerAmount;

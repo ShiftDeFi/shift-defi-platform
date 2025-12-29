@@ -31,6 +31,7 @@ library Errors {
     error NonZeroAmount();
     error NotFound();
     error IncorrectContainerType(address container, uint8 expected, uint8 received);
+    error DuplicatingAddressInArray(address entry);
 
     // -- Business Logic Errors --
 

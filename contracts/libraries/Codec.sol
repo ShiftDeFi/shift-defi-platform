@@ -89,10 +89,10 @@ library Codec {
      */
     function encode(DepositRequest memory request) internal pure returns (bytes memory) {
         uint256 numTokens = request.tokens.length;
-
         require(numTokens > 0, Errors.ZeroArrayLength());
-        require(numTokens <= MAX_TOKENS, Errors.IncorrectAmount());
+        require(numTokens < MAX_TOKENS, Errors.IncorrectAmount());
         require(numTokens == request.amounts.length, Errors.ArrayLengthMismatch());
+        _validateTokenArray(request.tokens);
 
         uint256 tokenAmountsPosition = ADDRESS_ARRAY_START_POSITION + numTokens * ADDRESS_SIZE;
         uint256 packageSize = tokenAmountsPosition + numTokens * UINT128_SIZE;
@@ -114,9 +114,10 @@ library Codec {
      */
     function encode(DepositResponse memory response) internal pure returns (bytes memory) {
         uint256 numTokens = response.tokens.length;
-
-        require(numTokens <= MAX_TOKENS, Errors.IncorrectAmount());
+        require(numTokens < MAX_TOKENS, Errors.IncorrectAmount());
         require(numTokens == response.amounts.length, Errors.ArrayLengthMismatch());
+        _validateTokenArray(response.tokens);
+
         require(response.navAH <= type(uint128).max, Errors.IncorrectAmount());
         require(response.navAE <= type(uint128).max, Errors.IncorrectAmount());
 
@@ -163,10 +164,10 @@ library Codec {
      */
     function encode(WithdrawalResponse memory response) internal pure returns (bytes memory) {
         uint256 numTokens = response.tokens.length;
-
         require(numTokens > 0, Errors.ZeroArrayLength());
-        require(numTokens <= MAX_TOKENS, Errors.IncorrectAmount());
+        require(numTokens < MAX_TOKENS, Errors.IncorrectAmount());
         require(numTokens == response.amounts.length, Errors.ArrayLengthMismatch());
+        _validateTokenArray(response.tokens);
 
         uint256 tokenAmountsPosition = 2 * UINT8_SIZE + numTokens * ADDRESS_SIZE;
         uint256 packageSize = tokenAmountsPosition + numTokens * UINT128_SIZE;
@@ -512,5 +513,12 @@ library Codec {
         }
 
         return amounts;
+    }
+
+    function _validateTokenArray(address[] memory tokens) internal pure {
+        uint256 numTokens = tokens.length;
+        for (uint256 i = 1; i < numTokens; ++i) {
+            require(tokens[i] > tokens[i - 1], Errors.DuplicatingAddressInArray(tokens[i]));
+        }
     }
 }

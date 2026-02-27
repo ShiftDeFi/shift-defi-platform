@@ -236,7 +236,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
         require(_containers.add(container), ContainerAlreadyExists());
 
-        notion.approve(container, type(uint256).max);
+        notion.forceApprove(container, type(uint256).max);
         emit ContainerAdded(container);
     }
 
@@ -259,7 +259,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
             containerWeights[containers[i]] = weights[i];
             if (weights[i] == 0) {
-                notion.approve(containers[i], 0);
+                notion.forceApprove(containers[i], 0);
                 _containers.remove(containers[i]);
                 emit ContainerRemoved(containers[i]);
             }

@@ -13,6 +13,7 @@ import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
 import {IContainer} from "./interfaces/IContainer.sol";
 
 abstract contract CrossChainContainer is Container, ICrossChainContainer {
+    using SafeERC20 for IERC20;
     using Math for uint256;
 
     bytes32 internal constant MESSENGER_MANAGER_ROLE = keccak256("MESSENGER_MANAGER_ROLE");
@@ -184,7 +185,7 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
         _validateBridgeAdapter(bridgeAdapter);
         require(token != address(0), Errors.ZeroAddress());
         if (IERC20(token).allowance(address(this), bridgeAdapter) < amount) {
-            IERC20(token).approve(bridgeAdapter, amount);
+            IERC20(token).forceApprove(bridgeAdapter, amount);
         }
     }
 }

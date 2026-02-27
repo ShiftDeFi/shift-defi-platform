@@ -32,7 +32,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         CrossChainContainerInitParams memory crossChainParams
     ) public initializer {
         __CrossChainContainer_init(containerParams, crossChainParams);
-        IERC20(notion).approve(vault, type(uint256).max);
+        IERC20(notion).forceApprove(vault, type(uint256).max);
     }
 
     function containerType() external pure override returns (ContainerType) {

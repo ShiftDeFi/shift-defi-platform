@@ -1,0 +1,62 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.0;
+
+import {Errors} from "contracts/libraries/helpers/Errors.sol";
+
+import {L1Base} from "test/L1Base.t.sol";
+
+contract VaultLimitsTest is L1Base {
+    function test_RevertIf_MaxDepositAmountGreaterThanMaxDepositBatchSize() public {
+        uint256 maxDepositBatchSize = vault.maxDepositBatchSize();
+        vm.prank(roles.configurator);
+        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vault.setMaxDepositAmount(maxDepositBatchSize + 1);
+    }
+
+    function test_RevertIf_MaxDepositAmountLessThanOrEqualToMinDepositAmount() public {
+        uint256 minDepositAmount = vault.minDepositAmount();
+        vm.prank(roles.configurator);
+        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vault.setMaxDepositAmount(minDepositAmount);
+    }
+
+    function test_RevertIf_MinDepositAmountGreaterThanOrEqualToMaxDepositAmount() public {
+        uint256 maxDepositAmount = vault.maxDepositAmount();
+        vm.prank(roles.configurator);
+        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vault.setMinDepositAmount(maxDepositAmount);
+    }
+
+    function test_RevertIf_MaxDepositBatchSizeLessThanOrEqualToMinDepositBatchSize() public {
+        uint256 minDepositBatchSize = vault.minDepositBatchSize();
+        vm.prank(roles.configurator);
+        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vault.setMaxDepositBatchSize(minDepositBatchSize);
+    }
+
+    function test_RevertIf_MaxDepositBatchSizeGreaterThanMaxDepositAmount() public {
+        uint256 maxDepositAmount = vault.maxDepositAmount();
+        vm.prank(roles.configurator);
+        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vault.setMaxDepositBatchSize(maxDepositAmount - 1);
+    }
+
+    function test_RevertIf_MinDepositBatchSizeGreaterThanOrEqualToMaxDepositBatchSize() public {
+        uint256 maxDepositBatchSize = vault.maxDepositBatchSize();
+        vm.prank(roles.configurator);
+        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vault.setMinDepositBatchSize(maxDepositBatchSize);
+    }
+
+    function test_RevertIf_MinWithdrawBatchRatioGreaterThanToMaxBPS() public {
+        vm.prank(roles.configurator);
+        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vault.setMinWithdrawBatchRatio(MAX_BPS + 1);
+    }
+
+    function test_RevertIf_MinWithdrawBatchRatioLessThanOrEqualTo0() public {
+        vm.prank(roles.configurator);
+        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vault.setMinWithdrawBatchRatio(0);
+    }
+}

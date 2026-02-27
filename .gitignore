@@ -1,5 +1,3 @@
-mocks/
-
 # build and cache
 cache/
 out/
@@ -24,3 +22,5 @@ report/
 
 .DS_Store
 .venv/
+
+lcov.info

@@ -10,7 +10,8 @@
   },
   "homepage": "https://shiftdefi.com/",
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "coverage": "forge coverage --no-match-coverage test/"
   },
   "files": [
     "contracts/dependencies/**/*.sol",

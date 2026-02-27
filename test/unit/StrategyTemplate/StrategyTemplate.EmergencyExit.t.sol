@@ -3,14 +3,18 @@ pragma solidity ^0.8.0;
 
 import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
 import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {MockStrategy} from "test/mocks/MockStrategy.sol";
 
 import {StrategyTemplateBaseTest} from "./StrategyTemplateBase.t.sol";
 
 contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
+    MockStrategy secondStrategy;
     uint256[] inputAmounts;
 
     function setUp() public override {
         super.setUp();
+
+        secondStrategy = _deployMockStrategy(address(strategyContainer));
 
         bool stateOneIsTarget = false;
         bool stateOneIsProtocol = false;
@@ -18,6 +22,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint8 stateOneHeight = 0;
 
         strategy.setState(ONE_STATE_ID, stateOneIsTarget, stateOneIsProtocol, stateOneIsToken, stateOneHeight);
+        secondStrategy.setState(ONE_STATE_ID, stateOneIsTarget, stateOneIsProtocol, stateOneIsToken, stateOneHeight);
 
         bool stateTwoIsTarget = false;
         bool stateTwoIsProtocol = true;
@@ -25,6 +30,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint8 stateTwoHeight = 1;
 
         strategy.setState(TWO_STATE_ID, stateTwoIsTarget, stateTwoIsProtocol, stateTwoIsToken, stateTwoHeight);
+        secondStrategy.setState(TWO_STATE_ID, stateTwoIsTarget, stateTwoIsProtocol, stateTwoIsToken, stateTwoHeight);
 
         bool stateThreeIsTarget = true;
         bool stateThreeIsProtocol = true;
@@ -32,6 +38,13 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint8 stateThreeHeight = 2;
 
         strategy.setState(
+            THREE_STATE_ID,
+            stateThreeIsTarget,
+            stateThreeIsProtocol,
+            stateThreeIsToken,
+            stateThreeHeight
+        );
+        secondStrategy.setState(
             THREE_STATE_ID,
             stateThreeIsTarget,
             stateThreeIsProtocol,
@@ -49,7 +62,11 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
 
         inputAmounts = _prepareEnterInputAmounts(address(strategy));
 
-        deal(address(notion), address(strategyContainer), DEPOSIT_AMOUNT);
+        strategyContainer.addStrategy(address(secondStrategy), inputTokens, outputTokens);
+        vm.prank(address(strategyContainer));
+        notion.approve(address(secondStrategy), type(uint256).max);
+
+        deal(address(notion), address(strategyContainer), DEPOSIT_AMOUNT * 2);
     }
 
     function test_EmergencyExit_FullExit() public {
@@ -118,6 +135,37 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
 
         vm.prank(address(strategyContainer));
         strategy.emergencyExit(toStateId, MAX_BPS);
+    }
+
+    function test_EmergencyExit_MultipleStrategies() public {
+        bytes32 toStateId = TWO_STATE_ID;
+        uint256 bitmaskAfterFirstExit = 1 << 0;
+        uint256 bitmaskAfterSecondExit = bitmaskAfterFirstExit | (1 << 1);
+
+        vm.startPrank(address(strategyContainer));
+        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        secondStrategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        vm.stopPrank();
+
+        vm.prank(address(strategyContainer));
+        strategy.emergencyExit(toStateId, MAX_BPS);
+
+        uint256 unresolvedNavBitmask = _getStrategyUnresolvedNavBitmask();
+        assertEq(
+            unresolvedNavBitmask,
+            bitmaskAfterFirstExit,
+            "test_EmergencyExit_MultipleStrategies: First strategy should be unresolved"
+        );
+
+        vm.prank(address(strategyContainer));
+        secondStrategy.emergencyExit(toStateId, MAX_BPS);
+
+        unresolvedNavBitmask = _getStrategyUnresolvedNavBitmask();
+        assertEq(
+            unresolvedNavBitmask,
+            bitmaskAfterSecondExit,
+            "test_EmergencyExit_MultipleStrategies: Second strategy should be unresolved"
+        );
     }
 
     function test_RevertIf_EmergencyExit_ShareOutOfBounds() public {

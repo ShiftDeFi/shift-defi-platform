@@ -367,14 +367,12 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.currentStateId = _currentStateId;
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.toStateBitmask = _stateBitmasks[toStateId];
-        vars.isResolvingEmergency = IStrategyContainer(_strategyContainer).isResolvingEmergency();
 
         require(vars.toStateBitmask != 0, Errors.ZeroAmount());
         require(vars.toStateBitmask.height() <= vars.currentStateBitmask.height(), Errors.IncorrectInput());
 
-        if (!vars.isResolvingEmergency) {
-            IStrategyContainer(_strategyContainer).startEmergencyResolution();
-        }
+        IStrategyContainer(_strategyContainer).startEmergencyResolution();
+
         if (!_navResolutionMode) {
             _setNavResolutionMode(true);
         }

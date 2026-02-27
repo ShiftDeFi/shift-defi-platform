@@ -5,7 +5,6 @@ import {IBridgeAdapter} from "./IBridgeAdapter.sol";
 import {ISwapRouter} from "./ISwapRouter.sol";
 
 interface IReshufflingGateway {
-    event WithdrawInRepairingMode(address indexed owner, address indexed token, uint256 amount);
     event SentToLocalContainer(address indexed container, address indexed token, uint256 amount);
     event SentToCrossChainContainer(address indexed container, address indexed token, uint256 amount);
 
@@ -16,9 +15,6 @@ interface IReshufflingGateway {
 
     error NotContainer(address container);
     error NotVault(address vault);
-    error NothingToWithdraw();
-    error NoSharesToWithdraw();
-    error VaultNotInRepairingMode();
     error VaultNotInReshufflingMode();
     error NotWhitelistedToken(address token);
     error NotWhitelistedBridgeAdapter(address bridgeAdapter);
@@ -101,10 +97,4 @@ interface IReshufflingGateway {
         address[] memory tokens,
         uint256[] memory amounts
     ) external payable;
-
-    /**
-     * @notice Withdraws pro-rata assets when vault is in repairing mode.
-     * @param account Recipient account.
-     */
-    function withdraw(address account) external;
 }

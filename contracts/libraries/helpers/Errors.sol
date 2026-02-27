@@ -14,7 +14,6 @@ library Errors {
     error AlreadyWhitelisted();
     error EmergencyModeEnabled();
     error NotImplemented();
-    error NotInRepairingMode();
     error TokenAlreadySet(address value);
     error AlreadySet();
 

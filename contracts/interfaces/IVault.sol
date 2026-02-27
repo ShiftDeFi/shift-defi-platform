@@ -126,8 +126,6 @@ interface IVault {
 
     event ReshufflingGatewayUpdated(address indexed previousGateway, address indexed newGateway);
     event ReshufflingModeUpdated(bool reshufflingMode);
-    event RepairingModeSet();
-    event ReshufflingGatewayClaimed(address account);
 
     // ---- Errors ----
 
@@ -135,17 +133,14 @@ interface IVault {
     error NotContainer();
 
     // State
-    error AlreadyClaimed();
     error ContainerAlreadyExists();
     error ContainerNotFound(address container);
     error ContainerAlreadyReported();
     error ContainerNotReallocating();
     error NoContainers();
-    error NotInRepairingMode();
     error NotEnoughNotion();
     error NotEnoughSharesWithdrawn();
     error ReshufflingGatewayNotSet();
-    error VaultIsInRepairingMode();
     error VaultIsInReshufflingMode();
 
     // Input Validation
@@ -183,12 +178,6 @@ interface IVault {
      * @param _isReshuffling The new reshuffling mode state
      */
     function setReshufflingMode(bool _isReshuffling) external;
-
-    /**
-     * @notice Activates the repairing mode.
-     * @dev Can only be called by accounts with EMERGENCY_MANAGER_ROLE. Requires reshuffling gateway to be set and vault not already in repairing mode.
-     */
-    function activateRepairingMode() external;
 
     /**
      * @notice Sets the maximum deposit amount per transaction.
@@ -303,13 +292,6 @@ interface IVault {
      * @param onBehalfOf The address that will receive the notion tokens
      */
     function claimWithdraw(uint256 batchId, address onBehalfOf) external;
-
-    /**
-     * @notice Claims assets from the reshuffling gateway for an account.
-     * @dev Can only be called when the vault is in repairing mode. Each account can only claim once.
-     * @param account The account address to claim assets for
-     */
-    function claimReshufflingGateway(address account) external;
 
     /**
      * @notice Checks if all containers have submitted their deposit reports.
@@ -533,10 +515,4 @@ interface IVault {
      * @return True if the vault is in reshuffling mode, false otherwise
      */
     function isReshuffling() external view returns (bool);
-
-    /**
-     * @notice Returns whether the vault is in repairing mode.
-     * @return True if the vault is in repairing mode, false otherwise
-     */
-    function isRepairing() external view returns (bool);
 }

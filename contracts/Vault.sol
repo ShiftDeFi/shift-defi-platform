@@ -13,7 +13,6 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {IContainerPrincipal} from "./interfaces/IContainerPrincipal.sol";
 import {IVault} from "./interfaces/IVault.sol";
-import {IReshufflingGateway} from "./interfaces/IReshufflingGateway.sol";
 import {EnumerableAddressSetExtended} from "./libraries/helpers/EnumerableAddressSetExtended.sol";
 import {Errors} from "./libraries/helpers/Errors.sol";
 
@@ -68,17 +67,9 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     address public reshufflingGateway;
     bool public isReshuffling;
-    bool public isRepairing;
-
-    mapping(address => bool) private _hasClaimedReshufflingGateway;
 
     modifier onlyContainer() {
         require(_isContainer(msg.sender), NotContainer());
-        _;
-    }
-
-    modifier notInRepairingMode() {
-        require(!isRepairing, VaultIsInRepairingMode());
         _;
     }
 
@@ -152,13 +143,6 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         require(isReshuffling != _isReshuffling, Errors.IncorrectInput());
         isReshuffling = _isReshuffling;
         emit ReshufflingModeUpdated(_isReshuffling);
-    }
-
-    /// @inheritdoc IVault
-    function activateRepairingMode() external onlyRole(EMERGENCY_MANAGER_ROLE) notInRepairingMode {
-        require(reshufflingGateway != address(0), ReshufflingGatewayNotSet());
-        isRepairing = true;
-        emit RepairingModeSet();
     }
 
     /// @inheritdoc IVault
@@ -314,7 +298,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         _deposit(amount, onBehalfOf);
     }
 
-    function _deposit(uint256 amount, address onBehalfOf) internal notInRepairingMode notInReshufflingMode {
+    function _deposit(uint256 amount, address onBehalfOf) internal notInReshufflingMode {
         require(amount >= minDepositAmount && amount <= maxDepositAmount, Errors.IncorrectAmount());
 
         uint256 batchId = depositBatchId;
@@ -408,17 +392,6 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         emit WithdrawClaimed(msg.sender, onBehalfOf, batchId, vars.notionToClaim);
     }
 
-    /// @inheritdoc IVault
-    function claimReshufflingGateway(address account) external nonReentrant {
-        require(isRepairing, NotInRepairingMode());
-        require(!_hasClaimedReshufflingGateway[account], AlreadyClaimed());
-
-        _hasClaimedReshufflingGateway[account] = true;
-
-        IReshufflingGateway(reshufflingGateway).withdraw(account);
-        emit ReshufflingGatewayClaimed(account);
-    }
-
     function _isNotionDecreaseAllowed(uint256 amountToTransfer) internal view returns (bool) {
         return
             notion.balanceOf(address(this)) >=
@@ -433,7 +406,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     }
 
     /// @inheritdoc IVault
-    function startDepositBatchProcessing() external onlyRole(OPERATOR_ROLE) notInRepairingMode notInReshufflingMode {
+    function startDepositBatchProcessing() external onlyRole(OPERATOR_ROLE) notInReshufflingMode {
         require(status == VaultStatus.Idle, IncorrectStatus());
 
         DepositBatchProcessingLocalVars memory vars;

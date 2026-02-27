@@ -224,6 +224,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function addContainer(address container) external nonReentrant onlyRole(CONTAINER_MANAGER_ROLE) {
+        require(status == VaultStatus.Idle, IncorrectStatus());
         require(container != address(0), Errors.ZeroAddress());
 
         uint256 length = _containers.length();

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 import {IVault} from "contracts/interfaces/IVault.sol";
 import {Errors} from "contracts/libraries/helpers/Errors.sol";
@@ -119,5 +120,53 @@ contract VaultDepositTest is L1Base {
             "test_DepositWithPermit: pendingBatchDeposits"
         );
         assertEq(notion.balanceOf(users.alice), 0, "test_DepositWithPermit: notionBalanceOfUser");
+    }
+
+    function test_DepositWithPermit_FrontRunnedByNonceIncrement() public {
+        uint256 deadline = block.timestamp + 1;
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                notion.PERMIT_TYPEHASH(),
+                users.alice,
+                vault,
+                DEPOSIT_AMOUNT,
+                notion.nonces(users.alice),
+                deadline
+            )
+        );
+
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", notion.DOMAIN_SEPARATOR(), structHash));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(users.alicePrivateKey, digest);
+
+        notion.mint(users.alice, DEPOSIT_AMOUNT);
+
+        vm.prank(users.bob);
+        notion.permit(users.alice, address(vault), DEPOSIT_AMOUNT, deadline, v, r, s);
+
+        vm.prank(users.alice);
+        vault.depositWithPermit(DEPOSIT_AMOUNT, users.alice, deadline, v, r, s);
+
+        assertEq(
+            vault.bufferedDeposits(),
+            DEPOSIT_AMOUNT,
+            "test_DepositWithPermit_FrontRunnedByNonceIncrement: bufferedDeposits"
+        );
+        assertEq(
+            notion.balanceOf(address(vault)),
+            DEPOSIT_AMOUNT,
+            "test_DepositWithPermit_FrontRunnedByNonceIncrement: notionBalanceOfVault"
+        );
+        assertEq(
+            vault.pendingBatchDeposits(vault.depositBatchId(), users.alice),
+            DEPOSIT_AMOUNT,
+            "test_DepositWithPermit_FrontRunnedByNonceIncrement: pendingBatchDeposits"
+        );
+        assertEq(
+            notion.balanceOf(users.alice),
+            0,
+            "test_DepositWithPermit_FrontRunnedByNonceIncrement: notionBalanceOfUser"
+        );
     }
 }

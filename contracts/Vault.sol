@@ -295,7 +295,9 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         bytes32 r,
         bytes32 s
     ) external nonReentrant {
-        IERC20Permit(address(notion)).permit(msg.sender, address(this), amount, deadline, v, r, s);
+        if (notion.allowance(msg.sender, address(this)) < amount) {
+            IERC20Permit(address(notion)).permit(msg.sender, address(this), amount, deadline, v, r, s);
+        }
         _deposit(amount, onBehalfOf);
     }
 

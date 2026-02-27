@@ -75,6 +75,12 @@ interface ICrossChainContainer is IContainer {
     function claimCounter() external view returns (uint256);
 
     /**
+     * @notice Returns the maximum bridge slippage.
+     * @return The maximum bridge slippage
+     */
+    function MAX_BRIDGE_SLIPPAGE() external view returns (uint256);
+
+    /**
      * @notice Sets the message router address.
      * @dev Can only be called by accounts with appropriate role.
      * @param newMessageRouter The address of the new message router contract

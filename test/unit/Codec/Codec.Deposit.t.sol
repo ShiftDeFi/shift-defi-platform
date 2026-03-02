@@ -181,7 +181,7 @@ contract CodecDepositTest is CodecBaseTest {
         assembly {
             mstore(encoded, sub(mload(encoded), 5))
         }
-        vm.expectRevert(Errors.InvalidDataLength.selector);
+        vm.expectRevert(Codec.InvalidDataLength.selector);
         Codec.decodeDepositRequest(encoded);
     }
 
@@ -229,7 +229,7 @@ contract CodecDepositTest is CodecBaseTest {
         assembly {
             mstore(encoded, sub(mload(encoded), 5))
         }
-        vm.expectRevert(Errors.InvalidDataLength.selector);
+        vm.expectRevert(Codec.InvalidDataLength.selector);
         Codec.decodeDepositResponse(encoded);
     }
 

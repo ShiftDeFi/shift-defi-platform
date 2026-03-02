@@ -140,6 +140,9 @@ contract VaultDepositBatchProcessingTest is L1Base {
     }
 
     function test_SkipDepositBatch() public {
+        /// @dev Prevent empty vault error
+        stdstore.target(address(vault)).sig(IERC20.totalSupply.selector).checked_write(1);
+
         uint256 previousDepositBatchId = vault.depositBatchId();
         vm.prank(roles.operator);
         vault.skipDepositBatch();
@@ -161,7 +164,15 @@ contract VaultDepositBatchProcessingTest is L1Base {
         vault.skipDepositBatch();
     }
 
+    function test_RevertIf_SkipDepositBatch_EmptyVault() public {
+        vm.expectRevert(IVault.CannotSkipBatchInEmptyVault.selector);
+        vm.prank(roles.operator);
+        vault.skipDepositBatch();
+    }
+
     function test_RevertIf_SkipDepositBatch_WithEnoughDeposits() public {
+        /// @dev Prevent empty vault error
+        stdstore.target(address(vault)).sig(IERC20.totalSupply.selector).checked_write(1);
         _deposit(users.alice, vault.minDepositBatchSize());
 
         vm.expectRevert(IVault.CannotSkipBatch.selector);

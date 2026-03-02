@@ -155,6 +155,7 @@ interface IVault {
     error DepositBatchCapReached();
     error DepositBatchSizeTooSmall();
     error CannotSkipBatch();
+    error CannotSkipBatchInEmptyVault();
     error IncorrectNotionDistribution();
     error MaxContainersReached();
     error MissingContainerReport();

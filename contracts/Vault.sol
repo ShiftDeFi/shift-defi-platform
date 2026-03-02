@@ -451,6 +451,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     /// @inheritdoc IVault
     function skipDepositBatch() external onlyRole(OPERATOR_ROLE) {
         require(status == VaultStatus.Idle, IncorrectBatchStatus());
+        require(totalSupply() > 0, CannotSkipBatchInEmptyVault());
         uint256 bufferedDepositsCached = bufferedDeposits;
         require(bufferedDepositsCached < minDepositBatchSize, CannotSkipBatch());
         status = VaultStatus.DepositBatchProcessingFinished;

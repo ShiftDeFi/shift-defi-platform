@@ -14,6 +14,7 @@ contract ChainlinkOracleWrapperTest is L1Base {
     address internal chainlinkFeed;
     uint256 internal referencePrice;
     uint8 internal referenceDecimals;
+    uint256 internal constant STALENESS_THRESHOLD = 1 hours;
 
     function setUp() public override {
         super.setUp();
@@ -21,7 +22,11 @@ contract ChainlinkOracleWrapperTest is L1Base {
         referencePrice = 1e18;
         referenceDecimals = 18;
         chainlinkFeed = address(new MockChainlinkPriceFeed(int256(referencePrice), referenceDecimals));
-        chainlinkOracleWrapper = new ChainlinkOracleWrapper(roles.defaultAdmin, roles.oracleManager);
+        chainlinkOracleWrapper = new ChainlinkOracleWrapper(
+            roles.defaultAdmin,
+            roles.oracleManager,
+            STALENESS_THRESHOLD
+        );
     }
 
     function test_SetChainlinkFeed() public {
@@ -46,7 +51,7 @@ contract ChainlinkOracleWrapperTest is L1Base {
         );
     }
 
-    function test_RevertIf_ZeroAddressAndSetChainlinkFeed() public {
+    function test_RevertIf_SetChainlinkFeed_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         vm.prank(roles.oracleManager);
         chainlinkOracleWrapper.setChainlinkFeed(address(0), address(123));
@@ -61,23 +66,23 @@ contract ChainlinkOracleWrapperTest is L1Base {
         chainlinkOracleWrapper.setChainlinkFeed(address(notion), address(chainlinkFeed));
 
         (uint256 actualPrice, uint8 actualDecimals) = chainlinkOracleWrapper.getPrice(address(notion));
-        assertEq(actualPrice, referencePrice, "test_getPrice: must return price");
-        assertEq(actualDecimals, referenceDecimals, "test_getPrice: must return decimals");
+        assertEq(actualPrice, referencePrice, "test_GetPrice: must return price");
+        assertEq(actualDecimals, referenceDecimals, "test_GetPrice: must return decimals");
     }
 
-    function test_RevertIf_ZeroAddressAndGetPrice() public {
+    function test_RevertIf_GetPrice_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
         chainlinkOracleWrapper.getPrice(address(0));
     }
 
-    function test_RevertIf_ChainlinkFeedNotFoundAndGetPrice() public {
+    function test_RevertIf_GetPrice_ChainlinkFeedNotFound() public {
         vm.expectRevert(
             abi.encodeWithSelector(IChainlinkOracleWrapper.ChainlinkFeedNotFound.selector, address(notion))
         );
         chainlinkOracleWrapper.getPrice(address(notion));
     }
 
-    function test_RevertIf_ZeroPriceAndGetPrice() public {
+    function test_RevertIf_GetPrice_ZeroPrice() public {
         vm.prank(roles.oracleManager);
         chainlinkOracleWrapper.setChainlinkFeed(address(notion), address(chainlinkFeed));
 
@@ -85,6 +90,40 @@ contract ChainlinkOracleWrapperTest is L1Base {
 
         vm.expectRevert(abi.encodeWithSelector(IChainlinkOracleWrapper.ZeroPrice.selector, address(notion)));
         chainlinkOracleWrapper.getPrice(address(notion));
+    }
+
+    function test_RevertIf_GetPrice_StalePriceFeed() public {
+        vm.prank(roles.oracleManager);
+        chainlinkOracleWrapper.setChainlinkFeed(address(notion), address(chainlinkFeed));
+
+        vm.warp(block.timestamp + chainlinkOracleWrapper.priceFeedStalenessThreshold() + 1 seconds);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IChainlinkOracleWrapper.StalePriceFeed.selector,
+                address(notion),
+                MockChainlinkPriceFeed(chainlinkFeed).updatedAt(),
+                chainlinkOracleWrapper.priceFeedStalenessThreshold()
+            )
+        );
+        chainlinkOracleWrapper.getPrice(address(notion));
+    }
+
+    function test_SetPriceFeedStalenessThreshold() public {
+        uint256 newThreshold = STALENESS_THRESHOLD + 1 seconds;
+
+        vm.prank(roles.oracleManager);
+        chainlinkOracleWrapper.setPriceFeedStalenessThreshold(newThreshold);
+        assertEq(
+            chainlinkOracleWrapper.priceFeedStalenessThreshold(),
+            newThreshold,
+            "test_SetPriceFeedStalenessThreshold: must update threshold"
+        );
+    }
+
+    function test_RevertIf_SetPriceFeedStalenessThreshold_ZeroThreshold() public {
+        vm.expectRevert(abi.encodeWithSelector(IChainlinkOracleWrapper.ZeroStalenessThreshold.selector));
+        vm.prank(roles.oracleManager);
+        chainlinkOracleWrapper.setPriceFeedStalenessThreshold(0);
     }
 
     function test_RevertIf_NotImplementedAndDecimals() public {

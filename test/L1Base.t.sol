@@ -53,7 +53,7 @@ abstract contract L1Base is Base {
     uint256 internal constant MIN_DEPOSIT_AMOUNT = 10_000;
     uint256 internal constant MAX_DEPOSIT_BATCH_SIZE = 1_000_000;
     uint256 internal constant MIN_DEPOSIT_BATCH_SIZE = 10_000;
-    uint256 internal constant MIN_WITHDRAW_BATCH_RATIO = 100; // 1%
+    uint256 internal constant MIN_WITHDRAW_BATCH_RATIO = 0.01e18; // 1%
 
     uint256 internal constant DEPOSIT_AMOUNT = 10_000 * NOTION_PRECISION;
     uint256 internal constant WITHDRAW_SHARES_AMOUNT = 10_000 * NOTION_PRECISION;

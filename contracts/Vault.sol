@@ -28,7 +28,8 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     bytes32 private constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
 
     uint256 private constant MAX_CONTAINERS = 255;
-    uint256 private constant MAX_BPS = 10_000;
+    uint256 private constant TOTAL_CONTAINER_WEIGHT = 10_000;
+    uint256 private constant MAX_BPS = 1e18;
 
     VaultStatus public status;
 
@@ -231,7 +232,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         require(length < MAX_CONTAINERS, MaxContainersReached());
 
         if (length == 0) {
-            containerWeights[container] = MAX_BPS;
+            containerWeights[container] = TOTAL_CONTAINER_WEIGHT;
         }
 
         require(_containers.add(container), ContainerAlreadyExists());
@@ -424,7 +425,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         depositBatchTotalNotion[vars.batchId] = vars.totalBatchDepositAmount;
         bufferedDeposits = 0;
 
-        vars.undistributedWeight = MAX_BPS;
+        vars.undistributedWeight = TOTAL_CONTAINER_WEIGHT;
         vars.undistributedNotionAmount = vars.totalBatchDepositAmount;
 
         for (uint256 i = 0; i < vars.containersNumber; ++i) {

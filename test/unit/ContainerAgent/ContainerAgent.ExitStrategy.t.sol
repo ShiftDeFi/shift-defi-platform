@@ -13,12 +13,12 @@ import {ContainerAgentBaseTest} from "./ContainerAgentBase.t.sol";
 contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
     using Math for uint256;
 
-    uint256 internal sharesToWithdrawPercent = 500;
+    uint256 internal sharesToWithdrawPercent = 0.05e18;
     uint256 internal expectedNotionBalance;
     address internal strategy0;
     address internal strategy1;
     address internal strategy2;
-    uint256 internal maxNavDeltaPercent = 100;
+    uint256 internal maxNavDeltaPercent = 0.01e18;
     uint256 internal maxNavDelta;
 
     function setUp() public virtual override {

@@ -105,9 +105,9 @@ contract VaultDepositBatchProcessingTest is L1Base {
         containers[2] = address(container3);
 
         uint256[] memory weights = new uint256[](containersCount);
-        weights[0] = MAX_BPS / containersCount;
-        weights[1] = MAX_BPS / containersCount;
-        weights[2] = MAX_BPS - weights[0] - weights[1];
+        weights[0] = TOTAL_CONTAINER_WEIGHT / containersCount;
+        weights[1] = TOTAL_CONTAINER_WEIGHT / containersCount;
+        weights[2] = TOTAL_CONTAINER_WEIGHT - weights[0] - weights[1];
 
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
@@ -118,9 +118,9 @@ contract VaultDepositBatchProcessingTest is L1Base {
         vm.prank(roles.operator);
         vault.startDepositBatchProcessing();
 
-        uint256 expectedContainerBalance1 = depositAmount.mulDiv(weights[0], MAX_BPS);
-        uint256 expectedContainerBalance2 = depositAmount.mulDiv(weights[1], MAX_BPS);
-        uint256 expectedContainerBalance3 = depositAmount.mulDiv(weights[2], MAX_BPS);
+        uint256 expectedContainerBalance1 = depositAmount.mulDiv(weights[0], TOTAL_CONTAINER_WEIGHT);
+        uint256 expectedContainerBalance2 = depositAmount.mulDiv(weights[1], TOTAL_CONTAINER_WEIGHT);
+        uint256 expectedContainerBalance3 = depositAmount.mulDiv(weights[2], TOTAL_CONTAINER_WEIGHT);
 
         assertEq(
             IERC20(notion).balanceOf(address(container1)),

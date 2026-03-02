@@ -17,7 +17,7 @@ contract VaultContainerManagementTest is L1Base {
         (address[] memory containers, uint256[] memory weights) = vault.getContainers();
         assertEq(containers.length, 1, "test_AddContainer: containers length mismatch");
         assertEq(containers[0], address(container), "test_AddContainer: container mismatch");
-        assertEq(weights[0], MAX_BPS, "test_AddContainer: weight mismatch");
+        assertEq(weights[0], TOTAL_CONTAINER_WEIGHT, "test_AddContainer: weight mismatch");
         assertEq(vault.isContainer(address(container)), true, "test_AddContainer: isContainer mismatch");
 
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
@@ -27,7 +27,7 @@ contract VaultContainerManagementTest is L1Base {
         assertEq(containers.length, 2, "test_AddContainer: containers length mismatch");
         assertEq(containers[0], address(container), "test_AddContainer: container mismatch");
         assertEq(containers[1], address(container2), "test_AddContainer: container2 mismatch");
-        assertEq(weights[0], MAX_BPS, "test_AddContainer: weight mismatch");
+        assertEq(weights[0], TOTAL_CONTAINER_WEIGHT, "test_AddContainer: weight mismatch");
         assertEq(weights[1], 0, "test_AddContainer: weight2 mismatch");
         assertEq(vault.isContainer(address(container2)), true, "test_AddContainer: isContainer2 mismatch");
     }
@@ -76,7 +76,7 @@ contract VaultContainerManagementTest is L1Base {
         containers[0] = address(container1);
         containers[1] = address(container2);
         uint256[] memory weights = new uint256[](2);
-        weights[0] = MAX_BPS;
+        weights[0] = TOTAL_CONTAINER_WEIGHT;
         weights[1] = 0;
 
         vm.prank(roles.containerManager);
@@ -85,7 +85,7 @@ contract VaultContainerManagementTest is L1Base {
         (containers, weights) = vault.getContainers();
         assertEq(containers.length, 1, "test_SetContainerWeights_RemoveContainer: containers length mismatch");
         assertEq(containers[0], address(container1), "test_SetContainerWeights_RemoveContainer: container1 mismatch");
-        assertEq(weights[0], MAX_BPS, "test_SetContainerWeights_RemoveContainer: weight1 mismatch");
+        assertEq(weights[0], TOTAL_CONTAINER_WEIGHT, "test_SetContainerWeights_RemoveContainer: weight1 mismatch");
         assertEq(
             vault.isContainer(address(container2)),
             false,
@@ -133,10 +133,10 @@ contract VaultContainerManagementTest is L1Base {
         containers[2] = address(container3);
         containers[3] = address(container4);
         uint256[] memory weights = new uint256[](4);
-        weights[0] = MAX_BPS / containers.length;
-        weights[1] = MAX_BPS / containers.length;
-        weights[2] = MAX_BPS / containers.length;
-        weights[3] = MAX_BPS / containers.length;
+        weights[0] = TOTAL_CONTAINER_WEIGHT / containers.length;
+        weights[1] = TOTAL_CONTAINER_WEIGHT / containers.length;
+        weights[2] = TOTAL_CONTAINER_WEIGHT / containers.length;
+        weights[3] = TOTAL_CONTAINER_WEIGHT / containers.length;
 
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
@@ -144,7 +144,7 @@ contract VaultContainerManagementTest is L1Base {
         weights[0] = 0;
         weights[1] = 0;
         weights[2] = 0;
-        weights[3] = MAX_BPS;
+        weights[3] = TOTAL_CONTAINER_WEIGHT;
 
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
@@ -156,7 +156,11 @@ contract VaultContainerManagementTest is L1Base {
             address(container4),
             "test_SetContainerWeights_RemoveMultipleContainers: container4 mismatch"
         );
-        assertEq(weights[0], MAX_BPS, "test_SetContainerWeights_RemoveMultipleContainers: weight4 mismatch");
+        assertEq(
+            weights[0],
+            TOTAL_CONTAINER_WEIGHT,
+            "test_SetContainerWeights_RemoveMultipleContainers: weight4 mismatch"
+        );
     }
 
     function test_SetContainerWeights_UpdateContainerWeights() public {
@@ -170,8 +174,8 @@ contract VaultContainerManagementTest is L1Base {
         containers[0] = address(container1);
         containers[1] = address(container2);
         uint256[] memory weights = new uint256[](2);
-        weights[0] = MAX_BPS / containers.length;
-        weights[1] = MAX_BPS - weights[0];
+        weights[0] = TOTAL_CONTAINER_WEIGHT / containers.length;
+        weights[1] = TOTAL_CONTAINER_WEIGHT - weights[0];
 
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
@@ -180,12 +184,12 @@ contract VaultContainerManagementTest is L1Base {
 
         assertEq(
             weights[0],
-            MAX_BPS / containers.length,
+            TOTAL_CONTAINER_WEIGHT / containers.length,
             "test_SetContainerWeights_UpdateContainerWeights: weight1 mismatch"
         );
         assertEq(
             weights[1],
-            MAX_BPS / containers.length,
+            TOTAL_CONTAINER_WEIGHT / containers.length,
             "test_SetContainerWeights_UpdateContainerWeights: weight2 mismatch"
         );
 
@@ -193,7 +197,11 @@ contract VaultContainerManagementTest is L1Base {
         for (uint256 i = 0; i < containers.length; ++i) {
             totalWeight += weights[i];
         }
-        assertEq(totalWeight, MAX_BPS, "test_SetContainerWeights_UpdateContainerWeights: total weight mismatch");
+        assertEq(
+            totalWeight,
+            TOTAL_CONTAINER_WEIGHT,
+            "test_SetContainerWeights_UpdateContainerWeights: total weight mismatch"
+        );
     }
 
     function test_SetContainerWeights_UpdateContainerWeights_DifferentWeights() public {
@@ -215,7 +223,7 @@ contract VaultContainerManagementTest is L1Base {
         containers[2] = address(container3);
         containers[3] = address(container4);
         uint256[] memory weights = new uint256[](4);
-        uint256 evenWeight = MAX_BPS / containers.length;
+        uint256 evenWeight = TOTAL_CONTAINER_WEIGHT / containers.length;
         weights[0] = evenWeight;
         weights[1] = evenWeight;
         weights[2] = evenWeight;
@@ -294,7 +302,7 @@ contract VaultContainerManagementTest is L1Base {
         address[] memory containers = new address[](1);
         containers[0] = address(container);
         uint256[] memory weights = new uint256[](1);
-        weights[0] = MAX_BPS;
+        weights[0] = TOTAL_CONTAINER_WEIGHT;
 
         _setVaultStatus(IVault.VaultStatus.DepositBatchProcessingStarted);
         vm.expectRevert(IVault.IncorrectStatus.selector);
@@ -309,8 +317,8 @@ contract VaultContainerManagementTest is L1Base {
         address[] memory containers = new address[](1);
         containers[0] = address(container);
         uint256[] memory weights = new uint256[](2);
-        weights[0] = MAX_BPS / weights.length;
-        weights[1] = MAX_BPS / weights.length;
+        weights[0] = TOTAL_CONTAINER_WEIGHT / weights.length;
+        weights[1] = TOTAL_CONTAINER_WEIGHT / weights.length;
 
         vm.expectRevert(Errors.ArrayLengthMismatch.selector);
         vm.prank(roles.containerManager);
@@ -327,8 +335,8 @@ contract VaultContainerManagementTest is L1Base {
         containers[0] = address(container);
         containers[1] = address(container2);
         uint256[] memory weights = new uint256[](2);
-        weights[0] = MAX_BPS / weights.length;
-        weights[1] = MAX_BPS / weights.length;
+        weights[0] = TOTAL_CONTAINER_WEIGHT / weights.length;
+        weights[1] = TOTAL_CONTAINER_WEIGHT / weights.length;
 
         vm.expectRevert(abi.encodeWithSelector(IVault.ContainerNotFound.selector, address(container2)));
         vm.prank(roles.containerManager);
@@ -346,16 +354,18 @@ contract VaultContainerManagementTest is L1Base {
         containers[0] = address(container1);
         containers[1] = address(container2);
         uint256[] memory weights = new uint256[](2);
-        weights[0] = MAX_BPS / containers.length;
-        weights[1] = MAX_BPS / containers.length + 1;
+        weights[0] = TOTAL_CONTAINER_WEIGHT / containers.length;
+        weights[1] = TOTAL_CONTAINER_WEIGHT / containers.length + 1;
 
         vm.prank(roles.containerManager);
-        vm.expectRevert(abi.encodeWithSelector(IVault.IncorrectWeights.selector, MAX_BPS + 1));
+        vm.expectRevert(abi.encodeWithSelector(IVault.IncorrectWeights.selector, TOTAL_CONTAINER_WEIGHT + 1));
         vault.setContainerWeights(containers, weights);
 
         weights[1] = 1;
         vm.prank(roles.containerManager);
-        vm.expectRevert(abi.encodeWithSelector(IVault.IncorrectWeights.selector, MAX_BPS / containers.length + 1));
+        vm.expectRevert(
+            abi.encodeWithSelector(IVault.IncorrectWeights.selector, TOTAL_CONTAINER_WEIGHT / containers.length + 1)
+        );
         vault.setContainerWeights(containers, weights);
     }
 
@@ -370,8 +380,8 @@ contract VaultContainerManagementTest is L1Base {
         containers[0] = address(container1);
         containers[1] = address(container2);
         uint256[] memory weights = new uint256[](2);
-        weights[0] = MAX_BPS / containers.length;
-        weights[1] = MAX_BPS - weights[0];
+        weights[0] = TOTAL_CONTAINER_WEIGHT / containers.length;
+        weights[1] = TOTAL_CONTAINER_WEIGHT - weights[0];
 
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
@@ -379,7 +389,9 @@ contract VaultContainerManagementTest is L1Base {
         weights[1] = 0;
 
         vm.prank(roles.containerManager);
-        vm.expectRevert(abi.encodeWithSelector(IVault.IncorrectWeights.selector, MAX_BPS / containers.length));
+        vm.expectRevert(
+            abi.encodeWithSelector(IVault.IncorrectWeights.selector, TOTAL_CONTAINER_WEIGHT / containers.length)
+        );
         vault.setContainerWeights(containers, weights);
     }
 }

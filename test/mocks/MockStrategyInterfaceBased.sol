@@ -5,7 +5,7 @@ import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract MockStrategyInterfaceBased is IStrategyTemplate {
-    uint256 internal constant BPS = 10000;
+    uint256 internal constant MAX_BPS = 1e18;
 
     // Enter return values
     uint256 nav1;
@@ -52,7 +52,7 @@ contract MockStrategyInterfaceBased is IStrategyTemplate {
     function exit(uint256 share, uint256) external payable returns (address[] memory, uint256[] memory) {
         uint256[] memory _outputTokensAmounts = new uint256[](outputTokens.length);
         for (uint256 i = 0; i < outputTokens.length; i++) {
-            _outputTokensAmounts[i] = (IERC20(outputTokens[i]).balanceOf(address(this)) * share) / BPS;
+            _outputTokensAmounts[i] = (IERC20(outputTokens[i]).balanceOf(address(this)) * share) / MAX_BPS;
         }
         return (outputTokens, _outputTokensAmounts);
     }

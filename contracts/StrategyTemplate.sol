@@ -28,7 +28,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     bytes32 internal constant HARVEST_MANAGER_ROLE = keccak256("HARVEST_MANAGER_ROLE");
 
     bytes32 internal constant NO_ALLOCATION_STATE_ID = bytes32(0);
-    uint256 internal constant BPS = 10_000;
+    uint256 internal constant MAX_BPS = 1e18;
 
     address internal _strategyContainer;
     address internal _notion;
@@ -299,7 +299,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         uint256 share,
         uint256 maxNavDelta
     ) external payable onlyStrategyContainer nonReentrant returns (address[] memory, uint256[] memory) {
-        require(share > 0 && share <= BPS, Errors.IncorrectAmount());
+        require(share > 0 && share <= MAX_BPS, Errors.IncorrectAmount());
         require(!_navResolutionMode, NavResolutionModeActivated());
 
         ExitLocalVars memory vars;
@@ -307,10 +307,10 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.outputTokens = _outputTokens.values();
         vars.currentStateNavBeforeExit = stateNav(vars.currentStateId);
-        vars.amountsBeforeExit = _tokensAmountsDump(vars.outputTokens, BPS);
+        vars.amountsBeforeExit = _tokensAmountsDump(vars.outputTokens, MAX_BPS);
         require(vars.currentStateId != NO_ALLOCATION_STATE_ID, ExitUnavailable());
 
-        if (share == BPS) {
+        if (share == MAX_BPS) {
             _currentStateId = NO_ALLOCATION_STATE_ID;
         }
 
@@ -320,7 +320,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
             } else {
                 _exitFromState(vars.currentStateId, share);
             }
-            vars.tokenShare = vars.currentStateBitmask.isTokenState() ? share : BPS;
+            vars.tokenShare = vars.currentStateBitmask.isTokenState() ? share : MAX_BPS;
         } else {
             vars.tokenShare = share;
         }
@@ -360,7 +360,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         bytes32 toStateId,
         uint256 share
     ) public payable onlyStrategyContainerOrEmergencyManager nonReentrant {
-        require(share > 0 && share <= BPS, Errors.IncorrectAmount());
+        require(share > 0 && share <= MAX_BPS, Errors.IncorrectAmount());
         require(_stateIds.contains(toStateId), StateNotFound(toStateId));
 
         EmergencyExitLocalVars memory vars;
@@ -472,7 +472,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
         for (uint256 i = 0; i < vars.length; ) {
             uint256 delta = IERC20(vars.outputTokens[i]).balanceOf(address(this)) - amountsBeforeExit[i];
-            uint256 amount = delta + amountsBeforeExit[i].mulDiv(share, BPS);
+            uint256 amount = delta + amountsBeforeExit[i].mulDiv(share, MAX_BPS);
             if (amount > 0) {
                 IERC20(vars.outputTokens[i]).forceApprove(vars.container, amount);
                 vars.outputAmounts[i] = amount;
@@ -494,8 +494,8 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         for (uint256 i = 0; i < length; ) {
             uint256 balance = IERC20(tokens[i]).balanceOf(address(this));
             if (balance > 0) {
-                if (share < BPS) {
-                    amounts[i] = balance.mulDiv(share, BPS);
+                if (share < MAX_BPS) {
+                    amounts[i] = balance.mulDiv(share, MAX_BPS);
                 } else {
                     amounts[i] = balance;
                 }

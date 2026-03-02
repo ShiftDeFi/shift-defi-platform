@@ -88,7 +88,7 @@ contract MockStrategy is StrategyTemplate {
     }
 
     function _exitTarget(uint256 share) internal override {
-        uint256 amount = IERC20(_notion).balanceOf(address(mockBuildingBlock)).mulDiv(share, BPS);
+        uint256 amount = IERC20(_notion).balanceOf(address(mockBuildingBlock)).mulDiv(share, MAX_BPS);
         require(amount > 0, NotEnoughFunds());
         mockBuildingBlock.returnNotionToStrategy(amount);
     }
@@ -97,7 +97,7 @@ contract MockStrategy is StrategyTemplate {
         if (stateId == MOCK_SLIPPAGE_STATE_ID) {
             return;
         }
-        uint256 amount = IERC20(_notion).balanceOf(address(mockBuildingBlock)).mulDiv(share, BPS);
+        uint256 amount = IERC20(_notion).balanceOf(address(mockBuildingBlock)).mulDiv(share, MAX_BPS);
         mockBuildingBlock.returnNotionToStrategy(amount);
     }
 

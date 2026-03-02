@@ -24,7 +24,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     mapping(uint256 => address) public peers;
 
     uint256 private _slippageCapPct;
-    uint256 private constant MAX_SLIPPAGE_CAP_PCT = 10_000; // 100%
+    uint256 private constant MAX_SLIPPAGE_CAP_PCT = 1e18; // 100%
 
     RingCacheLibrary.RingCache private _cache;
 

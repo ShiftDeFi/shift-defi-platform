@@ -61,8 +61,10 @@ abstract contract Base is Test {
     Users internal users;
     address internal treasury;
 
-    uint256 internal constant MAX_BPS = 10000;
-    uint256 internal constant MAX_SLIPPAGE_CAP_PCT = 10_000;
+    uint256 internal constant MAX_BPS = 1e18;
+    uint256 internal constant MAX_SLIPPAGE_CAP_PCT = 1e18;
+
+    uint256 internal constant TOTAL_CONTAINER_WEIGHT = 10_000;
 
     uint8 internal constant NOTION_DECIMALS = 6;
     uint8 internal constant DAI_DECIMALS = 18;

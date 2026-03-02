@@ -27,8 +27,8 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
     mapping(address => uint256) private _expectedTokenAmounts;
     mapping(address => bool) private _isBridgeAdapterSupported;
 
-    uint256 public constant MAX_BRIDGE_SLIPPAGE = 9000; // 10%
-    uint256 public constant BPS = 10000;
+    uint256 public constant MAX_BRIDGE_SLIPPAGE = 0.9e18; // 10%
+    uint256 public constant MAX_BPS = 1e18;
 
     modifier onlyMessageRouter() {
         require(msg.sender == messageRouter, Errors.Unauthorized());
@@ -146,7 +146,7 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
             Errors.NotEnoughTokens(instruction.token, instruction.amount)
         );
         vars.tokenOnDestinationChain = _getTokenOnDestinationChain(bridgeAdapter, instruction.token);
-        vars.minAllowedAmount = instruction.amount.mulDiv(MAX_BRIDGE_SLIPPAGE, BPS);
+        vars.minAllowedAmount = instruction.amount.mulDiv(MAX_BRIDGE_SLIPPAGE, MAX_BPS);
         require(instruction.minTokenAmount >= vars.minAllowedAmount, Errors.IncorrectAmount());
 
         _approveTokenToBridgeAdapter(instruction.token, bridgeAdapter, instruction.amount);

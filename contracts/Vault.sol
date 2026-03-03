@@ -173,7 +173,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     function _setMaxDepositAmount(uint256 _maxDepositAmount) internal {
         require(
-            _maxDepositAmount > minDepositAmount && _maxDepositAmount <= maxDepositBatchSize,
+            _maxDepositAmount >= minDepositAmount && _maxDepositAmount <= maxDepositBatchSize,
             Errors.IncorrectAmount()
         );
         maxDepositAmount = _maxDepositAmount;
@@ -181,7 +181,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     }
 
     function _setMinDepositAmount(uint256 _minDepositAmount) internal {
-        require(_minDepositAmount > 0 && _minDepositAmount < maxDepositAmount, Errors.IncorrectAmount());
+        require(_minDepositAmount > 0 && _minDepositAmount <= maxDepositAmount, Errors.IncorrectAmount());
         minDepositAmount = _minDepositAmount;
         emit MinDepositAmountUpdated(_minDepositAmount);
     }

@@ -13,18 +13,18 @@ contract VaultLimitsTest is L1Base {
         vault.setMaxDepositAmount(maxDepositBatchSize + 1);
     }
 
-    function test_RevertIf_MaxDepositAmountLessThanOrEqualToMinDepositAmount() public {
+    function test_RevertIf_MaxDepositAmountLessThanMinDepositAmount() public {
         uint256 minDepositAmount = vault.minDepositAmount();
         vm.prank(roles.configurator);
         vm.expectRevert(Errors.IncorrectAmount.selector);
-        vault.setMaxDepositAmount(minDepositAmount);
+        vault.setMaxDepositAmount(minDepositAmount - 1);
     }
 
-    function test_RevertIf_MinDepositAmountGreaterThanOrEqualToMaxDepositAmount() public {
+    function test_RevertIf_MinDepositAmountGreaterThanMaxDepositAmount() public {
         uint256 maxDepositAmount = vault.maxDepositAmount();
         vm.prank(roles.configurator);
         vm.expectRevert(Errors.IncorrectAmount.selector);
-        vault.setMinDepositAmount(maxDepositAmount);
+        vault.setMinDepositAmount(maxDepositAmount + 1);
     }
 
     function test_RevertIf_MaxDepositBatchSizeLessThanOrEqualToMinDepositBatchSize() public {

@@ -150,6 +150,7 @@ contract VaultBaseTest is L1Base {
         for (uint256 i = 0; i < containers.length; i++) {
             weights[i] = TOTAL_CONTAINER_WEIGHT / containers.length;
         }
+        _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
     }

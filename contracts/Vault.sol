@@ -253,6 +253,9 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         uint256 newWeightSum = 0;
         uint256 previousWeightSum = 0;
 
+        for (uint256 i = 1; i < length; ++i) {
+            require(containers[i] > containers[i - 1], DuplicatingContainer(containers[i]));
+        }
         for (uint256 i = 0; i < length; ++i) {
             require(_isContainer(containers[i]), ContainerNotFound(containers[i]));
             newWeightSum += weights[i];

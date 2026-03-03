@@ -79,6 +79,7 @@ contract VaultContainerManagementTest is L1Base {
         weights[0] = TOTAL_CONTAINER_WEIGHT;
         weights[1] = 0;
 
+        _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
 
@@ -138,13 +139,14 @@ contract VaultContainerManagementTest is L1Base {
         weights[2] = TOTAL_CONTAINER_WEIGHT / containers.length;
         weights[3] = TOTAL_CONTAINER_WEIGHT / containers.length;
 
+        _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
 
-        weights[0] = 0;
-        weights[1] = 0;
-        weights[2] = 0;
-        weights[3] = TOTAL_CONTAINER_WEIGHT;
+        _sortContainersAndWeights(containers, weights);
+        for (uint256 i = 0; i < containers.length; ++i) {
+            weights[i] = containers[i] == address(container4) ? TOTAL_CONTAINER_WEIGHT : 0;
+        }
 
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
@@ -177,6 +179,7 @@ contract VaultContainerManagementTest is L1Base {
         weights[0] = TOTAL_CONTAINER_WEIGHT / containers.length;
         weights[1] = TOTAL_CONTAINER_WEIGHT - weights[0];
 
+        _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
 
@@ -229,6 +232,7 @@ contract VaultContainerManagementTest is L1Base {
         weights[2] = evenWeight;
         weights[3] = evenWeight;
 
+        _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
 
@@ -264,6 +268,7 @@ contract VaultContainerManagementTest is L1Base {
         weights[2] = evenWeight / 2;
         weights[3] = evenWeight / 2;
 
+        _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
 
@@ -325,6 +330,30 @@ contract VaultContainerManagementTest is L1Base {
         vault.setContainerWeights(containers, weights);
     }
 
+    function test_RevertIf_SetContainerWeights_DuplicateContainer() public {
+        IContainerPrincipal container1 = _deployMockContainerPrincipal();
+        _addContainer(address(container1));
+
+        IContainerPrincipal container2 = _deployMockContainerPrincipal();
+        _addContainer(address(container2));
+
+        (address smaller, address larger) = address(container1) < address(container2)
+            ? (address(container1), address(container2))
+            : (address(container2), address(container1));
+        address[] memory containers = new address[](3);
+        containers[0] = smaller;
+        containers[1] = larger;
+        containers[2] = smaller; // duplicate breaks strict ascending order
+        uint256[] memory weights = new uint256[](3);
+        weights[0] = TOTAL_CONTAINER_WEIGHT / 3;
+        weights[1] = TOTAL_CONTAINER_WEIGHT / 3;
+        weights[2] = TOTAL_CONTAINER_WEIGHT - weights[0] - weights[1];
+
+        vm.expectRevert(abi.encodeWithSelector(IVault.DuplicatingContainer.selector, smaller));
+        vm.prank(roles.containerManager);
+        vault.setContainerWeights(containers, weights);
+    }
+
     function test_RevertIf_SetContainerWeights_ContainerNotFound() public {
         IContainerPrincipal container = _deployMockContainerPrincipal();
         _addContainer(address(container));
@@ -338,6 +367,7 @@ contract VaultContainerManagementTest is L1Base {
         weights[0] = TOTAL_CONTAINER_WEIGHT / weights.length;
         weights[1] = TOTAL_CONTAINER_WEIGHT / weights.length;
 
+        _sortContainersAndWeights(containers, weights);
         vm.expectRevert(abi.encodeWithSelector(IVault.ContainerNotFound.selector, address(container2)));
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
@@ -357,11 +387,14 @@ contract VaultContainerManagementTest is L1Base {
         weights[0] = TOTAL_CONTAINER_WEIGHT / containers.length;
         weights[1] = TOTAL_CONTAINER_WEIGHT / containers.length + 1;
 
+        _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vm.expectRevert(abi.encodeWithSelector(IVault.IncorrectWeights.selector, TOTAL_CONTAINER_WEIGHT + 1));
         vault.setContainerWeights(containers, weights);
 
+        weights[0] = TOTAL_CONTAINER_WEIGHT / containers.length;
         weights[1] = 1;
+        _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vm.expectRevert(
             abi.encodeWithSelector(IVault.IncorrectWeights.selector, TOTAL_CONTAINER_WEIGHT / containers.length + 1)
@@ -383,11 +416,13 @@ contract VaultContainerManagementTest is L1Base {
         weights[0] = TOTAL_CONTAINER_WEIGHT / containers.length;
         weights[1] = TOTAL_CONTAINER_WEIGHT - weights[0];
 
+        _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
 
         weights[1] = 0;
 
+        _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vm.expectRevert(
             abi.encodeWithSelector(IVault.IncorrectWeights.selector, TOTAL_CONTAINER_WEIGHT / containers.length)

@@ -135,6 +135,7 @@ interface IVault {
     // State
     error ContainerAlreadyExists();
     error ContainerNotFound(address container);
+    error DuplicatingContainer(address container);
     error ContainerAlreadyReported();
     error ContainerNotReallocating();
     error NoContainers();

@@ -295,4 +295,21 @@ abstract contract L1Base is Base {
                 payload: ""
             });
     }
+
+    /// @dev Sorts containers and weights in place by container address (strict ascending) for setContainerWeights.
+    function _sortContainersAndWeights(address[] memory containers, uint256[] memory weights) internal pure {
+        uint256 n = containers.length;
+        for (uint256 i = 1; i < n; ++i) {
+            address keyAddr = containers[i];
+            uint256 keyWeight = weights[i];
+            uint256 j = i;
+            while (j > 0 && containers[j - 1] > keyAddr) {
+                containers[j] = containers[j - 1];
+                weights[j] = weights[j - 1];
+                --j;
+            }
+            containers[j] = keyAddr;
+            weights[j] = keyWeight;
+        }
+    }
 }

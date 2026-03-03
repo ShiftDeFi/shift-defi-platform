@@ -109,6 +109,7 @@ contract VaultDepositBatchProcessingTest is L1Base {
         weights[1] = TOTAL_CONTAINER_WEIGHT / containersCount;
         weights[2] = TOTAL_CONTAINER_WEIGHT - weights[0] - weights[1];
 
+        _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
 
@@ -118,9 +119,18 @@ contract VaultDepositBatchProcessingTest is L1Base {
         vm.prank(roles.operator);
         vault.startDepositBatchProcessing();
 
-        uint256 expectedContainerBalance1 = depositAmount.mulDiv(weights[0], TOTAL_CONTAINER_WEIGHT);
-        uint256 expectedContainerBalance2 = depositAmount.mulDiv(weights[1], TOTAL_CONTAINER_WEIGHT);
-        uint256 expectedContainerBalance3 = depositAmount.mulDiv(weights[2], TOTAL_CONTAINER_WEIGHT);
+        uint256 expectedContainerBalance1 = depositAmount.mulDiv(
+            _weightForContainer(containers, weights, address(container1)),
+            TOTAL_CONTAINER_WEIGHT
+        );
+        uint256 expectedContainerBalance2 = depositAmount.mulDiv(
+            _weightForContainer(containers, weights, address(container2)),
+            TOTAL_CONTAINER_WEIGHT
+        );
+        uint256 expectedContainerBalance3 = depositAmount.mulDiv(
+            _weightForContainer(containers, weights, address(container3)),
+            TOTAL_CONTAINER_WEIGHT
+        );
 
         assertEq(
             IERC20(notion).balanceOf(address(container1)),
@@ -137,6 +147,17 @@ contract VaultDepositBatchProcessingTest is L1Base {
             expectedContainerBalance3,
             "test_StartDepositBatchContainerDistribution: container3 balance"
         );
+    }
+
+    function _weightForContainer(
+        address[] memory containers,
+        uint256[] memory weights,
+        address container
+    ) internal pure returns (uint256) {
+        for (uint256 i = 0; i < containers.length; ++i) {
+            if (containers[i] == container) return weights[i];
+        }
+        return 0;
     }
 
     function test_SkipDepositBatch() public {

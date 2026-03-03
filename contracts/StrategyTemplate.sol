@@ -130,26 +130,20 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     /// @inheritdoc IStrategyTemplate
     function setInputTokens(address[] calldata inputTokens) external onlyStrategyContainer {
         require(inputTokens.length > 0, Errors.ZeroArrayLength());
-        for (uint256 i = 0; i < inputTokens.length; ) {
+        for (uint256 i = 0; i < inputTokens.length; ++i) {
             require(inputTokens[i] != address(0), Errors.ZeroAddress());
             require(_inputTokens.add(inputTokens[i]), Errors.TokenAlreadySet(inputTokens[i]));
             emit InputTokenSet(inputTokens[i]);
-            unchecked {
-                ++i;
-            }
         }
     }
 
     /// @inheritdoc IStrategyTemplate
     function setOutputTokens(address[] calldata outputTokens) external onlyStrategyContainer {
         require(outputTokens.length > 0, Errors.ZeroArrayLength());
-        for (uint256 i = 0; i < outputTokens.length; ) {
+        for (uint256 i = 0; i < outputTokens.length; ++i) {
             require(outputTokens[i] != address(0), Errors.ZeroAddress());
             require(_outputTokens.add(outputTokens[i]), Errors.TokenAlreadySet(outputTokens[i]));
             emit OutputTokenSet(outputTokens[i]);
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -394,11 +388,8 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         uint256[] calldata shares
     ) external payable onlyStrategyContainerOrEmergencyManager {
         require(toStateIds.length == shares.length, Errors.ArrayLengthMismatch());
-        for (uint256 i = 0; i < toStateIds.length; ) {
+        for (uint256 i = 0; i < toStateIds.length; ++i) {
             emergencyExit(toStateIds[i], shares[i]);
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -421,12 +412,9 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         uint256 length = _inputTokens.length();
         require(amounts.length == length, Errors.ArrayLengthMismatch());
 
-        for (uint256 i = 0; i < length; ) {
+        for (uint256 i = 0; i < length; ++i) {
             if (amounts[i] > 0) {
                 IERC20(_inputTokens.at(i)).safeTransferFrom(_strategyContainer, address(this), amounts[i]);
-            }
-            unchecked {
-                ++i;
             }
         }
     }
@@ -439,7 +427,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.amounts = new uint256[](vars.length);
         vars.container = _strategyContainer;
 
-        for (uint256 i = 0; i < vars.length; ) {
+        for (uint256 i = 0; i < vars.length; ++i) {
             uint256 balance = IERC20(vars.tokens[i]).balanceOf(address(this));
 
             if (balance > 0) {
@@ -449,9 +437,6 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
             if (balance > 0 && !vars.hasRemainder) {
                 vars.hasRemainder = true;
-            }
-            unchecked {
-                ++i;
             }
         }
         return (vars.amounts, vars.hasRemainder);
@@ -470,7 +455,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
         require(vars.length == amountsBeforeExit.length, Errors.ArrayLengthMismatch());
 
-        for (uint256 i = 0; i < vars.length; ) {
+        for (uint256 i = 0; i < vars.length; ++i) {
             uint256 delta = IERC20(vars.outputTokens[i]).balanceOf(address(this)) - amountsBeforeExit[i];
             uint256 amount = delta + amountsBeforeExit[i].mulDiv(share, MAX_BPS);
             if (amount > 0) {
@@ -481,9 +466,6 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
             if (vars.outputAmounts[i] > 0 && !vars.hasRemainder) {
                 vars.hasRemainder = true;
             }
-            unchecked {
-                ++i;
-            }
         }
         return (vars.outputAmounts, vars.hasRemainder);
     }
@@ -491,7 +473,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     function _tokensAmountsDump(address[] memory tokens, uint256 share) private view returns (uint256[] memory) {
         uint256 length = tokens.length;
         uint256[] memory amounts = new uint256[](length);
-        for (uint256 i = 0; i < length; ) {
+        for (uint256 i = 0; i < length; ++i) {
             uint256 balance = IERC20(tokens[i]).balanceOf(address(this));
             if (balance > 0) {
                 if (share < MAX_BPS) {
@@ -499,9 +481,6 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
                 } else {
                     amounts[i] = balance;
                 }
-            }
-            unchecked {
-                ++i;
             }
         }
         return amounts;

@@ -88,13 +88,10 @@ library RingCacheLibrary {
      */
     function all(RingCache storage _cache) internal view returns (bytes32[] memory out) {
         out = new bytes32[](_cache.size);
-        for (uint256 i = 0; i < _cache.size; ) {
+        for (uint256 i = 0; i < _cache.size; ++i) {
             uint256 index = (_cache.head + i) % _cache.maxCacheSize;
             if (_cache.ring[index] != bytes32(0)) {
                 out[i] = _cache.ring[index];
-            }
-            unchecked {
-                ++i;
             }
         }
     }

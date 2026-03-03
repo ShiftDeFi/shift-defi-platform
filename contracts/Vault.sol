@@ -319,13 +319,15 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     }
 
     /// @inheritdoc IVault
-    function claimDeposit(uint256 batchId, address onBehalfOf) external nonReentrant {
+    function claimDeposit(uint256 batchId, address onBehalfOf) external nonReentrant returns (uint256, uint256) {
         require(batchId <= lastResolvedDepositBatchId, IncorrectBatchId());
         require(onBehalfOf != address(0), Errors.ZeroAddress());
 
         ClaimDepositLocalVars memory vars;
         vars.depositAmount = pendingBatchDeposits[batchId][onBehalfOf];
-        require(vars.depositAmount > 0, NothingToClaim());
+        if (vars.depositAmount == 0) {
+            return (0, 0);
+        }
 
         vars.batchTotalNotion = depositBatchTotalNotion[batchId];
         vars.batchNotionRemainder = batchNotionRemainder[batchId];
@@ -340,7 +342,9 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
             require(_isNotionDecreaseAllowed(vars.notionToClaim), NotEnoughNotion());
         }
 
-        require(vars.sharesToClaim > 0 || vars.notionToClaim > 0, NothingToClaim());
+        if (vars.sharesToClaim == 0 && vars.notionToClaim == 0) {
+            return (0, 0);
+        }
 
         if (vars.sharesToClaim > 0) {
             _transfer(address(this), onBehalfOf, vars.sharesToClaim);
@@ -351,6 +355,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         }
 
         emit DepositClaimed(msg.sender, onBehalfOf, batchId, vars.sharesToClaim, vars.notionToClaim);
+        return (vars.sharesToClaim, vars.notionToClaim);
     }
 
     /// @inheritdoc IVault
@@ -372,7 +377,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     }
 
     /// @inheritdoc IVault
-    function claimWithdraw(uint256 batchId, address onBehalfOf) external nonReentrant {
+    function claimWithdraw(uint256 batchId, address onBehalfOf) external nonReentrant returns (uint256) {
         require(batchId <= lastResolvedWithdrawBatchId, IncorrectBatchId());
         require(onBehalfOf != address(0), Errors.ZeroAddress());
 
@@ -383,7 +388,9 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
             withdrawBatchTotalNotion[batchId],
             withdrawBatchTotalShares[batchId]
         );
-        require(vars.notionToClaim > 0, NothingToClaim());
+        if (vars.notionToClaim == 0) {
+            return 0;
+        }
 
         pendingBatchWithdrawals[batchId][onBehalfOf] = 0;
 
@@ -394,6 +401,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         notion.safeTransfer(onBehalfOf, vars.notionToClaim);
 
         emit WithdrawClaimed(msg.sender, onBehalfOf, batchId, vars.notionToClaim);
+        return vars.notionToClaim;
     }
 
     function _isNotionDecreaseAllowed(uint256 amountToTransfer) internal view returns (bool) {

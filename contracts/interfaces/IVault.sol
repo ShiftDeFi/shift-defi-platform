@@ -160,7 +160,6 @@ interface IVault {
     error MaxContainersReached();
     error MissingContainerReport();
     error NotionNotAllocated();
-    error NothingToClaim();
     error ContainerWeightZero(address container);
     error IncorrectContainerAmount(address container);
 
@@ -276,8 +275,13 @@ interface IVault {
      * @dev Can only be called after the deposit batch has been resolved. Calculates shares based on the batch's NAV change.
      * @param batchId The ID of the deposit batch to claim from
      * @param onBehalfOf The address that will receive the shares and notion remainder
+     * @return sharesClaimed The amount of vault shares claimed
+     * @return notionClaimed The amount of notion tokens claimed
      */
-    function claimDeposit(uint256 batchId, address onBehalfOf) external;
+    function claimDeposit(
+        uint256 batchId,
+        address onBehalfOf
+    ) external returns (uint256 sharesClaimed, uint256 notionClaimed);
 
     /**
      * @notice Initiates a withdrawal by burning a percentage of the caller's vault shares.
@@ -291,8 +295,9 @@ interface IVault {
      * @dev Can only be called after the withdrawal batch has been resolved. Burns the shares and transfers notion tokens.
      * @param batchId The ID of the withdrawal batch to claim from
      * @param onBehalfOf The address that will receive the notion tokens
+     * @return notionClaimed The amount of notion tokens claimed
      */
-    function claimWithdraw(uint256 batchId, address onBehalfOf) external;
+    function claimWithdraw(uint256 batchId, address onBehalfOf) external returns (uint256 notionClaimed);
 
     /**
      * @notice Checks if all containers have submitted their deposit reports.

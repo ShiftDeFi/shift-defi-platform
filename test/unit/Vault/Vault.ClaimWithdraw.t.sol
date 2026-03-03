@@ -20,8 +20,13 @@ contract VaultClaimWithdrawTest is VaultBaseTest {
         uint256 totalSupplyBefore = IERC20(address(vault)).totalSupply();
         uint256 totalUnclaimedBefore = vault.totalUnclaimedNotionForWithdraw();
 
-        vault.claimWithdraw(withdrawBatchId, users.alice);
+        uint256 notionClaimed = vault.claimWithdraw(withdrawBatchId, users.alice);
 
+        vm.assertEq(
+            notionClaimed,
+            expectedNotion,
+            "test_ClaimWithdraw_SingleUser: notionClaimed should match expected"
+        );
         vm.assertEq(
             vault.pendingBatchWithdrawals(withdrawBatchId, users.alice),
             0,
@@ -82,8 +87,13 @@ contract VaultClaimWithdrawTest is VaultBaseTest {
             "test_ClaimWithdraw_TwoUsers: bob withdrawn shares should be greater than zero"
         );
 
-        vault.claimWithdraw(withdrawBatchId, users.alice);
+        uint256 aliceNotionClaimed = vault.claimWithdraw(withdrawBatchId, users.alice);
 
+        vm.assertEq(
+            aliceNotionClaimed,
+            expectedNotionAlice,
+            "test_ClaimWithdraw_TwoUsers: alice notionClaimed should match expected"
+        );
         vm.assertEq(
             vault.pendingBatchWithdrawals(withdrawBatchId, users.alice),
             0,
@@ -108,8 +118,13 @@ contract VaultClaimWithdrawTest is VaultBaseTest {
         uint256 expectedNotionBob = _calculateExpectedNotion(withdrawBatchId, users.bob);
         uint256 bobNotionBefore = notion.balanceOf(users.bob);
 
-        vault.claimWithdraw(withdrawBatchId, users.bob);
+        uint256 bobNotionClaimed = vault.claimWithdraw(withdrawBatchId, users.bob);
 
+        vm.assertEq(
+            bobNotionClaimed,
+            expectedNotionBob,
+            "test_ClaimWithdraw_TwoUsers: bob notionClaimed should match expected"
+        );
         vm.assertEq(
             vault.pendingBatchWithdrawals(withdrawBatchId, users.bob),
             0,
@@ -128,8 +143,13 @@ contract VaultClaimWithdrawTest is VaultBaseTest {
         uint256 expectedNotion = _calculateExpectedNotion(withdrawBatchId, users.alice);
 
         uint256 aliceNotionBefore = notion.balanceOf(users.alice);
-        vault.claimWithdraw(withdrawBatchId, users.alice);
+        uint256 notionClaimed = vault.claimWithdraw(withdrawBatchId, users.alice);
 
+        vm.assertEq(
+            notionClaimed,
+            expectedNotion,
+            "test_ClaimWithdraw_ProportionalNotion: notionClaimed should match expected"
+        );
         vm.assertEq(
             notion.balanceOf(users.alice),
             aliceNotionBefore + expectedNotion,
@@ -151,20 +171,24 @@ contract VaultClaimWithdrawTest is VaultBaseTest {
         vault.claimWithdraw(withdrawBatchId, address(0));
     }
 
-    function test_RevertIf_ClaimWithdraw_NothingToClaim() public {
+    function test_ClaimWithdraw_ReturnsZeroWhenNothingToClaim() public {
         uint256 withdrawBatchId = _processSingleUserResolvedWithdrawBatch(users.alice);
 
         vault.claimWithdraw(withdrawBatchId, users.alice);
 
-        vm.expectRevert(IVault.NothingToClaim.selector);
-        vault.claimWithdraw(withdrawBatchId, users.alice);
+        uint256 notionClaimed = vault.claimWithdraw(withdrawBatchId, users.alice);
+        vm.assertEq(notionClaimed, 0, "test_ClaimWithdraw_ReturnsZeroWhenNothingToClaim: second claim should return 0");
     }
 
-    function test_RevertIf_ClaimWithdraw_NothingToClaimForOtherUser() public {
+    function test_ClaimWithdraw_ReturnsZeroWhenNothingToClaimForOtherUser() public {
         uint256 withdrawBatchId = _processSingleUserResolvedWithdrawBatch(users.alice);
 
-        vm.expectRevert(IVault.NothingToClaim.selector);
-        vault.claimWithdraw(withdrawBatchId, users.bob);
+        uint256 notionClaimed = vault.claimWithdraw(withdrawBatchId, users.bob);
+        vm.assertEq(
+            notionClaimed,
+            0,
+            "test_ClaimWithdraw_ReturnsZeroWhenNothingToClaimForOtherUser: bob claim should return 0"
+        );
     }
 
     function test_RevertIf_ClaimWithdraw_NotEnoughNotion() public {

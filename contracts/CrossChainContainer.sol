@@ -153,9 +153,8 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
 
         vars.bridgedAmount = IBridgeAdapter(bridgeAdapter).bridge(instruction, bridgeTo);
         vars.tokenBalanceAfter = IERC20(instruction.token).balanceOf(address(this));
-        require(vars.tokenBalanceBefore - vars.tokenBalanceAfter >= vars.bridgedAmount, Errors.IncorrectAmount());
         require(
-            vars.bridgedAmount > instruction.minTokenAmount,
+            vars.bridgedAmount >= instruction.minTokenAmount,
             BridgeSlippageExceeded(instruction.minTokenAmount, vars.bridgedAmount)
         );
         emit BridgeSent(instruction.token, vars.bridgedAmount, bridgeAdapter, bridgeTo);

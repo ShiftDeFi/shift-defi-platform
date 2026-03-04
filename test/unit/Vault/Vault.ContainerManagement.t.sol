@@ -354,6 +354,31 @@ contract VaultContainerManagementTest is L1Base {
         vault.setContainerWeights(containers, weights);
     }
 
+    function test_RevertIf_SetContainerWeights_WeightRoundsToZero() public {
+        IContainerPrincipal container1 = _deployMockContainerPrincipal();
+        _addContainer(address(container1));
+
+        IContainerPrincipal container2 = _deployMockContainerPrincipal();
+        _addContainer(address(container2));
+
+        vm.prank(roles.configurator);
+        vault.setMinDepositBatchSize(TOTAL_CONTAINER_WEIGHT - 1);
+
+        (address smaller, address larger) = address(container1) < address(container2)
+            ? (address(container1), address(container2))
+            : (address(container2), address(container1));
+        address[] memory containers = new address[](2);
+        containers[0] = smaller;
+        containers[1] = larger;
+        uint256[] memory weights = new uint256[](2);
+        weights[0] = 1;
+        weights[1] = TOTAL_CONTAINER_WEIGHT - 1;
+
+        vm.expectRevert(abi.encodeWithSelector(IVault.WeightRoundsToZero.selector, smaller, 1));
+        vm.prank(roles.containerManager);
+        vault.setContainerWeights(containers, weights);
+    }
+
     function test_RevertIf_SetContainerWeights_ContainerNotFound() public {
         IContainerPrincipal container = _deployMockContainerPrincipal();
         _addContainer(address(container));

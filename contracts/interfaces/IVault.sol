@@ -151,6 +151,7 @@ interface IVault {
     error IncorrectReport();
     error IncorrectStatus();
     error IncorrectWeights(uint256 weightsSum);
+    error WeightRoundsToZero(address container, uint256 weight);
 
     // Business Logic
     error DepositBatchCapReached();

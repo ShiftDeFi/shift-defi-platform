@@ -25,7 +25,11 @@ contract VaultForcedBatchTest is VaultBaseTest {
         uint256 newThreshold = 2_000 * NOTION_PRECISION;
         vm.prank(roles.configurator);
         vault.setForcedDepositThreshold(newThreshold);
-        assertEq(vault.forcedDepositThreshold(), newThreshold);
+        assertEq(
+            vault.forcedDepositThreshold(),
+            newThreshold,
+            "test_SetForcedDepositThreshold: forcedDepositThreshold mismatch"
+        );
     }
 
     function test_RevertIf_SetForcedDepositThreshold_OutOfBounds() public {
@@ -43,7 +47,11 @@ contract VaultForcedBatchTest is VaultBaseTest {
         uint256 newThreshold = 2_000e18;
         vm.prank(roles.configurator);
         vault.setForcedWithdrawThreshold(newThreshold);
-        assertEq(vault.forcedWithdrawThreshold(), newThreshold);
+        assertEq(
+            vault.forcedWithdrawThreshold(),
+            newThreshold,
+            "test_SetForcedWithdrawThreshold: forcedWithdrawThreshold mismatch"
+        );
     }
 
     function test_RevertIf_SetForcedWithdrawThreshold_OutOfBounds() public {
@@ -56,7 +64,11 @@ contract VaultForcedBatchTest is VaultBaseTest {
         uint256 newLimit = 50_000;
         vm.prank(roles.configurator);
         vault.setForcedBatchBlockLimit(newLimit);
-        assertEq(vault.forcedBatchBlockLimit(), newLimit);
+        assertEq(
+            vault.forcedBatchBlockLimit(),
+            newLimit,
+            "test_SetForcedBatchBlockLimit: forcedBatchBlockLimit mismatch"
+        );
     }
 
     function test_RevertIf_SetForcedBatchBlockLimit_OutOfBounds() public {
@@ -76,7 +88,11 @@ contract VaultForcedBatchTest is VaultBaseTest {
         vm.prank(roles.operator);
         vault.skipDepositBatch();
 
-        assertEq(uint8(vault.status()), uint8(IVault.VaultStatus.DepositBatchProcessingFinished));
+        assertEq(
+            uint8(vault.status()),
+            uint8(IVault.VaultStatus.DepositBatchProcessingFinished),
+            "test_SkipDepositBatch_ForcedBatch_BlockLimitNotReached: status not DepositBatchProcessingFinished"
+        );
     }
 
     function test_SkipDepositBatch_BelowForcedThreshold_NoBlockLimitCheck() public {
@@ -90,7 +106,11 @@ contract VaultForcedBatchTest is VaultBaseTest {
         vm.prank(roles.operator);
         vault.skipDepositBatch();
 
-        assertEq(uint8(vault.status()), uint8(IVault.VaultStatus.DepositBatchProcessingFinished));
+        assertEq(
+            uint8(vault.status()),
+            uint8(IVault.VaultStatus.DepositBatchProcessingFinished),
+            "test_SkipDepositBatch_BelowForcedThreshold_NoBlockLimitCheck: status not DepositBatchProcessingFinished"
+        );
     }
 
     function test_RevertIf_SkipDepositBatch_ForcedBatch_BlockLimitReached() public {
@@ -117,7 +137,11 @@ contract VaultForcedBatchTest is VaultBaseTest {
         vm.prank(roles.operator);
         vault.skipWithdrawBatch();
 
-        assertEq(uint8(vault.status()), uint8(IVault.VaultStatus.Idle));
+        assertEq(
+            uint8(vault.status()),
+            uint8(IVault.VaultStatus.Idle),
+            "test_SkipWithdrawBatch_BelowForcedThreshold_NoBlockLimitCheck: status not Idle"
+        );
     }
 
     function test_SkipWithdrawBatch_BelowForcedThreshold_NoBlockLimitCheck() public {
@@ -131,7 +155,11 @@ contract VaultForcedBatchTest is VaultBaseTest {
         vm.prank(roles.operator);
         vault.skipWithdrawBatch();
 
-        assertEq(uint8(vault.status()), uint8(IVault.VaultStatus.Idle));
+        assertEq(
+            uint8(vault.status()),
+            uint8(IVault.VaultStatus.Idle),
+            "test_SkipWithdrawBatch_BelowForcedThreshold_NoBlockLimitCheck: status not Idle"
+        );
     }
 
     function test_RevertIf_SkipWithdrawBatch_ForcedBatch_BlockLimitReached() public {

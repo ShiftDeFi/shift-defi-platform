@@ -86,6 +86,9 @@ interface IVault {
     event MaxDepositBatchSizeUpdated(uint256 maxDepositBatchSize);
     event MinDepositBatchSizeUpdated(uint256 minDepositBatchSize);
     event MinWithdrawBatchRatioUpdated(uint256 minWithdrawBatchRatio);
+    event ForcedDepositThresholdUpdated(uint256 previousForcedDepositThreshold, uint256 newForcedDepositThreshold);
+    event ForcedWithdrawThresholdUpdated(uint256 previousForcedWithdrawThreshold, uint256 newForcedWithdrawThreshold);
+    event ForcedBatchBlockLimitUpdated(uint256 previousForcedBatchBlockLimit, uint256 newForcedBatchBlockLimit);
 
     event ContainerAdded(address container);
     event ContainerRemoved(address container);
@@ -158,6 +161,7 @@ interface IVault {
     error DepositBatchSizeTooSmall();
     error CannotSkipBatch();
     error CannotSkipBatchInEmptyVault();
+    error CannotSkipForcedBatch();
     error IncorrectNotionDistribution();
     error MaxContainersReached();
     error MissingContainerReport();
@@ -208,6 +212,27 @@ interface IVault {
      * @param _minDepositBatchSize The minimum total amount required to start processing a deposit batch
      */
     function setMinDepositBatchSize(uint256 _minDepositBatchSize) external;
+
+    /**
+     * @notice Sets the forced deposit threshold notion amount.
+     * @dev Can only be called by accounts with CONFIGURATOR_ROLE.
+     * @param _forcedDepositThreshold The threshold notion amount for forced deposit batch processing
+     */
+    function setForcedDepositThreshold(uint256 _forcedDepositThreshold) external;
+
+    /**
+     * @notice Sets the forced withdraw threshold shares amount.
+     * @dev Can only be called by accounts with CONFIGURATOR_ROLE.
+     * @param _forcedWithdrawThreshold The threshold shares amount for forced withdraw batch processing
+     */
+    function setForcedWithdrawThreshold(uint256 _forcedWithdrawThreshold) external;
+
+    /**
+     * @notice Sets the forced batch block limit.
+     * @dev Can only be called by accounts with CONFIGURATOR_ROLE.
+     * @param _forcedBatchBlockLimit The number of blocks after which a forced batch must be processed
+     */
+    function setForcedBatchBlockLimit(uint256 _forcedBatchBlockLimit) external;
 
     /**
      * @notice Sets the minimum withdraw batch ratio.
@@ -523,4 +548,22 @@ interface IVault {
      * @return True if the vault is in reshuffling mode, false otherwise
      */
     function isReshuffling() external view returns (bool);
+
+    /**
+     * @notice Returns the forced deposit threshold notion amount.
+     * @return The threshold notion amount for forced deposit batch processing
+     */
+    function forcedDepositThreshold() external view returns (uint256);
+
+    /**
+     * @notice Returns the forced withdraw threshold shares amount.
+     * @return The threshold shares amount for forced withdraw batch processing
+     */
+    function forcedWithdrawThreshold() external view returns (uint256);
+
+    /**
+     * @notice Returns the forced batch block limit.
+     * @return The number of blocks after which a forced batch must be processed
+     */
+    function forcedBatchBlockLimit() external view returns (uint256);
 }

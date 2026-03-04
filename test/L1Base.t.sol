@@ -54,6 +54,9 @@ abstract contract L1Base is Base {
     uint256 internal constant MAX_DEPOSIT_BATCH_SIZE = 1_000_000;
     uint256 internal constant MIN_DEPOSIT_BATCH_SIZE = 10_000;
     uint256 internal constant MIN_WITHDRAW_BATCH_RATIO = 0.01e18; // 1%
+    uint256 internal constant FORCED_DEPOSIT_THRESHOLD = 1_000 * NOTION_PRECISION;
+    uint256 internal constant FORCED_WITHDRAW_THRESHOLD = 1_000e18;
+    uint256 internal constant FORCED_BATCH_BLOCK_LIMIT = 100_000;
 
     uint256 internal constant DEPOSIT_AMOUNT = 10_000 * NOTION_PRECISION;
     uint256 internal constant WITHDRAW_SHARES_AMOUNT = 10_000 * NOTION_PRECISION;
@@ -123,7 +126,10 @@ abstract contract L1Base is Base {
                     maxDepositBatchSize: MAX_DEPOSIT_BATCH_SIZE * NOTION_PRECISION,
                     minDepositBatchSize: MIN_DEPOSIT_BATCH_SIZE * NOTION_PRECISION,
                     minWithdrawBatchRatio: MIN_WITHDRAW_BATCH_RATIO
-                })
+                }),
+                FORCED_DEPOSIT_THRESHOLD,
+                FORCED_WITHDRAW_THRESHOLD,
+                FORCED_BATCH_BLOCK_LIMIT
             )
         );
         return IVault(proxy);

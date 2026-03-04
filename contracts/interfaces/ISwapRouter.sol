@@ -34,11 +34,12 @@ interface ISwapRouter {
         address indexed adapter,
         bytes payload
     );
+    event PredefinedSwapParametersUnset(address indexed tokenIn, address indexed tokenOut);
 
     error AdapterNotWhitelisted(address adapter);
     error NotWhitelistManager(address sender);
     error SlippageNotMet(uint256 amountOutBefore, uint256 amountOutAfter, uint256 minAmountOut);
-    error DefaultAdapterNotSet(address tokenIn, address tokenOut);
+    error SwapParametersNotSetForTokenPair(address tokenIn, address tokenOut);
 
     // ---- Functions ----
 
@@ -96,6 +97,14 @@ interface ISwapRouter {
         address adapter,
         bytes calldata payload
     ) external;
+
+    /**
+     * @notice Unsets predefined swap parameters for a token pair.
+     * @dev Can only be called by accounts with WHITELIST_MANAGER_ROLE.
+     * @param tokenIn The address of the input token.
+     * @param tokenOut The address of the output token.
+     */
+    function unsetPredefinedSwapParameters(address tokenIn, address tokenOut) external;
 
     /**
      * @notice Returns the whitelist status of a swap adapter.

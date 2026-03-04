@@ -19,6 +19,8 @@ contract MockSwapRouter is ISwapRouter {
 
     function setPredefinedSwapParameters(address, address, address, bytes calldata) external {}
 
+    function unsetPredefinedSwapParameters(address, address) external {}
+
     function whitelistedAdapters(address) external view returns (bool) {}
 
     function predefinedSwapParameters(address, address) external view returns (address, bytes memory) {}

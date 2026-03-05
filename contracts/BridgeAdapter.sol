@@ -28,14 +28,18 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
 
     RingCacheLibrary.RingCache private _cache;
 
-    function __BridgeAdapter_init(address defaultAdmin, address governance) internal onlyInitializing {
+    function __BridgeAdapter_init(
+        address defaultAdmin,
+        address governance,
+        uint256 maxCacheSize
+    ) internal onlyInitializing {
         __AccessControl_init();
         __ReentrancyGuard_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(GOVERNANCE_ROLE, governance);
 
-        _cache.initialize("BRIDGE_CACHE", 8);
+        _cache.initialize("BRIDGE_CACHE", maxCacheSize);
     }
 
     /// @inheritdoc IBridgeAdapter

@@ -12,8 +12,10 @@ contract MockBridgeAdapter is BridgeAdapter {
     using SafeERC20 for IERC20;
     using RingCacheLibrary for RingCacheLibrary.RingCache;
 
+    uint256 constant MAX_CACHE_SIZE = 8;
+
     function initialize(address defaultAdmin, address governance) public initializer {
-        __BridgeAdapter_init(defaultAdmin, governance);
+        __BridgeAdapter_init(defaultAdmin, governance, MAX_CACHE_SIZE);
     }
 
     function finalizeBridge(address claimer, address token, uint256 amount) public {

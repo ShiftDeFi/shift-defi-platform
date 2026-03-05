@@ -4,7 +4,6 @@ pragma solidity ^0.8.28;
 /// @title RingCacheLibrary
 /// @notice Minimal ring-buffer cache with O(1) add/remove/exists.
 library RingCacheLibrary {
-    uint256 internal constant DEFAULT_CACHE_SIZE = 10;
     uint256 internal constant MAX_CACHE_SIZE = 256;
 
     struct RingCache {

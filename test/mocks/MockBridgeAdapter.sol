@@ -32,8 +32,14 @@ contract MockBridgeAdapter is BridgeAdapter {
         }
     }
 
-    function isCached(address token, uint256 chainTo, uint256 amount, address receiver) external view returns (bool) {
-        bytes32 key = keccak256(abi.encode(token, chainTo, amount, receiver));
+    function isCached(
+        address token,
+        uint256 chainTo,
+        uint256 amount,
+        address receiver,
+        uint256 nonce
+    ) external view returns (bool) {
+        bytes32 key = keccak256(abi.encode(token, chainTo, amount, receiver, nonce));
 
         RingCacheLibrary.RingCache storage cache;
         assembly {

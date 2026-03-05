@@ -344,10 +344,6 @@ contract MessageRouterTest is L1Base {
 
         IMessageRouter.PathData memory pathData = _getPathData(path);
         assertEq(pathData.lastNonce, nonce, "test_ReceiveMessage: nonce mismatch");
-        assertTrue(
-            messageRouter.isMessageCached(block.chainid + 1, nonce, path, message),
-            "test_ReceiveMessage: message not cached"
-        );
         assertEq(address(messageAdapter).balance, 0, "test_ReceiveMessage: message adapter balance should be zero");
     }
 

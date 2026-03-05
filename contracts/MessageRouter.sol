@@ -192,8 +192,6 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         _paths[path].lastNonce = nonce;
         IMessageReceiver(pathData.receiver).receiveMessage(rawMessage);
 
-        _cacheMessage(pathData.chainId, rawMessageWithPathAndNonce);
-
         emit MessageReceived(nonce, pathData.chainId, pathData.sender, pathData.receiver, msg.sender, path);
     }
 

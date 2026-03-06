@@ -27,6 +27,8 @@ contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracle
         require(token != address(0), Errors.ZeroAddress());
         require(feed != address(0), Errors.ZeroAddress());
 
+        _getAndValidateLatestRoundData(token, feed);
+
         tokenToChainlinkFeed[token] = feed;
 
         emit ChainlinkFeedSet(token, feed);
@@ -50,17 +52,22 @@ contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracle
         address chainlinkFeed = tokenToChainlinkFeed[token];
         require(chainlinkFeed != address(0), ChainlinkFeedNotFound(token));
 
-        (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(chainlinkFeed).latestRoundData();
+        uint256 price = _getAndValidateLatestRoundData(token, chainlinkFeed);
 
+        return (price, AggregatorV3Interface(chainlinkFeed).decimals());
+    }
+
+    function decimals() external pure returns (uint8) {
+        revert Errors.NotImplemented();
+    }
+
+    function _getAndValidateLatestRoundData(address token, address feed) internal view returns (uint256) {
+        (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(feed).latestRoundData();
         require(price > 0, ZeroPrice(token));
 
         uint256 threshold = priceFeedStalenessThreshold;
         require(block.timestamp - updatedAt <= threshold, StalePriceFeed(token, updatedAt, threshold));
 
-        return (uint256(price), AggregatorV3Interface(chainlinkFeed).decimals());
-    }
-
-    function decimals() external pure returns (uint8) {
-        revert Errors.NotImplemented();
+        return uint256(price);
     }
 }

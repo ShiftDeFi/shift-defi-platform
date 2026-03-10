@@ -109,7 +109,7 @@ contract CodecWithdrawTest is CodecBaseTest {
         assembly {
             mstore(encoded, sub(mload(encoded), 5))
         }
-        vm.expectRevert(Errors.InvalidDataLength.selector);
+        vm.expectRevert(Codec.InvalidDataLength.selector);
         Codec.decodeWithdrawalRequest(encoded);
     }
 
@@ -152,7 +152,7 @@ contract CodecWithdrawTest is CodecBaseTest {
         assembly {
             mstore(encoded, sub(mload(encoded), 5))
         }
-        vm.expectRevert(Errors.InvalidDataLength.selector);
+        vm.expectRevert(Codec.InvalidDataLength.selector);
         Codec.decodeWithdrawalResponse(encoded);
     }
 

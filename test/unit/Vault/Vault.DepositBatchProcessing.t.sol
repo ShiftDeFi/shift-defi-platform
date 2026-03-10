@@ -105,10 +105,11 @@ contract VaultDepositBatchProcessingTest is L1Base {
         containers[2] = address(container3);
 
         uint256[] memory weights = new uint256[](containersCount);
-        weights[0] = MAX_BPS / containersCount;
-        weights[1] = MAX_BPS / containersCount;
-        weights[2] = MAX_BPS - weights[0] - weights[1];
+        weights[0] = TOTAL_CONTAINER_WEIGHT / containersCount;
+        weights[1] = TOTAL_CONTAINER_WEIGHT / containersCount;
+        weights[2] = TOTAL_CONTAINER_WEIGHT - weights[0] - weights[1];
 
+        _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
 
@@ -118,9 +119,18 @@ contract VaultDepositBatchProcessingTest is L1Base {
         vm.prank(roles.operator);
         vault.startDepositBatchProcessing();
 
-        uint256 expectedContainerBalance1 = depositAmount.mulDiv(weights[0], MAX_BPS);
-        uint256 expectedContainerBalance2 = depositAmount.mulDiv(weights[1], MAX_BPS);
-        uint256 expectedContainerBalance3 = depositAmount.mulDiv(weights[2], MAX_BPS);
+        uint256 expectedContainerBalance1 = depositAmount.mulDiv(
+            _weightForContainer(containers, weights, address(container1)),
+            TOTAL_CONTAINER_WEIGHT
+        );
+        uint256 expectedContainerBalance2 = depositAmount.mulDiv(
+            _weightForContainer(containers, weights, address(container2)),
+            TOTAL_CONTAINER_WEIGHT
+        );
+        uint256 expectedContainerBalance3 = depositAmount.mulDiv(
+            _weightForContainer(containers, weights, address(container3)),
+            TOTAL_CONTAINER_WEIGHT
+        );
 
         assertEq(
             IERC20(notion).balanceOf(address(container1)),
@@ -139,7 +149,21 @@ contract VaultDepositBatchProcessingTest is L1Base {
         );
     }
 
+    function _weightForContainer(
+        address[] memory containers,
+        uint256[] memory weights,
+        address container
+    ) internal pure returns (uint256) {
+        for (uint256 i = 0; i < containers.length; ++i) {
+            if (containers[i] == container) return weights[i];
+        }
+        return 0;
+    }
+
     function test_SkipDepositBatch() public {
+        /// @dev Prevent empty vault error
+        stdstore.target(address(vault)).sig(IERC20.totalSupply.selector).checked_write(1);
+
         uint256 previousDepositBatchId = vault.depositBatchId();
         vm.prank(roles.operator);
         vault.skipDepositBatch();
@@ -161,7 +185,15 @@ contract VaultDepositBatchProcessingTest is L1Base {
         vault.skipDepositBatch();
     }
 
+    function test_RevertIf_SkipDepositBatch_EmptyVault() public {
+        vm.expectRevert(IVault.CannotSkipBatchInEmptyVault.selector);
+        vm.prank(roles.operator);
+        vault.skipDepositBatch();
+    }
+
     function test_RevertIf_SkipDepositBatch_WithEnoughDeposits() public {
+        /// @dev Prevent empty vault error
+        stdstore.target(address(vault)).sig(IERC20.totalSupply.selector).checked_write(1);
         _deposit(users.alice, vault.minDepositBatchSize());
 
         vm.expectRevert(IVault.CannotSkipBatch.selector);

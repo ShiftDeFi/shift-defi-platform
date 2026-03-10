@@ -24,18 +24,24 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     mapping(uint256 => address) public peers;
 
     uint256 private _slippageCapPct;
-    uint256 private constant MAX_SLIPPAGE_CAP_PCT = 10_000; // 100%
+    uint256 private constant MAX_SLIPPAGE_CAP_PCT = 1e18; // 100%
 
     RingCacheLibrary.RingCache private _cache;
 
-    function __BridgeAdapter_init(address defaultAdmin, address governance) internal onlyInitializing {
+    uint256 private _nonce;
+
+    function __BridgeAdapter_init(
+        address defaultAdmin,
+        address governance,
+        uint256 maxCacheSize
+    ) internal onlyInitializing {
         __AccessControl_init();
         __ReentrancyGuard_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(GOVERNANCE_ROLE, governance);
 
-        _cache.initialize("BRIDGE_CACHE", 8);
+        _cache.initialize("BRIDGE_CACHE", maxCacheSize);
     }
 
     /// @inheritdoc IBridgeAdapter
@@ -91,12 +97,14 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
 
         _validateBridgeInstruction(instruction);
 
+        uint256 nonceCached = _nonce++;
+
         IERC20(instruction.token).safeTransferFrom(msg.sender, address(this), instruction.amount);
         uint256 bridgedAmount = _bridge(instruction, receiver, peers[instruction.chainTo]);
 
-        _cacheInstruction(instruction, receiver);
+        _cacheInstruction(instruction, receiver, nonceCached);
 
-        emit BridgeSent(instruction.token, bridgedAmount, instruction.chainTo);
+        emit BridgeSent(instruction.token, bridgedAmount, instruction.chainTo, nonceCached);
         return bridgedAmount;
     }
 
@@ -106,26 +114,40 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     }
 
     /// @inheritdoc IBridgeAdapter
-    function retryBridge(BridgeInstruction calldata instruction, address receiver) external virtual nonReentrant {
+    function retryBridge(
+        BridgeInstruction calldata instruction,
+        address receiver,
+        uint256 nonce
+    ) external virtual nonReentrant {
         require(whitelistedBridgers[msg.sender], BridgerNotWhitelisted(msg.sender));
 
         _validateBridgeInstruction(instruction);
 
-        bytes32 key = keccak256(abi.encode(instruction.token, instruction.chainTo, instruction.amount, receiver));
+        bytes32 key = keccak256(
+            abi.encode(instruction.token, instruction.chainTo, instruction.amount, receiver, nonce)
+        );
         require(_cache.exists(key), RingCacheLibrary.DoesNotExists(_cache.id, key));
 
         uint256 bridgedAmount = _bridge(instruction, receiver, peers[instruction.chainTo]);
 
-        emit BridgeSent(instruction.token, bridgedAmount, instruction.chainTo);
+        emit BridgeSent(instruction.token, bridgedAmount, instruction.chainTo, nonce);
     }
 
-    function _isCached(address token, uint256 chainTo, uint256 amount, address receiver) private view returns (bool) {
-        bytes32 key = keccak256(abi.encode(token, chainTo, amount, receiver));
+    function _isCached(
+        address token,
+        uint256 chainTo,
+        uint256 amount,
+        address receiver,
+        uint256 nonce
+    ) private view returns (bool) {
+        bytes32 key = keccak256(abi.encode(token, chainTo, amount, receiver, nonce));
         return _cache.exists(key);
     }
 
-    function _cacheInstruction(BridgeInstruction calldata instruction, address receiver) private {
-        bytes32 key = keccak256(abi.encode(instruction.token, instruction.chainTo, instruction.amount, receiver));
+    function _cacheInstruction(BridgeInstruction calldata instruction, address receiver, uint256 nonce) private {
+        bytes32 key = keccak256(
+            abi.encode(instruction.token, instruction.chainTo, instruction.amount, receiver, nonce)
+        );
         _cache.add(key);
     }
 

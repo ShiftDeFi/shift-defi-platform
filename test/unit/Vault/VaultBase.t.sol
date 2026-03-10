@@ -16,10 +16,10 @@ contract VaultBaseTest is L1Base {
     uint256 internal vaultPrecision;
 
     uint256 internal constant DEFAULT_SHARES_AMOUNT = 1000 * 1e18;
-    uint256 internal constant DEFAULT_SHARES_PERCENT = 5000; // 50%
+    uint256 internal constant DEFAULT_SHARES_PERCENT = 0.5e18; // 50%
     uint256 internal constant DEFAULT_NOTION_AMOUNT = 100e18;
     uint256 internal constant MAX_CONTAINERS = 255;
-    uint256 internal constant REMAINDER_PCT = 100; // 1%
+    uint256 internal constant REMAINDER_PCT = 0.01e18; // 1%
 
     uint256 internal constant N_CONTAINERS = 4;
 
@@ -70,7 +70,7 @@ contract VaultBaseTest is L1Base {
 
         (address[] memory containers, uint256[] memory weights) = vault.getContainers();
         for (uint256 i = 0; i < containers.length; i++) {
-            uint256 containerReportedNotionAmount = (withdrawnAmount * weights[i]) / MAX_BPS;
+            uint256 containerReportedNotionAmount = (withdrawnAmount * weights[i]) / TOTAL_CONTAINER_WEIGHT;
             notion.mint(containers[i], containerReportedNotionAmount);
             vm.prank(containers[i]);
             vault.reportWithdraw(containerReportedNotionAmount);
@@ -106,7 +106,7 @@ contract VaultBaseTest is L1Base {
 
         (address[] memory containers, uint256[] memory weights) = vault.getContainers();
         for (uint256 i = 0; i < N_CONTAINERS; i++) {
-            uint256 amount = (depositAmount * weights[i]) / MAX_BPS;
+            uint256 amount = (depositAmount * weights[i]) / TOTAL_CONTAINER_WEIGHT;
             uint256 remainder = (amount * REMAINDER_PCT) / MAX_BPS;
             _reportDepositBatch(containers[i], 0, amount - remainder, remainder);
 
@@ -120,7 +120,7 @@ contract VaultBaseTest is L1Base {
     function _reportDepositBatchAllContainersOnlyNotion(uint256 depositAmount) internal {
         (address[] memory containers, uint256[] memory weights) = vault.getContainers();
         for (uint256 i = 0; i < N_CONTAINERS; i++) {
-            uint256 amount = (depositAmount * weights[i]) / MAX_BPS;
+            uint256 amount = (depositAmount * weights[i]) / TOTAL_CONTAINER_WEIGHT;
             _reportDepositBatch(containers[i], 0, 0, amount);
         }
     }
@@ -128,7 +128,7 @@ contract VaultBaseTest is L1Base {
     function _reportDepositBatchAllContainersWithoutRemainder(uint256 depositAmount) internal {
         (address[] memory containers, uint256[] memory weights) = vault.getContainers();
         for (uint256 i = 0; i < N_CONTAINERS; i++) {
-            uint256 amount = (depositAmount * weights[i]) / MAX_BPS;
+            uint256 amount = (depositAmount * weights[i]) / TOTAL_CONTAINER_WEIGHT;
             _reportDepositBatch(containers[i], 0, amount, 0);
         }
     }
@@ -148,8 +148,9 @@ contract VaultBaseTest is L1Base {
     function _setVaultContainerWeightsProportionally() internal {
         (address[] memory containers, uint256[] memory weights) = vault.getContainers();
         for (uint256 i = 0; i < containers.length; i++) {
-            weights[i] = MAX_BPS / containers.length;
+            weights[i] = TOTAL_CONTAINER_WEIGHT / containers.length;
         }
+        _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
     }

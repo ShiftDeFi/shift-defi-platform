@@ -5,16 +5,12 @@ library Errors {
     // -- Access Control Errors --
 
     error Unauthorized();
-    error OnlyAgent();
 
     // -- State Errors --
 
     error AlreadyBlacklisted();
-    error AlreadyInitialized();
     error AlreadyWhitelisted();
-    error EmergencyModeEnabled();
     error NotImplemented();
-    error NotInRepairingMode();
     error TokenAlreadySet(address value);
     error AlreadySet();
 
@@ -24,12 +20,10 @@ library Errors {
     error IncorrectAmount();
     error IncorrectContainerStatus();
     error IncorrectInput();
-    error InvalidDataLength();
     error ZeroAddress();
     error ZeroAmount();
     error ZeroArrayLength();
     error NonZeroAmount();
-    error NotFound();
     error IncorrectContainerType(address container, uint8 expected, uint8 received);
     error DuplicatingAddressInArray(address entry);
 

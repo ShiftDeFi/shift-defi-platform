@@ -53,7 +53,10 @@ abstract contract L1Base is Base {
     uint256 internal constant MIN_DEPOSIT_AMOUNT = 10_000;
     uint256 internal constant MAX_DEPOSIT_BATCH_SIZE = 1_000_000;
     uint256 internal constant MIN_DEPOSIT_BATCH_SIZE = 10_000;
-    uint256 internal constant MIN_WITHDRAW_BATCH_RATIO = 100; // 1%
+    uint256 internal constant MIN_WITHDRAW_BATCH_RATIO = 0.01e18; // 1%
+    uint256 internal constant FORCED_DEPOSIT_THRESHOLD = 1_000 * NOTION_PRECISION;
+    uint256 internal constant FORCED_WITHDRAW_THRESHOLD = 1_000e18;
+    uint256 internal constant FORCED_BATCH_BLOCK_LIMIT = 100_000;
 
     uint256 internal constant DEPOSIT_AMOUNT = 10_000 * NOTION_PRECISION;
     uint256 internal constant WITHDRAW_SHARES_AMOUNT = 10_000 * NOTION_PRECISION;
@@ -123,7 +126,10 @@ abstract contract L1Base is Base {
                     maxDepositBatchSize: MAX_DEPOSIT_BATCH_SIZE * NOTION_PRECISION,
                     minDepositBatchSize: MIN_DEPOSIT_BATCH_SIZE * NOTION_PRECISION,
                     minWithdrawBatchRatio: MIN_WITHDRAW_BATCH_RATIO
-                })
+                }),
+                FORCED_DEPOSIT_THRESHOLD,
+                FORCED_WITHDRAW_THRESHOLD,
+                FORCED_BATCH_BLOCK_LIMIT
             )
         );
         return IVault(proxy);
@@ -294,5 +300,22 @@ abstract contract L1Base is Base {
                 minTokenAmount: Utils.calculateMinBridgeAmount(address(containerPrincipal), amount),
                 payload: ""
             });
+    }
+
+    /// @dev Sorts containers and weights in place by container address (strict ascending) for setContainerWeights.
+    function _sortContainersAndWeights(address[] memory containers, uint256[] memory weights) internal pure {
+        uint256 n = containers.length;
+        for (uint256 i = 1; i < n; ++i) {
+            address keyAddr = containers[i];
+            uint256 keyWeight = weights[i];
+            uint256 j = i;
+            while (j > 0 && containers[j - 1] > keyAddr) {
+                containers[j] = containers[j - 1];
+                weights[j] = weights[j - 1];
+                --j;
+            }
+            containers[j] = keyAddr;
+            weights[j] = keyWeight;
+        }
     }
 }

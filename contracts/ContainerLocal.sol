@@ -24,7 +24,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
 
     function initialize(ContainerInitParams memory containerParams) public initializer {
         __Container_init(containerParams);
-        IERC20(notion).approve(vault, type(uint256).max);
+        IERC20(notion).forceApprove(vault, type(uint256).max);
     }
 
     // ---- Container logic ----

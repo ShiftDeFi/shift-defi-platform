@@ -139,4 +139,55 @@ contract SwapRouterWhitelistTest is L1Base {
         vm.prank(roles.whitelistManager);
         swapRouter.setPredefinedSwapParameters(tokenIn, tokenOut, adapter, payload);
     }
+
+    function test_UnsetPredefinedSwapParameters() public {
+        address tokenIn = address(123);
+        address tokenOut = address(234);
+        address adapter = address(345);
+        bytes memory payload = hex"0102030405060708090a0b0c0d0e0f10";
+
+        vm.startPrank(roles.whitelistManager);
+        swapRouter.whitelistSwapAdapter(adapter);
+        swapRouter.setPredefinedSwapParameters(tokenIn, tokenOut, adapter, payload);
+        vm.stopPrank();
+
+        (address actualAdapter, bytes memory actualPayload) = swapRouter.predefinedSwapParameters(tokenIn, tokenOut);
+
+        assertEq(
+            actualAdapter,
+            adapter,
+            "test_unsetPredefinedSwapParameters: must set predefined adapter successfully"
+        );
+        assertEq(
+            actualPayload,
+            payload,
+            "test_unsetPredefinedSwapParameters: must set predefined payload successfully"
+        );
+
+        vm.prank(roles.whitelistManager);
+        swapRouter.unsetPredefinedSwapParameters(tokenIn, tokenOut);
+
+        (actualAdapter, actualPayload) = swapRouter.predefinedSwapParameters(tokenIn, tokenOut);
+        assertEq(
+            actualAdapter,
+            address(0),
+            "test_unsetPredefinedSwapParameters: must unset predefined adapter successfully"
+        );
+        assertEq(
+            actualPayload,
+            bytes(""),
+            "test_unsetPredefinedSwapParameters: must unset predefined payload successfully"
+        );
+    }
+
+    function test_RevertIf_UnsetPredefinedSwapParameters_NotSet() public {
+        address tokenIn = address(123);
+        address tokenOut = address(234);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ISwapRouter.SwapParametersNotSetForTokenPair.selector, tokenIn, tokenOut)
+        );
+        vm.prank(roles.whitelistManager);
+        swapRouter.unsetPredefinedSwapParameters(tokenIn, tokenOut);
+    }
 }

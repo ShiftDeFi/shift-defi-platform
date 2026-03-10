@@ -10,7 +10,7 @@ interface IBridgeAdapter {
         bytes payload;
     }
 
-    event BridgeSent(address indexed token, uint256 amount, uint256 indexed chain);
+    event BridgeSent(address indexed token, uint256 amount, uint256 indexed chain, uint256 nonce);
     event Bridged(address indexed claimer, address indexed token, uint256 amount);
     event Claimed(address indexed claimer, address indexed token, uint256 amount);
     event BridgePathUpdated(address indexed src, uint256 indexed chain, address indexed dst);
@@ -105,5 +105,5 @@ interface IBridgeAdapter {
      * @param instruction The instruction for the bridge.
      * @param receiver The address to receive the bridged token on the destination chain.
      */
-    function retryBridge(BridgeInstruction calldata instruction, address receiver) external;
+    function retryBridge(BridgeInstruction calldata instruction, address receiver, uint256 nonce) external;
 }

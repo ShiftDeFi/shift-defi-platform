@@ -8,9 +8,9 @@ import {ICrossChainContainer} from "contracts/interfaces/ICrossChainContainer.so
 library Utils {
     using Math for uint256;
 
-    uint256 private constant BPS = 10000;
+    uint256 private constant MAX_BPS = 1e18;
 
     function calculateMinBridgeAmount(address crossChainContainer, uint256 amount) external view returns (uint256) {
-        return amount.mulDiv(ICrossChainContainer(crossChainContainer).MAX_BRIDGE_SLIPPAGE(), BPS);
+        return amount.mulDiv(ICrossChainContainer(crossChainContainer).MAX_BRIDGE_SLIPPAGE(), MAX_BPS);
     }
 }

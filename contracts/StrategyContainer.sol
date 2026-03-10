@@ -42,7 +42,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     uint256 public feePct;
 
-    uint256 private constant BPS = 10_000;
+    uint256 private constant MAX_BPS = 1e18;
     uint256 private constant MAX_STRATEGIES = 255;
 
     bool internal _reshufflingMode;
@@ -103,7 +103,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     }
 
     function _setFeePct(uint256 newFeePct) internal {
-        require(newFeePct <= BPS, Errors.IncorrectAmount());
+        require(newFeePct <= MAX_BPS, Errors.IncorrectAmount());
         uint256 previousFeePct = feePct;
         feePct = newFeePct;
         emit FeePctUpdated(previousFeePct, newFeePct);
@@ -329,7 +329,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         uint256 maxNavDelta
     ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
         require(share > 0, Errors.ZeroAmount());
-        require(share <= BPS, Errors.IncorrectAmount());
+        require(share <= MAX_BPS, Errors.IncorrectAmount());
         require(_isStrategy(strategy), StrategyNotFound());
         require(!isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
 

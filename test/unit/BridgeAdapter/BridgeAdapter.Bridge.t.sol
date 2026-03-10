@@ -22,6 +22,7 @@ contract BridgeAdapterBridgeTest is BridgeAdapterBase {
 
     function test_Bridge() public {
         address receiver = makeAddr("Receiver");
+        uint256 nonce = 0;
 
         notion.mint(users.alice, BRIDGE_AMOUNT);
         IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
@@ -43,7 +44,7 @@ contract BridgeAdapterBridgeTest is BridgeAdapterBase {
             "test_Bridge: Incorrect adapter balance before and after"
         );
         assertTrue(
-            bridgeAdapter.isCached(address(notion), REMOTE_CHAIN_ID, BRIDGE_AMOUNT, receiver),
+            bridgeAdapter.isCached(address(notion), REMOTE_CHAIN_ID, BRIDGE_AMOUNT, receiver, nonce),
             "test_Bridge: bridge not cached"
         );
     }
@@ -63,6 +64,7 @@ contract BridgeAdapterBridgeTest is BridgeAdapterBase {
 
     function test_RetryBridge() public {
         address receiver = makeAddr("Receiver");
+        uint256 nonce = 0;
 
         notion.mint(users.alice, BRIDGE_AMOUNT);
         IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
@@ -70,28 +72,30 @@ contract BridgeAdapterBridgeTest is BridgeAdapterBase {
         IERC20(address(notion)).approve(address(bridgeAdapter), BRIDGE_AMOUNT);
         bridgeAdapter.bridge(instruction, receiver);
 
-        bridgeAdapter.retryBridge(instruction, receiver);
+        bridgeAdapter.retryBridge(instruction, receiver, nonce);
         vm.stopPrank();
     }
 
     function test_RevertIf_RetryBridge_NotCached() public {
         address receiver = makeAddr("Receiver");
+        uint256 nonce = 0;
         IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
         vm.expectRevert(
             abi.encodeWithSelector(
                 RingCacheLibrary.DoesNotExists.selector,
                 bytes32("BRIDGE_CACHE"),
-                keccak256(abi.encode(instruction.token, instruction.chainTo, instruction.amount, receiver))
+                keccak256(abi.encode(instruction.token, instruction.chainTo, instruction.amount, receiver, nonce))
             )
         );
         vm.prank(users.alice);
-        bridgeAdapter.retryBridge(instruction, receiver);
+        bridgeAdapter.retryBridge(instruction, receiver, nonce);
     }
 
     function test_RevertIf_RetryBridge_NotWhitelistedBridger() public {
+        uint256 nonce = 0;
         IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
         vm.expectRevert(abi.encodeWithSelector(IBridgeAdapter.BridgerNotWhitelisted.selector, address(this)));
-        bridgeAdapter.retryBridge(instruction, makeAddr("Receiver"));
+        bridgeAdapter.retryBridge(instruction, makeAddr("Receiver"), nonce);
     }
 
     function test_RevertIf_ValidateBridgeInstruction_ZeroToken() public {

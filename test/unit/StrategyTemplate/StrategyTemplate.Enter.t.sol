@@ -256,11 +256,11 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
                 IStrategyTemplate.SlippageCheckFailed.selector,
                 0,
                 DEPOSIT_AMOUNT,
-                ENTER_MIN_NAV_DELTA + 1
+                DEPOSIT_AMOUNT + 1
             )
         );
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA + 1);
+        strategy.enter(inputAmounts, DEPOSIT_AMOUNT + 1);
     }
 
     function test_Enter_WithRemainder() public {

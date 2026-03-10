@@ -11,7 +11,6 @@ import {ICrossChainContainer} from "contracts/interfaces/ICrossChainContainer.so
 import {Common} from "contracts/libraries/helpers/Common.sol";
 import {Errors} from "contracts/libraries/helpers/Errors.sol";
 
-import {FaultyBridgeAdapter} from "test/mocks/FaultyBridgeAdapter.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {CrossChainContainerBaseTest} from "test/unit/CrossChainContainer/CrossChainContainerBase.t.sol";
 
@@ -267,19 +266,6 @@ contract CrossChainContainerBridgeTest is CrossChainContainerBaseTest {
 
         vm.expectRevert(Errors.IncorrectAmount.selector);
         crossChainContainer.bridgeToken(address(bridgeAdapter), bridgeReceiver, instruction);
-    }
-
-    function test_RevertIf_IncorrectActualAmountBridged() public {
-        IBridgeAdapter faultyBridgeAdapter = new FaultyBridgeAdapter();
-        vm.prank(roles.bridgeAdapterManager);
-        crossChainContainer.setBridgeAdapter(address(faultyBridgeAdapter), true);
-
-        IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
-
-        notion.mint(address(crossChainContainer), BRIDGE_AMOUNT);
-
-        vm.expectRevert(Errors.IncorrectAmount.selector);
-        crossChainContainer.bridgeToken(address(faultyBridgeAdapter), bridgeReceiver, instruction);
     }
 
     function test_ValidateBridgeAdapter() public {

@@ -12,8 +12,10 @@ contract MockBridgeAdapter is BridgeAdapter {
     using SafeERC20 for IERC20;
     using RingCacheLibrary for RingCacheLibrary.RingCache;
 
+    uint256 constant MAX_CACHE_SIZE = 8;
+
     function initialize(address defaultAdmin, address governance) public initializer {
-        __BridgeAdapter_init(defaultAdmin, governance);
+        __BridgeAdapter_init(defaultAdmin, governance, MAX_CACHE_SIZE);
     }
 
     function finalizeBridge(address claimer, address token, uint256 amount) public {
@@ -30,8 +32,14 @@ contract MockBridgeAdapter is BridgeAdapter {
         }
     }
 
-    function isCached(address token, uint256 chainTo, uint256 amount, address receiver) external view returns (bool) {
-        bytes32 key = keccak256(abi.encode(token, chainTo, amount, receiver));
+    function isCached(
+        address token,
+        uint256 chainTo,
+        uint256 amount,
+        address receiver,
+        uint256 nonce
+    ) external view returns (bool) {
+        bytes32 key = keccak256(abi.encode(token, chainTo, amount, receiver, nonce));
 
         RingCacheLibrary.RingCache storage cache;
         assembly {

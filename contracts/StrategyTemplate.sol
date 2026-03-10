@@ -28,7 +28,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     bytes32 internal constant HARVEST_MANAGER_ROLE = keccak256("HARVEST_MANAGER_ROLE");
 
     bytes32 internal constant NO_ALLOCATION_STATE_ID = bytes32(0);
-    uint256 internal constant BPS = 10_000;
+    uint256 internal constant MAX_BPS = 1e18;
 
     address internal _strategyContainer;
     address internal _notion;
@@ -130,26 +130,20 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     /// @inheritdoc IStrategyTemplate
     function setInputTokens(address[] calldata inputTokens) external onlyStrategyContainer {
         require(inputTokens.length > 0, Errors.ZeroArrayLength());
-        for (uint256 i = 0; i < inputTokens.length; ) {
+        for (uint256 i = 0; i < inputTokens.length; ++i) {
             require(inputTokens[i] != address(0), Errors.ZeroAddress());
             require(_inputTokens.add(inputTokens[i]), Errors.TokenAlreadySet(inputTokens[i]));
             emit InputTokenSet(inputTokens[i]);
-            unchecked {
-                ++i;
-            }
         }
     }
 
     /// @inheritdoc IStrategyTemplate
     function setOutputTokens(address[] calldata outputTokens) external onlyStrategyContainer {
         require(outputTokens.length > 0, Errors.ZeroArrayLength());
-        for (uint256 i = 0; i < outputTokens.length; ) {
+        for (uint256 i = 0; i < outputTokens.length; ++i) {
             require(outputTokens[i] != address(0), Errors.ZeroAddress());
             require(_outputTokens.add(outputTokens[i]), Errors.TokenAlreadySet(outputTokens[i]));
             emit OutputTokenSet(outputTokens[i]);
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -214,7 +208,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
         vars.stateToNavAfterEnter = stateNav(vars.enterStateId);
         require(
-            vars.stateToNavAfterEnter > vars.stateToNavBeforeEnter + minNavDelta,
+            vars.stateToNavAfterEnter >= vars.stateToNavBeforeEnter + minNavDelta,
             SlippageCheckFailed(vars.stateToNavBeforeEnter, vars.stateToNavAfterEnter, minNavDelta)
         );
 
@@ -299,7 +293,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         uint256 share,
         uint256 maxNavDelta
     ) external payable onlyStrategyContainer nonReentrant returns (address[] memory, uint256[] memory) {
-        require(share > 0 && share <= BPS, Errors.IncorrectAmount());
+        require(share > 0 && share <= MAX_BPS, Errors.IncorrectAmount());
         require(!_navResolutionMode, NavResolutionModeActivated());
 
         ExitLocalVars memory vars;
@@ -307,10 +301,10 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.outputTokens = _outputTokens.values();
         vars.currentStateNavBeforeExit = stateNav(vars.currentStateId);
-        vars.amountsBeforeExit = _tokensAmountsDump(vars.outputTokens, BPS);
+        vars.amountsBeforeExit = _tokensAmountsDump(vars.outputTokens, MAX_BPS);
         require(vars.currentStateId != NO_ALLOCATION_STATE_ID, ExitUnavailable());
 
-        if (share == BPS) {
+        if (share == MAX_BPS) {
             _currentStateId = NO_ALLOCATION_STATE_ID;
         }
 
@@ -320,7 +314,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
             } else {
                 _exitFromState(vars.currentStateId, share);
             }
-            vars.tokenShare = vars.currentStateBitmask.isTokenState() ? share : BPS;
+            vars.tokenShare = vars.currentStateBitmask.isTokenState() ? share : MAX_BPS;
         } else {
             vars.tokenShare = share;
         }
@@ -360,21 +354,19 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         bytes32 toStateId,
         uint256 share
     ) public payable onlyStrategyContainerOrEmergencyManager nonReentrant {
-        require(share > 0 && share <= BPS, Errors.IncorrectAmount());
+        require(share > 0 && share <= MAX_BPS, Errors.IncorrectAmount());
         require(_stateIds.contains(toStateId), StateNotFound(toStateId));
 
         EmergencyExitLocalVars memory vars;
         vars.currentStateId = _currentStateId;
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.toStateBitmask = _stateBitmasks[toStateId];
-        vars.isResolvingEmergency = IStrategyContainer(_strategyContainer).isResolvingEmergency();
 
         require(vars.toStateBitmask != 0, Errors.ZeroAmount());
         require(vars.toStateBitmask.height() <= vars.currentStateBitmask.height(), Errors.IncorrectInput());
 
-        if (!vars.isResolvingEmergency) {
-            IStrategyContainer(_strategyContainer).startEmergencyResolution();
-        }
+        IStrategyContainer(_strategyContainer).startEmergencyResolution();
+
         if (!_navResolutionMode) {
             _setNavResolutionMode(true);
         }
@@ -396,11 +388,8 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         uint256[] calldata shares
     ) external payable onlyStrategyContainerOrEmergencyManager {
         require(toStateIds.length == shares.length, Errors.ArrayLengthMismatch());
-        for (uint256 i = 0; i < toStateIds.length; ) {
+        for (uint256 i = 0; i < toStateIds.length; ++i) {
             emergencyExit(toStateIds[i], shares[i]);
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -423,12 +412,9 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         uint256 length = _inputTokens.length();
         require(amounts.length == length, Errors.ArrayLengthMismatch());
 
-        for (uint256 i = 0; i < length; ) {
+        for (uint256 i = 0; i < length; ++i) {
             if (amounts[i] > 0) {
                 IERC20(_inputTokens.at(i)).safeTransferFrom(_strategyContainer, address(this), amounts[i]);
-            }
-            unchecked {
-                ++i;
             }
         }
     }
@@ -441,7 +427,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.amounts = new uint256[](vars.length);
         vars.container = _strategyContainer;
 
-        for (uint256 i = 0; i < vars.length; ) {
+        for (uint256 i = 0; i < vars.length; ++i) {
             uint256 balance = IERC20(vars.tokens[i]).balanceOf(address(this));
 
             if (balance > 0) {
@@ -451,9 +437,6 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
             if (balance > 0 && !vars.hasRemainder) {
                 vars.hasRemainder = true;
-            }
-            unchecked {
-                ++i;
             }
         }
         return (vars.amounts, vars.hasRemainder);
@@ -472,9 +455,9 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
         require(vars.length == amountsBeforeExit.length, Errors.ArrayLengthMismatch());
 
-        for (uint256 i = 0; i < vars.length; ) {
+        for (uint256 i = 0; i < vars.length; ++i) {
             uint256 delta = IERC20(vars.outputTokens[i]).balanceOf(address(this)) - amountsBeforeExit[i];
-            uint256 amount = delta + amountsBeforeExit[i].mulDiv(share, BPS);
+            uint256 amount = delta + amountsBeforeExit[i].mulDiv(share, MAX_BPS);
             if (amount > 0) {
                 IERC20(vars.outputTokens[i]).forceApprove(vars.container, amount);
                 vars.outputAmounts[i] = amount;
@@ -483,9 +466,6 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
             if (vars.outputAmounts[i] > 0 && !vars.hasRemainder) {
                 vars.hasRemainder = true;
             }
-            unchecked {
-                ++i;
-            }
         }
         return (vars.outputAmounts, vars.hasRemainder);
     }
@@ -493,17 +473,14 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     function _tokensAmountsDump(address[] memory tokens, uint256 share) private view returns (uint256[] memory) {
         uint256 length = tokens.length;
         uint256[] memory amounts = new uint256[](length);
-        for (uint256 i = 0; i < length; ) {
+        for (uint256 i = 0; i < length; ++i) {
             uint256 balance = IERC20(tokens[i]).balanceOf(address(this));
             if (balance > 0) {
-                if (share < BPS) {
-                    amounts[i] = balance.mulDiv(share, BPS);
+                if (share < MAX_BPS) {
+                    amounts[i] = balance.mulDiv(share, MAX_BPS);
                 } else {
                     amounts[i] = balance;
                 }
-            }
-            unchecked {
-                ++i;
             }
         }
         return amounts;

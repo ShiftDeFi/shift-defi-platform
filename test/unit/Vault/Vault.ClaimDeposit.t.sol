@@ -26,8 +26,10 @@ contract VaultClaimDepositTest is VaultBaseTest {
         _reportDepositBatchAllContainersWithoutRemainder(depositAmount);
         _resolveDepositBatch();
 
-        vault.claimDeposit(depositBatchId, users.alice);
+        (uint256 sharesClaimed, uint256 notionClaimed) = vault.claimDeposit(depositBatchId, users.alice);
 
+        vm.assertGt(sharesClaimed, 0, "test_ClaimDeposit_SingleUserWithoutRemainder: sharesClaimed should be > 0");
+        vm.assertEq(notionClaimed, 0, "test_ClaimDeposit_SingleUserWithoutRemainder: notionClaimed should be 0");
         vm.assertEq(
             vault.pendingBatchDeposits(depositBatchId, users.alice),
             0,
@@ -38,10 +40,10 @@ contract VaultClaimDepositTest is VaultBaseTest {
             0,
             "test_ClaimDeposit_SingleUserWithoutRemainder: total unclaimed remainder should be zero"
         );
-        vm.assertGt(
+        vm.assertEq(
             IERC20(address(vault)).balanceOf(users.alice),
-            0,
-            "test_ClaimDeposit_SingleUserWithoutRemainder: alice shares should be greater than zero"
+            sharesClaimed,
+            "test_ClaimDeposit_SingleUserWithoutRemainder: alice shares should match claimed"
         );
     }
 
@@ -53,8 +55,14 @@ contract VaultClaimDepositTest is VaultBaseTest {
         _reportDepositBatchAllContainersWithoutRemainder(2 * depositAmount);
         _resolveDepositBatch();
 
-        vault.claimDeposit(depositBatchId, users.alice);
+        (uint256 aliceSharesClaimed, uint256 aliceNotionClaimed) = vault.claimDeposit(depositBatchId, users.alice);
 
+        vm.assertGt(aliceSharesClaimed, 0, "test_ClaimDeposit_TwoUsersWithoutRemainder: alice sharesClaimed > 0");
+        vm.assertEq(
+            aliceNotionClaimed,
+            0,
+            "test_ClaimDeposit_TwoUsersWithoutRemainder: alice notionClaimed should be 0"
+        );
         vm.assertEq(
             vault.pendingBatchDeposits(depositBatchId, users.alice),
             0,
@@ -70,10 +78,10 @@ contract VaultClaimDepositTest is VaultBaseTest {
             0,
             "test_ClaimDeposit_TwoUsersWithoutRemainder: total unclaimed remainder should be zero"
         );
-        vm.assertGt(
+        vm.assertEq(
             IERC20(address(vault)).balanceOf(users.alice),
-            0,
-            "test_ClaimDeposit_TwoUsersWithoutRemainder: alice shares should be greater than zero"
+            aliceSharesClaimed,
+            "test_ClaimDeposit_TwoUsersWithoutRemainder: alice shares should match claimed"
         );
         vm.assertEq(
             IERC20(address(vault)).balanceOf(users.bob),
@@ -81,21 +89,23 @@ contract VaultClaimDepositTest is VaultBaseTest {
             "test_ClaimDeposit_TwoUsersWithoutRemainder: bob shares should be zero before claim"
         );
 
-        vault.claimDeposit(depositBatchId, users.bob);
+        (uint256 bobSharesClaimed, uint256 bobNotionClaimed) = vault.claimDeposit(depositBatchId, users.bob);
 
+        vm.assertGt(bobSharesClaimed, 0, "test_ClaimDeposit_TwoUsersWithoutRemainder: bob sharesClaimed > 0");
+        vm.assertEq(bobNotionClaimed, 0, "test_ClaimDeposit_TwoUsersWithoutRemainder: bob notionClaimed should be 0");
         vm.assertEq(
             vault.pendingBatchDeposits(depositBatchId, users.bob),
             0,
             "test_ClaimDeposit_TwoUsersWithoutRemainder: bob pending should be zero after claim"
         );
-        vm.assertGt(
-            IERC20(address(vault)).balanceOf(users.bob),
-            0,
-            "test_ClaimDeposit_TwoUsersWithoutRemainder: bob shares should be greater than zero"
-        );
         vm.assertEq(
             IERC20(address(vault)).balanceOf(users.bob),
-            IERC20(address(vault)).balanceOf(users.alice),
+            bobSharesClaimed,
+            "test_ClaimDeposit_TwoUsersWithoutRemainder: bob shares should match claimed"
+        );
+        vm.assertEq(
+            bobSharesClaimed,
+            aliceSharesClaimed,
             "test_ClaimDeposit_TwoUsersWithoutRemainder: alice and bob shares should be equal"
         );
     }
@@ -108,8 +118,14 @@ contract VaultClaimDepositTest is VaultBaseTest {
         (, totalRemainder) = _reportDepositBatchAllContainersWithRemainder(depositAmount);
         _resolveDepositBatch();
 
-        vault.claimDeposit(depositBatchId, users.alice);
+        (uint256 sharesClaimed, uint256 notionClaimed) = vault.claimDeposit(depositBatchId, users.alice);
 
+        vm.assertGt(sharesClaimed, 0, "test_ClaimDeposit_SingleUserWithRemainder: sharesClaimed > 0");
+        vm.assertEq(
+            notionClaimed,
+            totalRemainder,
+            "test_ClaimDeposit_SingleUserWithRemainder: notionClaimed should match remainder"
+        );
         vm.assertEq(
             vault.pendingBatchDeposits(depositBatchId, users.alice),
             0,
@@ -120,14 +136,14 @@ contract VaultClaimDepositTest is VaultBaseTest {
             0,
             "test_ClaimDeposit_SingleUserWithRemainder: total unclaimed remainder should be zero"
         );
-        vm.assertGt(
+        vm.assertEq(
             IERC20(address(vault)).balanceOf(users.alice),
-            0,
-            "test_ClaimDeposit_SingleUserWithRemainder: alice shares should be greater than zero"
+            sharesClaimed,
+            "test_ClaimDeposit_SingleUserWithRemainder: alice shares should match claimed"
         );
         vm.assertEq(
             IERC20(address(notion)).balanceOf(users.alice),
-            totalRemainder,
+            notionClaimed,
             "test_ClaimDeposit_SingleUserWithRemainder: alice notion remainder mismatch"
         );
         vm.assertGt(
@@ -143,8 +159,10 @@ contract VaultClaimDepositTest is VaultBaseTest {
         _reportDepositBatchAllContainersOnlyNotion(depositAmount);
         _resolveDepositBatch();
 
-        vault.claimDeposit(depositBatchId, users.alice);
+        (uint256 sharesClaimed, uint256 notionClaimed) = vault.claimDeposit(depositBatchId, users.alice);
 
+        vm.assertEq(sharesClaimed, 0, "test_ClaimDeposit_SingleUserWithoutNavChange: sharesClaimed should be 0");
+        vm.assertGt(notionClaimed, 0, "test_ClaimDeposit_SingleUserWithoutNavChange: notionClaimed > 0");
         vm.assertEq(
             vault.pendingBatchDeposits(depositBatchId, users.alice),
             0,
@@ -167,14 +185,53 @@ contract VaultClaimDepositTest is VaultBaseTest {
         );
     }
 
-    function test_RevertIf_ClaimDeposit_NothingToClaim() public {
+    function test_ClaimDeposit_ReturnsZeroWhenNothingToClaim() public {
         vm.prank(roles.operator);
         vault.startDepositBatchProcessing();
         _reportDepositBatchAllContainersEmpty();
         _resolveDepositBatch();
 
-        vm.expectRevert(IVault.NothingToClaim.selector);
-        vault.claimDeposit(depositBatchId, users.bob);
+        (uint256 sharesClaimed, uint256 notionClaimed) = vault.claimDeposit(depositBatchId, users.bob);
+        vm.assertEq(sharesClaimed, 0, "test_ClaimDeposit_ReturnsZeroWhenNothingToClaim: sharesClaimed should be 0");
+        vm.assertEq(notionClaimed, 0, "test_ClaimDeposit_ReturnsZeroWhenNothingToClaim: notionClaimed should be 0");
+    }
+
+    function test_ClaimDeposit_BatchMintsZeroSharesAndNoRemainder() public {
+        vm.prank(roles.operator);
+        vault.startDepositBatchProcessing();
+        _reportDepositBatchAllContainersEmpty();
+        _resolveDepositBatch();
+
+        uint256 aliceSharesBefore = IERC20(address(vault)).balanceOf(users.alice);
+        uint256 aliceNotionBefore = notion.balanceOf(users.alice);
+
+        (uint256 sharesClaimed, uint256 notionClaimed) = vault.claimDeposit(depositBatchId, users.alice);
+
+        vm.assertEq(
+            sharesClaimed,
+            0,
+            "test_ClaimDeposit_BatchMintsZeroSharesAndNoRemainder: sharesClaimed should be 0"
+        );
+        vm.assertEq(
+            notionClaimed,
+            0,
+            "test_ClaimDeposit_BatchMintsZeroSharesAndNoRemainder: notionClaimed should be 0"
+        );
+        vm.assertEq(
+            IERC20(address(vault)).balanceOf(users.alice),
+            aliceSharesBefore,
+            "test_ClaimDeposit_BatchMintsZeroSharesAndNoRemainder: alice shares should be unchanged"
+        );
+        vm.assertEq(
+            notion.balanceOf(users.alice),
+            aliceNotionBefore,
+            "test_ClaimDeposit_BatchMintsZeroSharesAndNoRemainder: alice notion should be unchanged"
+        );
+        vm.assertEq(
+            vault.pendingBatchDeposits(depositBatchId, users.alice),
+            0,
+            "test_ClaimDeposit_BatchMintsZeroSharesAndNoRemainder: pending should be cleared after claim"
+        );
     }
 
     function test_RevertIf_ClaimDeposit_IncorrectBatchId() public {

@@ -67,13 +67,6 @@ contract ReshufflingGatewayTest is L1Base {
         vm.stopPrank();
     }
 
-    function _setRepairingMode() internal {
-        vm.startPrank(roles.emergencyManager);
-        vault.setReshufflingGateway(address(reshufflingGateway));
-        vault.activateRepairingMode();
-        vm.stopPrank();
-    }
-
     function test_WhitelistToken() public {
         address token = makeAddr("TOKEN");
 
@@ -608,111 +601,5 @@ contract ReshufflingGatewayTest is L1Base {
         vm.prank(roles.reshufflingManager);
         vm.expectRevert(Errors.IncorrectAmount.selector);
         reshufflingGateway.sendToLocalContainer(address(containerLocal), new address[](0), new uint256[](0));
-    }
-
-    function test_Withdraw() public {
-        uint256 token0Amount = vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT);
-        uint256 token1Amount = vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT);
-        uint256 sharesAmount = vm.randomUint(MIN_SHARES_AMOUNT, MAX_SHARES_AMOUNT);
-        uint256 totalSupply = vm.randomUint(sharesAmount, MAX_SHARES_AMOUNT);
-
-        _setRepairingMode();
-
-        MockERC20 otherToken = _deployMockERC20("OtherToken", "OTK", 18);
-
-        notion.mint(address(reshufflingGateway), token0Amount);
-        otherToken.mint(address(reshufflingGateway), token1Amount);
-
-        vm.prank(roles.whitelistManager);
-        reshufflingGateway.whitelistToken(address(otherToken));
-
-        vm.mockCall(
-            address(vault),
-            abi.encodeWithSelector(IERC20.balanceOf.selector, users.alice),
-            abi.encode(sharesAmount)
-        );
-        vm.mockCall(address(vault), abi.encodeWithSelector(IERC20.totalSupply.selector), abi.encode(totalSupply));
-
-        vm.prank(address(vault));
-        reshufflingGateway.withdraw(users.alice);
-
-        assertEq(
-            notion.balanceOf(users.alice),
-            (token0Amount * sharesAmount) / totalSupply,
-            "test_Withdraw: alice notion balance mismatch"
-        );
-        assertEq(
-            otherToken.balanceOf(users.alice),
-            (token1Amount * sharesAmount) / totalSupply,
-            "test_Withdraw: alice other token balance mismatch"
-        );
-        assertEq(
-            notion.balanceOf(address(reshufflingGateway)),
-            (token0Amount * (totalSupply - sharesAmount)) / totalSupply + 1,
-            "test_Withdraw: reshuffling gateway notion balance mismatch"
-        );
-        assertEq(
-            otherToken.balanceOf(address(reshufflingGateway)),
-            (token1Amount * (totalSupply - sharesAmount)) / totalSupply + 1,
-            "test_Withdraw: reshuffling gateway other token balance mismatch"
-        );
-    }
-
-    function test_RevertIf_Withdraw_VaultNotInRepairingMode() public {
-        vm.startPrank(roles.emergencyManager);
-        vault.setReshufflingGateway(address(reshufflingGateway));
-        vm.stopPrank();
-
-        vm.prank(address(vault));
-        vm.expectRevert(IReshufflingGateway.VaultNotInRepairingMode.selector);
-        reshufflingGateway.withdraw(users.alice);
-    }
-
-    function test_RevertIf_Withdraw_NotVault() public {
-        vm.startPrank(roles.emergencyManager);
-        vault.setReshufflingGateway(address(reshufflingGateway));
-        vault.activateRepairingMode();
-        vm.stopPrank();
-
-        address notVault = makeAddr("NOT_VAULT");
-
-        vm.prank(address(notVault));
-        vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotVault.selector, address(vault)));
-        reshufflingGateway.withdraw(users.alice);
-    }
-
-    function test_RevertIf_Withdraw_AccountIsZeroAddress() public {
-        vm.startPrank(roles.emergencyManager);
-        vault.setReshufflingGateway(address(reshufflingGateway));
-        vault.activateRepairingMode();
-        vm.stopPrank();
-
-        vm.prank(address(vault));
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        reshufflingGateway.withdraw(address(0));
-    }
-
-    function test_RevertIf_Withdraw_NothingToWithdraw() public {
-        vm.startPrank(roles.emergencyManager);
-        vault.setReshufflingGateway(address(reshufflingGateway));
-        vault.activateRepairingMode();
-        vm.stopPrank();
-
-        vm.prank(address(vault));
-        vm.expectRevert(IReshufflingGateway.NothingToWithdraw.selector);
-        reshufflingGateway.withdraw(users.alice);
-    }
-
-    function test_RevertIf_Withdraw_NoSharesToWithdraw() public {
-        vm.startPrank(roles.emergencyManager);
-        vault.setReshufflingGateway(address(reshufflingGateway));
-        vault.activateRepairingMode();
-        vm.stopPrank();
-
-        vm.mockCall(address(vault), abi.encodeWithSelector(IERC20.balanceOf.selector, users.alice), abi.encode(100));
-
-        vm.prank(address(vault));
-        vm.expectRevert(IReshufflingGateway.NoSharesToWithdraw.selector);
-        reshufflingGateway.withdraw(users.alice);
     }
 }

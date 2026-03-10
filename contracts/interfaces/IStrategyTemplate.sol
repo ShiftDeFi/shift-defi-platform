@@ -72,7 +72,6 @@ interface IStrategyTemplate {
         bytes32 currentStateId;
         uint256 currentStateBitmask;
         uint256 toStateBitmask;
-        bool isResolvingEmergency;
         bool isExitSuccess;
     }
 

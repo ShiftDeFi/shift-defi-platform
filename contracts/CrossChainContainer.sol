@@ -13,6 +13,7 @@ import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
 import {IContainer} from "./interfaces/IContainer.sol";
 
 abstract contract CrossChainContainer is Container, ICrossChainContainer {
+    using SafeERC20 for IERC20;
     using Math for uint256;
 
     bytes32 internal constant MESSENGER_MANAGER_ROLE = keccak256("MESSENGER_MANAGER_ROLE");
@@ -26,8 +27,8 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
     mapping(address => uint256) private _expectedTokenAmounts;
     mapping(address => bool) private _isBridgeAdapterSupported;
 
-    uint256 public constant MAX_BRIDGE_SLIPPAGE = 9000; // 10%
-    uint256 public constant BPS = 10000;
+    uint256 public constant MAX_BRIDGE_SLIPPAGE = 0.9e18; // 10%
+    uint256 public constant MAX_BPS = 1e18;
 
     modifier onlyMessageRouter() {
         require(msg.sender == messageRouter, Errors.Unauthorized());
@@ -145,16 +146,15 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
             Errors.NotEnoughTokens(instruction.token, instruction.amount)
         );
         vars.tokenOnDestinationChain = _getTokenOnDestinationChain(bridgeAdapter, instruction.token);
-        vars.minAllowedAmount = instruction.amount.mulDiv(MAX_BRIDGE_SLIPPAGE, BPS);
+        vars.minAllowedAmount = instruction.amount.mulDiv(MAX_BRIDGE_SLIPPAGE, MAX_BPS);
         require(instruction.minTokenAmount >= vars.minAllowedAmount, Errors.IncorrectAmount());
 
         _approveTokenToBridgeAdapter(instruction.token, bridgeAdapter, instruction.amount);
 
         vars.bridgedAmount = IBridgeAdapter(bridgeAdapter).bridge(instruction, bridgeTo);
         vars.tokenBalanceAfter = IERC20(instruction.token).balanceOf(address(this));
-        require(vars.tokenBalanceBefore - vars.tokenBalanceAfter >= vars.bridgedAmount, Errors.IncorrectAmount());
         require(
-            vars.bridgedAmount > instruction.minTokenAmount,
+            vars.bridgedAmount >= instruction.minTokenAmount,
             BridgeSlippageExceeded(instruction.minTokenAmount, vars.bridgedAmount)
         );
         emit BridgeSent(instruction.token, vars.bridgedAmount, bridgeAdapter, bridgeTo);
@@ -184,7 +184,7 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
         _validateBridgeAdapter(bridgeAdapter);
         require(token != address(0), Errors.ZeroAddress());
         if (IERC20(token).allowance(address(this), bridgeAdapter) < amount) {
-            IERC20(token).approve(bridgeAdapter, amount);
+            IERC20(token).forceApprove(bridgeAdapter, amount);
         }
     }
 }

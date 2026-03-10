@@ -70,6 +70,16 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
     }
 
     /// @inheritdoc ISwapRouter
+    function unsetPredefinedSwapParameters(address tokenIn, address tokenOut) external onlyWhitelistManager {
+        require(
+            predefinedSwapParameters[tokenIn][tokenOut].adapter != address(0),
+            SwapParametersNotSetForTokenPair(tokenIn, tokenOut)
+        );
+        delete predefinedSwapParameters[tokenIn][tokenOut];
+        emit PredefinedSwapParametersUnset(tokenIn, tokenOut);
+    }
+
+    /// @inheritdoc ISwapRouter
     function tryPredefinedSwap(
         address tokenIn,
         address tokenOut,

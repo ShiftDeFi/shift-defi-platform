@@ -18,7 +18,7 @@ contract MockERC20 is IERC20Permit, ERC20 {
 
     error InvalidOwner(address owner);
     error InvalidExpiration(uint256 deadline);
-    error InvalidSignature(address signer, address owner);
+    error ERC2612InvalidSigner(address signer, address owner);
 
     constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_) {
         DOMAIN_SEPARATOR = keccak256(
@@ -52,7 +52,7 @@ contract MockERC20 is IERC20Permit, ERC20 {
             )
         );
         address signer = ecrecover(digest, v, r, s);
-        require(signer == owner, InvalidSignature(signer, owner));
+        require(signer == owner, ERC2612InvalidSigner(signer, owner));
         nonces[owner] = currentValidNonce + 1;
         _approve(owner, spender, value);
     }

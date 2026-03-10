@@ -4,7 +4,6 @@ pragma solidity ^0.8.28;
 /// @title RingCacheLibrary
 /// @notice Minimal ring-buffer cache with O(1) add/remove/exists.
 library RingCacheLibrary {
-    uint256 internal constant DEFAULT_CACHE_SIZE = 10;
     uint256 internal constant MAX_CACHE_SIZE = 256;
 
     struct RingCache {
@@ -88,13 +87,10 @@ library RingCacheLibrary {
      */
     function all(RingCache storage _cache) internal view returns (bytes32[] memory out) {
         out = new bytes32[](_cache.size);
-        for (uint256 i = 0; i < _cache.size; ) {
+        for (uint256 i = 0; i < _cache.size; ++i) {
             uint256 index = (_cache.head + i) % _cache.maxCacheSize;
             if (_cache.ring[index] != bytes32(0)) {
                 out[i] = _cache.ring[index];
-            }
-            unchecked {
-                ++i;
             }
         }
     }

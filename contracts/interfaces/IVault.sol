@@ -86,6 +86,9 @@ interface IVault {
     event MaxDepositBatchSizeUpdated(uint256 maxDepositBatchSize);
     event MinDepositBatchSizeUpdated(uint256 minDepositBatchSize);
     event MinWithdrawBatchRatioUpdated(uint256 minWithdrawBatchRatio);
+    event ForcedDepositThresholdUpdated(uint256 previousForcedDepositThreshold, uint256 newForcedDepositThreshold);
+    event ForcedWithdrawThresholdUpdated(uint256 previousForcedWithdrawThreshold, uint256 newForcedWithdrawThreshold);
+    event ForcedBatchBlockLimitUpdated(uint256 previousForcedBatchBlockLimit, uint256 newForcedBatchBlockLimit);
 
     event ContainerAdded(address container);
     event ContainerRemoved(address container);
@@ -126,8 +129,6 @@ interface IVault {
 
     event ReshufflingGatewayUpdated(address indexed previousGateway, address indexed newGateway);
     event ReshufflingModeUpdated(bool reshufflingMode);
-    event RepairingModeSet();
-    event ReshufflingGatewayClaimed(address account);
 
     // ---- Errors ----
 
@@ -135,17 +136,15 @@ interface IVault {
     error NotContainer();
 
     // State
-    error AlreadyClaimed();
     error ContainerAlreadyExists();
     error ContainerNotFound(address container);
+    error DuplicatingContainer(address container);
     error ContainerAlreadyReported();
     error ContainerNotReallocating();
     error NoContainers();
-    error NotInRepairingMode();
     error NotEnoughNotion();
     error NotEnoughSharesWithdrawn();
     error ReshufflingGatewayNotSet();
-    error VaultIsInRepairingMode();
     error VaultIsInReshufflingMode();
 
     // Input Validation
@@ -155,16 +154,18 @@ interface IVault {
     error IncorrectReport();
     error IncorrectStatus();
     error IncorrectWeights(uint256 weightsSum);
+    error WeightRoundsToZero(address container, uint256 weight);
 
     // Business Logic
     error DepositBatchCapReached();
     error DepositBatchSizeTooSmall();
     error CannotSkipBatch();
+    error CannotSkipBatchInEmptyVault();
+    error CannotSkipForcedBatch();
     error IncorrectNotionDistribution();
     error MaxContainersReached();
     error MissingContainerReport();
     error NotionNotAllocated();
-    error NothingToClaim();
     error ContainerWeightZero(address container);
     error IncorrectContainerAmount(address container);
 
@@ -183,12 +184,6 @@ interface IVault {
      * @param _isReshuffling The new reshuffling mode state
      */
     function setReshufflingMode(bool _isReshuffling) external;
-
-    /**
-     * @notice Activates the repairing mode.
-     * @dev Can only be called by accounts with EMERGENCY_MANAGER_ROLE. Requires reshuffling gateway to be set and vault not already in repairing mode.
-     */
-    function activateRepairingMode() external;
 
     /**
      * @notice Sets the maximum deposit amount per transaction.
@@ -217,6 +212,27 @@ interface IVault {
      * @param _minDepositBatchSize The minimum total amount required to start processing a deposit batch
      */
     function setMinDepositBatchSize(uint256 _minDepositBatchSize) external;
+
+    /**
+     * @notice Sets the forced deposit threshold notion amount.
+     * @dev Can only be called by accounts with CONFIGURATOR_ROLE.
+     * @param _forcedDepositThreshold The threshold notion amount for forced deposit batch processing
+     */
+    function setForcedDepositThreshold(uint256 _forcedDepositThreshold) external;
+
+    /**
+     * @notice Sets the forced withdraw threshold shares amount.
+     * @dev Can only be called by accounts with CONFIGURATOR_ROLE.
+     * @param _forcedWithdrawThreshold The threshold shares amount for forced withdraw batch processing
+     */
+    function setForcedWithdrawThreshold(uint256 _forcedWithdrawThreshold) external;
+
+    /**
+     * @notice Sets the forced batch block limit.
+     * @dev Can only be called by accounts with CONFIGURATOR_ROLE.
+     * @param _forcedBatchBlockLimit The number of blocks after which a forced batch must be processed
+     */
+    function setForcedBatchBlockLimit(uint256 _forcedBatchBlockLimit) external;
 
     /**
      * @notice Sets the minimum withdraw batch ratio.
@@ -286,8 +302,13 @@ interface IVault {
      * @dev Can only be called after the deposit batch has been resolved. Calculates shares based on the batch's NAV change.
      * @param batchId The ID of the deposit batch to claim from
      * @param onBehalfOf The address that will receive the shares and notion remainder
+     * @return sharesClaimed The amount of vault shares claimed
+     * @return notionClaimed The amount of notion tokens claimed
      */
-    function claimDeposit(uint256 batchId, address onBehalfOf) external;
+    function claimDeposit(
+        uint256 batchId,
+        address onBehalfOf
+    ) external returns (uint256 sharesClaimed, uint256 notionClaimed);
 
     /**
      * @notice Initiates a withdrawal by burning a percentage of the caller's vault shares.
@@ -301,15 +322,9 @@ interface IVault {
      * @dev Can only be called after the withdrawal batch has been resolved. Burns the shares and transfers notion tokens.
      * @param batchId The ID of the withdrawal batch to claim from
      * @param onBehalfOf The address that will receive the notion tokens
+     * @return notionClaimed The amount of notion tokens claimed
      */
-    function claimWithdraw(uint256 batchId, address onBehalfOf) external;
-
-    /**
-     * @notice Claims assets from the reshuffling gateway for an account.
-     * @dev Can only be called when the vault is in repairing mode. Each account can only claim once.
-     * @param account The account address to claim assets for
-     */
-    function claimReshufflingGateway(address account) external;
+    function claimWithdraw(uint256 batchId, address onBehalfOf) external returns (uint256 notionClaimed);
 
     /**
      * @notice Checks if all containers have submitted their deposit reports.
@@ -535,8 +550,20 @@ interface IVault {
     function isReshuffling() external view returns (bool);
 
     /**
-     * @notice Returns whether the vault is in repairing mode.
-     * @return True if the vault is in repairing mode, false otherwise
+     * @notice Returns the forced deposit threshold notion amount.
+     * @return The threshold notion amount for forced deposit batch processing
      */
-    function isRepairing() external view returns (bool);
+    function forcedDepositThreshold() external view returns (uint256);
+
+    /**
+     * @notice Returns the forced withdraw threshold shares amount.
+     * @return The threshold shares amount for forced withdraw batch processing
+     */
+    function forcedWithdrawThreshold() external view returns (uint256);
+
+    /**
+     * @notice Returns the forced batch block limit.
+     * @return The number of blocks after which a forced batch must be processed
+     */
+    function forcedBatchBlockLimit() external view returns (uint256);
 }

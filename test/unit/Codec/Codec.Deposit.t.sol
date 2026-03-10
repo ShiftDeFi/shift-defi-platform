@@ -18,22 +18,22 @@ contract CodecDepositTest is CodecBaseTest {
         depositRequest.amounts = [1_000_000 * DAI_PRECISION, 1_000_000 * NOTION_PRECISION];
         bytes memory encoded = Codec.encode(depositRequest);
 
-        assertGe(encoded.length, MIN_DEPOSIT_REQUEST_SIZE, "test_EncodeDecodeDepositRequest: encoded length");
+        assertGe(encoded.length, MIN_DEPOSIT_REQUEST_SIZE, "test_EncodeDepositRequest: encoded length");
 
         Codec.DepositRequest memory decoded = Codec.decodeDepositRequest(encoded);
         assertEq(
             decoded.tokens.length,
             depositRequest.tokens.length,
-            "test_EncodeDecodeDepositRequest: decoded tokens length"
+            "test_EncodeDepositRequest: decoded tokens length"
         );
         assertEq(
             decoded.amounts.length,
             depositRequest.amounts.length,
-            "test_EncodeDecodeDepositRequest: decoded amounts length"
+            "test_EncodeDepositRequest: decoded amounts length"
         );
         for (uint256 i = 0; i < decoded.tokens.length; ++i) {
-            assertEq(decoded.tokens[i], depositRequest.tokens[i], "test_EncodeDecodeDepositRequest: decoded token");
-            assertEq(decoded.amounts[i], depositRequest.amounts[i], "test_EncodeDecodeDepositRequest: decoded amount");
+            assertEq(decoded.tokens[i], depositRequest.tokens[i], "test_EncodeDepositRequest: decoded token");
+            assertEq(decoded.amounts[i], depositRequest.amounts[i], "test_EncodeDepositRequest: decoded amount");
         }
     }
 
@@ -82,30 +82,26 @@ contract CodecDepositTest is CodecBaseTest {
         depositResponse.navAE = nav1;
         bytes memory encoded = Codec.encode(depositResponse);
 
-        assertGe(encoded.length, MIN_DEPOSIT_RESPONSE_SIZE, "test_EncodeDecodeDepositResponse: encoded length");
+        assertGe(encoded.length, MIN_DEPOSIT_RESPONSE_SIZE, "test_EncodeDepositResponse: encoded length");
 
         Codec.DepositResponse memory decoded = Codec.decodeDepositResponse(encoded);
         assertEq(
             decoded.tokens.length,
             depositResponse.tokens.length,
-            "test_EncodeDecodeDepositResponse: decoded tokens length"
+            "test_EncodeDepositResponse: decoded tokens length"
         );
         assertEq(
             decoded.amounts.length,
             depositResponse.amounts.length,
-            "test_EncodeDecodeDepositResponse: decoded amounts length"
+            "test_EncodeDepositResponse: decoded amounts length"
         );
         for (uint256 i = 0; i < decoded.tokens.length; ++i) {
-            assertEq(decoded.tokens[i], depositResponse.tokens[i], "test_EncodeDecodeDepositResponse: decoded token");
-            assertEq(
-                decoded.amounts[i],
-                depositResponse.amounts[i],
-                "test_EncodeDecodeDepositResponse: decoded amount"
-            );
+            assertEq(decoded.tokens[i], depositResponse.tokens[i], "test_EncodeDepositResponse: decoded token");
+            assertEq(decoded.amounts[i], depositResponse.amounts[i], "test_EncodeDepositResponse: decoded amount");
         }
 
-        assertEq(decoded.navAH, depositResponse.navAH, "test_EncodeDecodeDepositResponse: decoded navAH");
-        assertEq(decoded.navAE, depositResponse.navAE, "test_EncodeDecodeDepositResponse: decoded navAE");
+        assertEq(decoded.navAH, depositResponse.navAH, "test_EncodeDepositResponse: decoded navAH");
+        assertEq(decoded.navAE, depositResponse.navAE, "test_EncodeDepositResponse: decoded navAE");
     }
 
     /// forge-config: default.allow_internal_expect_revert = true
@@ -181,7 +177,7 @@ contract CodecDepositTest is CodecBaseTest {
         assembly {
             mstore(encoded, sub(mload(encoded), 5))
         }
-        vm.expectRevert(Errors.InvalidDataLength.selector);
+        vm.expectRevert(Codec.InvalidDataLength.selector);
         Codec.decodeDepositRequest(encoded);
     }
 
@@ -229,7 +225,7 @@ contract CodecDepositTest is CodecBaseTest {
         assembly {
             mstore(encoded, sub(mload(encoded), 5))
         }
-        vm.expectRevert(Errors.InvalidDataLength.selector);
+        vm.expectRevert(Codec.InvalidDataLength.selector);
         Codec.decodeDepositResponse(encoded);
     }
 

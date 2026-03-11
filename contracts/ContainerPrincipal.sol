@@ -142,7 +142,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
                 status == ContainerPrincipalStatus.DepositResponseReceived,
             Errors.IncorrectContainerStatus()
         );
-        require(registeredWithdrawShareAmount == 0, Errors.NonZeroAmount());
+
         require(claimCounter == 0, UnclaimedTokens());
         require(_validateWhitelistedTokensBeforeReport(true, true), WhitelistedTokensOnBalance());
 

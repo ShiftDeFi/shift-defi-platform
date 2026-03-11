@@ -251,6 +251,10 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         vars.tokenNumber = inputTokens.length;
         require(inputAmounts.length == vars.tokenNumber, Errors.ArrayLengthMismatch());
 
+        for (uint256 i = 0; i < vars.tokenNumber; ++i) {
+            require(_isTokenWhitelisted(inputTokens[i]), NotWhitelistedToken(inputTokens[i]));
+        }
+
         (, vars.strategyIndex) = _strategies.indexOf(strategy);
 
         vars.enterBitmask = _strategyEnterBitmask;

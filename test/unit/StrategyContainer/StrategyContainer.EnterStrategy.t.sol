@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {StrategyContainerBaseTest} from "test/unit/StrategyContainer/StrategyContainerBase.t.sol";
+import {IContainer} from "contracts/interfaces/IContainer.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {Errors} from "contracts/libraries/helpers/Errors.sol";
 import {MockStrategyInterfaceBased} from "test/mocks/MockStrategyInterfaceBased.sol";
@@ -169,6 +170,17 @@ contract StrategyContainerEnterStrategyTest is StrategyContainerBaseTest {
         vm.prank(roles.operator);
         vm.expectRevert(Errors.ArrayLengthMismatch.selector);
         strategyContainer.enterStrategy(address(nonNotionTokenStrategy), new uint256[](1), 0);
+    }
+
+    function test_RevertIf_InputTokenNotWhitelisted() public {
+        address[] memory inputTokens = nonNotionTokenStrategy.getInputTokens();
+        uint256[] memory inputAmounts = new uint256[](inputTokens.length);
+
+        vm.prank(roles.tokenManager);
+        strategyContainer.blacklistToken(inputTokens[0]);
+        vm.expectRevert(abi.encodeWithSelector(IContainer.NotWhitelistedToken.selector, inputTokens[0]));
+        vm.prank(roles.operator);
+        strategyContainer.enterStrategy(address(nonNotionTokenStrategy), inputAmounts, 0);
     }
 
     function test_RevertIf_StrategyReturnsRemainingAmountsWithWrongLength() public {

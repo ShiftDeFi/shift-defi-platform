@@ -43,6 +43,12 @@ interface IContainerPrincipal is ICrossChainContainer {
     event DepositReported(uint256 nav0, uint256 nav1, uint256 remainder);
     event WithdrawalReported();
 
+    // ---- Errors ----
+
+    error NotExpectingAnyResponse();
+    error NotExpectingDepositResponse();
+    error NotExpectingWithdrawalResponse();
+
     // ---- Functions ----
 
     /**

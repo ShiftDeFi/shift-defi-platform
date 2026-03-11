@@ -177,14 +177,16 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
 
     /// @inheritdoc ICrossChainContainer
     function receiveMessage(bytes memory rawMessage) external nonReentrant onlyMessageRouter {
+        ContainerPrincipalStatus statusCached = status;
         require(
-            status == ContainerPrincipalStatus.DepositRequestSent ||
-                status == ContainerPrincipalStatus.WithdrawalRequestSent,
-            Errors.IncorrectContainerStatus()
+            statusCached == ContainerPrincipalStatus.DepositRequestSent ||
+                statusCached == ContainerPrincipalStatus.WithdrawalRequestSent,
+            NotExpectingAnyResponse()
         );
 
         uint8 messageType = Codec.fetchMessageType(rawMessage);
         if (messageType == Codec.DEPOSIT_RESPONSE_TYPE) {
+            require(statusCached == ContainerPrincipalStatus.DepositRequestSent, NotExpectingDepositResponse());
             Codec.DepositResponse memory response = Codec.decodeDepositResponse(rawMessage);
             nav0 = response.navAH;
             nav1 = response.navAE;
@@ -197,6 +199,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         }
 
         if (messageType == Codec.WITHDRAWAL_RESPONSE_TYPE) {
+            require(statusCached == ContainerPrincipalStatus.WithdrawalRequestSent, NotExpectingWithdrawalResponse());
             Codec.WithdrawalResponse memory response = Codec.decodeWithdrawalResponse(rawMessage);
             status = ContainerPrincipalStatus.WithdrawalResponseReceived;
             if (response.tokens.length > 0) {

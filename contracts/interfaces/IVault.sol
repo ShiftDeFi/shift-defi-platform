@@ -155,6 +155,8 @@ interface IVault {
     error IncorrectStatus();
     error IncorrectWeights(uint256 weightsSum);
     error WeightRoundsToZero(address container, uint256 weight);
+    error ContainerForChainIdAlreadyExists(uint256 chainId, address container);
+    error IncorrectContainerType();
 
     // Business Logic
     error DepositBatchCapReached();
@@ -252,8 +254,9 @@ interface IVault {
      * @notice Adds a new container to the vault.
      * @dev Can only be called by accounts with CONTAINER_MANAGER_ROLE. If this is the first container, it automatically gets 100% weight.
      * @param container The address of the container contract to add
+     * @param chainId The chain ID of the container
      */
-    function addContainer(address container) external;
+    function addContainer(address container, uint256 chainId) external;
 
     /**
      * @notice Sets the weights for multiple containers.
@@ -536,6 +539,13 @@ interface IVault {
      * @return The weight of the container in basis points (10000 = 100%)
      */
     function containerWeights(address container) external view returns (uint256);
+
+    /**
+     * @notice Returns the container address for a specific chain ID.
+     * @param chainId The chain ID
+     * @return The address of the container, or zero address if container for that chain ID is not set
+     */
+    function containerByChainId(uint256 chainId) external view returns (address);
 
     /**
      * @notice Returns the reshuffling gateway address.

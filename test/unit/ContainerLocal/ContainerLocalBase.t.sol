@@ -19,7 +19,7 @@ contract ContainerLocalBaseTest is L1Base {
         super.setUp();
 
         containerLocal = _deployContainerLocal();
-        _addContainer(address(containerLocal));
+        _addContainer(address(containerLocal), block.chainid);
 
         strategy = _deployMockStrategy(address(containerLocal));
         MockStrategy(address(strategy)).setState(bytes32(uint256(1)), true, true, false, 0);

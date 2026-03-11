@@ -25,7 +25,7 @@ contract ContainerPrincipalBaseTest is L1Base {
         super.setUp();
 
         containerPrincipal = _deployContainerPrincipal();
-        _addContainer(address(containerPrincipal));
+        _addContainer(address(containerPrincipal), REMOTE_CHAIN_ID);
 
         vm.prank(roles.defaultAdmin);
         AccessControl(address(containerPrincipal)).grantRole(TOKEN_MANAGER_ROLE, roles.tokenManager);

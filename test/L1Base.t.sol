@@ -253,9 +253,9 @@ abstract contract L1Base is Base {
         return IPriceOracleAggregator(proxy);
     }
 
-    function _addContainer(address container) internal {
+    function _addContainer(address container, uint256 chainId) internal {
         vm.prank(roles.containerManager);
-        vault.addContainer(container);
+        vault.addContainer(container, chainId);
     }
 
     function _whitelistToken(address container, address token) internal {

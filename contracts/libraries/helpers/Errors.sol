@@ -26,6 +26,7 @@ library Errors {
     error NonZeroAmount();
     error IncorrectContainerType(address container, uint8 expected, uint8 received);
     error DuplicatingAddressInArray(address entry);
+    error IncorrectChainId(uint256 chainId);
 
     // -- Business Logic Errors --
 

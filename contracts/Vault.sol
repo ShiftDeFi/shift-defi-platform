@@ -11,6 +11,7 @@ import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC2
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
+import {IContainer} from "./interfaces/IContainer.sol";
 import {IContainerPrincipal} from "./interfaces/IContainerPrincipal.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {EnumerableAddressSetExtended} from "./libraries/helpers/EnumerableAddressSetExtended.sol";
@@ -65,6 +66,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     EnumerableSet.AddressSet private _containers;
     mapping(address => uint256) public containerWeights;
+    mapping(uint256 => address) public containerByChainId;
 
     address public reshufflingGateway;
     bool public isReshuffling;
@@ -276,12 +278,26 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     }
 
     /// @inheritdoc IVault
-    function addContainer(address container) external nonReentrant onlyRole(CONTAINER_MANAGER_ROLE) {
+    function addContainer(address container, uint256 chainId) external nonReentrant onlyRole(CONTAINER_MANAGER_ROLE) {
         require(status == VaultStatus.Idle, IncorrectStatus());
         require(container != address(0), Errors.ZeroAddress());
+        require(chainId > 0, Errors.IncorrectChainId(chainId));
 
         uint256 length = _containers.length();
         require(length < MAX_CONTAINERS, MaxContainersReached());
+
+        address containerForChainId = containerByChainId[chainId];
+        require(containerForChainId == address(0), ContainerForChainIdAlreadyExists(chainId, containerForChainId));
+        containerByChainId[chainId] = container;
+
+        if (chainId == block.chainid) {
+            require(IContainer(container).containerType() == IContainer.ContainerType.Local, IncorrectContainerType());
+        } else {
+            require(
+                IContainer(container).containerType() == IContainer.ContainerType.Principal,
+                IncorrectContainerType()
+            );
+        }
 
         if (length == 0) {
             containerWeights[container] = TOTAL_CONTAINER_WEIGHT;
@@ -326,6 +342,11 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
             if (weights[i] == 0) {
                 notion.forceApprove(containers[i], 0);
                 _containers.remove(containers[i]);
+                if (IContainer(containers[i]).containerType() == IContainer.ContainerType.Local) {
+                    delete containerByChainId[block.chainid];
+                } else {
+                    delete containerByChainId[IContainerPrincipal(containers[i]).remoteChainId()];
+                }
                 emit ContainerRemoved(containers[i]);
             }
         }

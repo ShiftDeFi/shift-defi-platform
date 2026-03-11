@@ -43,10 +43,10 @@ contract VaultDepositBatchProcessingTest is L1Base {
 
     function test_RevertIf_StartDepositBatch_ContainerWeightIsZero() public {
         IContainerPrincipal container = _deployMockContainerPrincipal();
-        _addContainer(address(container));
+        _addContainer(address(container), REMOTE_CHAIN_ID);
 
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
-        _addContainer(address(container2));
+        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
 
         uint256 depositAmount = MIN_DEPOSIT_BATCH_SIZE * NOTION_PRECISION;
         _deposit(users.alice, depositAmount);
@@ -59,7 +59,7 @@ contract VaultDepositBatchProcessingTest is L1Base {
     function test_StartDepositBatch() public {
         uint256 previousDepositBatchId = vault.depositBatchId();
         IContainerPrincipal container = _deployMockContainerPrincipal();
-        _addContainer(address(container));
+        _addContainer(address(container), REMOTE_CHAIN_ID);
 
         uint256 depositAmount = MIN_DEPOSIT_BATCH_SIZE * NOTION_PRECISION;
         _deposit(users.alice, depositAmount);
@@ -93,9 +93,9 @@ contract VaultDepositBatchProcessingTest is L1Base {
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
         IContainerPrincipal container3 = _deployMockContainerPrincipal();
 
-        _addContainer(address(container1));
-        _addContainer(address(container2));
-        _addContainer(address(container3));
+        _addContainer(address(container1), REMOTE_CHAIN_ID);
+        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
+        _addContainer(address(container3), REMOTE_CHAIN_ID + 2);
 
         uint256 containersCount = 3;
 

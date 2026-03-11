@@ -24,8 +24,8 @@ contract ReshufflingGatewayTest is L1Base {
         containerPrincipal = _deployMockContainerPrincipal();
         containerLocal = _deployMockContainerLocal();
 
-        _addContainer(address(containerPrincipal));
-        _addContainer(address(containerLocal));
+        _addContainer(address(containerPrincipal), REMOTE_CHAIN_ID);
+        _addContainer(address(containerLocal), block.chainid);
 
         containerPrincipal.setPeerContainer(makeAddr("ContainerAgent"));
 

@@ -72,25 +72,29 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
 
     /// @inheritdoc IReshufflingGateway
     function whitelistToken(address token) external onlyRole(WHITELIST_MANAGER_ROLE) {
-        _whitelistedTokens.add(token);
+        require(token != address(0), Errors.ZeroAddress());
+        require(_whitelistedTokens.add(token), AlreadyWhitelistedToken());
         emit TokenWhitelisted(token);
     }
 
     /// @inheritdoc IReshufflingGateway
     function whitelistBridgeAdapter(address bridgeAdapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
-        _whitelistedBridgeAdapters.add(bridgeAdapter);
+        require(bridgeAdapter != address(0), Errors.ZeroAddress());
+        require(_whitelistedBridgeAdapters.add(bridgeAdapter), AlreadyWhitelistedBridgeAdapter());
         emit BridgeAdapterWhitelisted(bridgeAdapter);
     }
 
     /// @inheritdoc IReshufflingGateway
     function blacklistToken(address token) external onlyRole(WHITELIST_MANAGER_ROLE) {
-        _whitelistedTokens.remove(token);
+        require(token != address(0), Errors.ZeroAddress());
+        require(_whitelistedTokens.remove(token), NotWhitelistedToken(token));
         emit TokenBlacklisted(token);
     }
 
     /// @inheritdoc IReshufflingGateway
     function blacklistBridgeAdapter(address bridgeAdapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
-        _whitelistedBridgeAdapters.remove(bridgeAdapter);
+        require(bridgeAdapter != address(0), Errors.ZeroAddress());
+        require(_whitelistedBridgeAdapters.remove(bridgeAdapter), NotWhitelistedBridgeAdapter(bridgeAdapter));
         emit BridgeAdapterBlacklisted(bridgeAdapter);
     }
 

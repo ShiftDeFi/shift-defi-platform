@@ -77,6 +77,18 @@ contract ReshufflingGatewayTest is L1Base {
         reshufflingGateway.whitelistToken(token);
     }
 
+    function test_RevertIf_WhitelistToken_ZeroAddress() public {
+        vm.prank(roles.whitelistManager);
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        reshufflingGateway.whitelistToken(address(0));
+    }
+
+    function test_RevertIf_WhitelistToken_AlreadyWhitelisted() public {
+        vm.prank(roles.whitelistManager);
+        vm.expectRevert(IReshufflingGateway.AlreadyWhitelistedToken.selector);
+        reshufflingGateway.whitelistToken(address(notion));
+    }
+
     function test_BlacklistToken() public {
         address token = makeAddr("TOKEN");
 
@@ -90,6 +102,20 @@ contract ReshufflingGatewayTest is L1Base {
         reshufflingGateway.blacklistToken(token);
     }
 
+    function test_RevertIf_BlacklistToken_ZeroAddress() public {
+        vm.prank(roles.whitelistManager);
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        reshufflingGateway.blacklistToken(address(0));
+    }
+
+    function test_RevertIf_BlacklistToken_NotWhitelisted() public {
+        address notWhitelistedToken = makeAddr("NOT_WHITELISTED_TOKEN");
+
+        vm.prank(roles.whitelistManager);
+        vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotWhitelistedToken.selector, notWhitelistedToken));
+        reshufflingGateway.blacklistToken(notWhitelistedToken);
+    }
+
     function test_WhitelistBridgeAdapter() public {
         address _bridgeAdapter = makeAddr("BRIDGE_ADAPTER");
 
@@ -98,6 +124,18 @@ contract ReshufflingGatewayTest is L1Base {
 
         vm.prank(roles.whitelistManager);
         reshufflingGateway.whitelistBridgeAdapter(_bridgeAdapter);
+    }
+
+    function test_RevertIf_WhitelistBridgeAdapter_ZeroAddress() public {
+        vm.prank(roles.whitelistManager);
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        reshufflingGateway.whitelistBridgeAdapter(address(0));
+    }
+
+    function test_RevertIf_WhitelistBridgeAdapter_AlreadyWhitelisted() public {
+        vm.prank(roles.whitelistManager);
+        vm.expectRevert(IReshufflingGateway.AlreadyWhitelistedBridgeAdapter.selector);
+        reshufflingGateway.whitelistBridgeAdapter(address(bridgeAdapter));
     }
 
     function test_BlacklistBridgeAdapter() public {
@@ -111,6 +149,25 @@ contract ReshufflingGatewayTest is L1Base {
 
         vm.prank(roles.whitelistManager);
         reshufflingGateway.blacklistBridgeAdapter(_bridgeAdapter);
+    }
+
+    function test_RevertIf_BlacklistBridgeAdapter_ZeroAddress() public {
+        vm.prank(roles.whitelistManager);
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        reshufflingGateway.blacklistBridgeAdapter(address(0));
+    }
+
+    function test_RevertIf_BlacklistBridgeAdapter_NotWhitelisted() public {
+        address notWhitelistedBridgeAdapter = makeAddr("NOT_WHITELISTED_BRIDGE_ADAPTER");
+
+        vm.prank(roles.whitelistManager);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IReshufflingGateway.NotWhitelistedBridgeAdapter.selector,
+                notWhitelistedBridgeAdapter
+            )
+        );
+        reshufflingGateway.blacklistBridgeAdapter(notWhitelistedBridgeAdapter);
     }
 
     function test_ClaimBridge() public {
@@ -313,9 +370,6 @@ contract ReshufflingGatewayTest is L1Base {
         );
 
         _setReshufflingMode();
-
-        vm.prank(roles.whitelistManager);
-        reshufflingGateway.whitelistBridgeAdapter(address(bridgeAdapter));
 
         vm.prank(roles.reshufflingManager);
         vm.expectRevert(Errors.ZeroAddress.selector);

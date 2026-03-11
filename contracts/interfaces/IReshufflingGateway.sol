@@ -16,7 +16,9 @@ interface IReshufflingGateway {
     error NotContainer(address container);
     error NotVault(address vault);
     error VaultNotInReshufflingMode();
+    error AlreadyWhitelistedToken();
     error NotWhitelistedToken(address token);
+    error AlreadyWhitelistedBridgeAdapter();
     error NotWhitelistedBridgeAdapter(address bridgeAdapter);
     error WrongRemoteChainId(uint256 expected, uint256 received);
     error TokenNotWhitelistedOnContainer(address token);

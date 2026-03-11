@@ -44,6 +44,8 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         require(amount > 0, Errors.ZeroAmount());
         status = ContainerLocalStatus.DepositRequestRegistered;
         IERC20(notion).safeTransferFrom(vault, address(this), amount);
+
+        emit DepositRequestRegistered(amount);
     }
 
     /// @inheritdoc IContainerLocal
@@ -54,6 +56,8 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         require(amount > 0, Errors.ZeroAmount());
         status = ContainerLocalStatus.WithdrawalRequestRegistered;
         registeredWithdrawShareAmount = amount;
+
+        emit WithdrawalRequestRegistered(amount);
     }
 
     /// @inheritdoc IContainerLocal
@@ -67,10 +71,11 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         status = ContainerLocalStatus.Idle;
         _strategyEnterBitmask = 0;
 
-        IVault(vault).reportDeposit(
-            IVault.ContainerReport({nav0: nav0, nav1: nav1}),
-            IERC20(notion).balanceOf(address(this))
-        );
+        uint256 remainder = IERC20(notion).balanceOf(address(this));
+
+        IVault(vault).reportDeposit(IVault.ContainerReport({nav0: nav0, nav1: nav1}), remainder);
+
+        emit DepositReported(nav0, nav1, remainder);
     }
 
     /// @inheritdoc IContainerLocal
@@ -82,6 +87,8 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         _strategyExitBitmask = 0;
         require(_hasOnlyNotionToken(), WhitelistedTokensOnBalance());
         IVault(vault).reportWithdraw(IERC20(notion).balanceOf(address(this)));
+
+        emit WithdrawalReported();
     }
 
     // ---- Strategy management logic ----

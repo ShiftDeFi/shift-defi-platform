@@ -15,6 +15,10 @@ interface IContainerLocal is IStrategyContainer {
     }
 
     // ---- Events ----
+    event DepositRequestRegistered(uint256 amount);
+    event WithdrawalRequestRegistered(uint256 shares);
+    event DepositReported(uint256 nav0, uint256 nav1, uint256 remainder);
+    event WithdrawalReported();
 
     event AllStrategiesEntered();
     event AllStrategiesExited();

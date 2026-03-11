@@ -181,15 +181,17 @@ interface IStrategyTemplate {
     function tryEmergencyExit(bytes32 toStateId, uint256 share) external;
 
     /**
-     * @notice Sets the list of allowed input tokens.
-     * @dev Callable only by the strategy container. Tokens cannot be zero addresses or duplicates.
+     * @notice Sets (overwrites) the list of allowed input tokens.
+     * @dev Callable only by the strategy container. This method overwrites the previous input tokens with the new list.
+     *      Tokens cannot be zero addresses or duplicates.
      * @param inputTokens Token addresses allowed for entering the strategy.
      */
     function setInputTokens(address[] memory inputTokens) external;
 
     /**
-     * @notice Sets the list of allowed output tokens.
-     * @dev Callable only by the strategy container. Tokens cannot be zero addresses or duplicates.
+     * @notice Sets (overwrites) the list of allowed output tokens.
+     * @dev Callable only by the strategy container. This method overwrites the previous output tokens with the new list.
+     *      Tokens cannot be zero addresses or duplicates.
      * @param outputTokens Token addresses expected when exiting the strategy.
      */
     function setOutputTokens(address[] memory outputTokens) external;

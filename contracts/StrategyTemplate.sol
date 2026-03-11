@@ -130,6 +130,9 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     /// @inheritdoc IStrategyTemplate
     function setInputTokens(address[] calldata inputTokens) external onlyStrategyContainer {
         require(inputTokens.length > 0, Errors.ZeroArrayLength());
+        while (_inputTokens.length() > 0) {
+            _inputTokens.remove(_inputTokens.at(0));
+        }
         for (uint256 i = 0; i < inputTokens.length; ++i) {
             require(inputTokens[i] != address(0), Errors.ZeroAddress());
             require(_inputTokens.add(inputTokens[i]), Errors.TokenAlreadySet(inputTokens[i]));
@@ -140,6 +143,9 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     /// @inheritdoc IStrategyTemplate
     function setOutputTokens(address[] calldata outputTokens) external onlyStrategyContainer {
         require(outputTokens.length > 0, Errors.ZeroArrayLength());
+        while (_outputTokens.length() > 0) {
+            _outputTokens.remove(_outputTokens.at(0));
+        }
         for (uint256 i = 0; i < outputTokens.length; ++i) {
             require(outputTokens[i] != address(0), Errors.ZeroAddress());
             require(_outputTokens.add(outputTokens[i]), Errors.TokenAlreadySet(outputTokens[i]));

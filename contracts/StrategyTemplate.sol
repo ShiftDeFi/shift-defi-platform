@@ -174,7 +174,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         uint256[] calldata amounts,
         uint256 minNavDelta
     ) external payable onlyStrategyContainer nonReentrant returns (uint256, bool, uint256[] memory) {
-        EnterLocalVars memory vars = _enter(amounts, minNavDelta, true);
+        EnterLocalVars memory vars = _enter(amounts, minNavDelta);
         return (vars.stateToNavAfterEnter, vars.hasRemainder, vars.remainingAmounts);
     }
 
@@ -182,11 +182,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         _enterToState(stateId, minNavDelta);
     }
 
-    function _enter(
-        uint256[] memory amounts,
-        uint256 minNavDelta,
-        bool needPrepareForAgent
-    ) private returns (EnterLocalVars memory) {
+    function _enter(uint256[] memory amounts, uint256 minNavDelta) private returns (EnterLocalVars memory) {
         EnterLocalVars memory vars;
 
         vars.currentStateId = _currentStateId;
@@ -223,9 +219,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
             emit StateUpdated(vars.currentStateId, vars.enterStateId, vars.enterStateBitmask);
         }
 
-        if (needPrepareForAgent) {
-            (vars.remainingAmounts, vars.hasRemainder) = _prepareFundsAfterEnter();
-        }
+        (vars.remainingAmounts, vars.hasRemainder) = _prepareFundsAfterEnter();
 
         emit Entered(vars.stateToNavBeforeEnter, vars.stateToNavAfterEnter, vars.hasRemainder);
 

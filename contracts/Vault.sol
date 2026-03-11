@@ -388,6 +388,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     }
 
     function _deposit(uint256 amount, address onBehalfOf) internal notInReshufflingMode {
+        require(onBehalfOf != address(0), Errors.ZeroAddress());
         require(amount >= minDepositAmount && amount <= maxDepositAmount, Errors.IncorrectAmount());
 
         uint256 batchId = depositBatchId;

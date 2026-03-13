@@ -14,8 +14,6 @@ import {L1Base} from "test/L1Base.t.sol";
 contract ContainerTest is L1Base {
     MockContainer internal container;
 
-    error TokenValidationFailed(address token);
-
     function setUp() public override {
         super.setUp();
         container = new MockContainer(roles.defaultAdmin, roles.tokenManager, address(notion), address(swapRouter));
@@ -23,7 +21,6 @@ contract ContainerTest is L1Base {
 
     function test_WhitelistToken() public {
         _whitelistToken(address(container), address(notion));
-        container.validateToken(address(notion));
 
         assertEq(container.isTokenWhitelisted(address(notion)), true);
         assertEq(IERC20(notion).allowance(address(container), address(swapRouter)), type(uint256).max);

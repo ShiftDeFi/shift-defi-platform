@@ -135,7 +135,7 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
         address bridgeTo,
         IBridgeAdapter.BridgeInstruction calldata instruction
     ) internal returns (address, uint256) {
-        _validateToken(instruction.token);
+        require(_isTokenWhitelisted(instruction.token), IContainer.NotWhitelistedToken(instruction.token));
         _validateBridgeAdapter(bridgeAdapter);
 
         BridgeTokenLocalVars memory vars;

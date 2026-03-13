@@ -87,11 +87,6 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         return _whitelistedTokens.contains(token);
     }
 
-    function _validateToken(address token) internal view {
-        require(_isTokenWhitelisted(token), IContainer.NotWhitelistedToken(token));
-        require(token != address(0), Errors.ZeroAddress());
-    }
-
     function _validateWhitelistedTokensBeforeReport(bool ignoreNotion, bool ignoreDust) internal view returns (bool) {
         uint256 length = _whitelistedTokens.length();
         for (uint256 i = 0; i < length; i++) {

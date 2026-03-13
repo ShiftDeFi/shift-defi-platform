@@ -15,10 +15,6 @@ contract MockContainer is Container {
         return ContainerType.Local;
     }
 
-    function validateToken(address token) external view {
-        _validateToken(token);
-    }
-
     function validateWhitelistedTokensBeforeReport(bool ignoreNotion, bool ignoreDust) external view returns (bool) {
         return _validateWhitelistedTokensBeforeReport(ignoreNotion, ignoreDust);
     }

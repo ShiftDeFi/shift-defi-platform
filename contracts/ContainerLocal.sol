@@ -136,6 +136,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     ) external nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.DepositRequestRegistered, Errors.IncorrectContainerStatus());
         uint256 length = strategies.length;
+        require(length > 0 && length <= getStrategiesNumber(), Errors.InvalidArrayLength());
         require(length == inputAmounts.length, Errors.ArrayLengthMismatch());
         require(length == minNavDelta.length, Errors.ArrayLengthMismatch());
 
@@ -174,6 +175,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     ) external nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.WithdrawalRequestRegistered, Errors.IncorrectContainerStatus());
         uint256 length = strategies.length;
+        require(length > 0 && length <= getStrategiesNumber(), Errors.InvalidArrayLength());
         require(length == maxNavDeltas.length, Errors.ArrayLengthMismatch());
 
         uint256 registeredShareAmountCached = registeredWithdrawShareAmount;

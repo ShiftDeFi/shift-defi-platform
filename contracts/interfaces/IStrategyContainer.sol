@@ -133,6 +133,12 @@ interface IStrategyContainer is IContainer {
     function getStrategies() external view returns (address[] memory);
 
     /**
+     * @notice Returns the number of registered strategies.
+     * @return The number of registered strategies
+     */
+    function getStrategiesNumber() external view returns (uint256);
+
+    /**
      * @notice Checks if an address is a registered strategy.
      * @param strategy The address to check
      * @return True if the address is a registered strategy, false otherwise

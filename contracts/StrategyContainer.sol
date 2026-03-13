@@ -143,6 +143,11 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     }
 
     /// @inheritdoc IStrategyContainer
+    function getStrategiesNumber() public view returns (uint256) {
+        return _strategies.length();
+    }
+
+    /// @inheritdoc IStrategyContainer
     function isStrategy(address strategy) external view returns (bool) {
         return _isStrategy(strategy);
     }

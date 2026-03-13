@@ -65,6 +65,10 @@ contract MockContainerLocal is IContainerLocal {
         return new address[](0);
     }
 
+    function getStrategiesNumber() external pure returns (uint256) {
+        return 0;
+    }
+
     function isStrategy(address) external pure returns (bool) {
         return false;
     }

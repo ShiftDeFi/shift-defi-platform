@@ -1,22 +1,31 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {ContainerLocalBaseTest} from "test/unit/ContainerLocal/ContainerLocalBase.t.sol";
 import {IContainerLocal} from "contracts/interfaces/IContainerLocal.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
+import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
+
 import {Errors} from "contracts/libraries/helpers/Errors.sol";
+
+import {ContainerLocalBaseTest} from "test/unit/ContainerLocal/ContainerLocalBase.t.sol";
 
 contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
     function setUp() public override {
         super.setUp();
+        deal(address(notion), address(containerLocal), DEPOSIT_AMOUNT);
     }
 
-    function test_EnterStrategyMultipleStatus() public {
+    function test_EnterStrategyMultiple() public {
         _setContainerStatus(IContainerLocal.ContainerLocalStatus.DepositRequestRegistered);
 
-        address[] memory strategies = new address[](0);
-        uint256[][] memory inputAmounts = new uint256[][](0);
-        uint256[] memory minNavDelta = new uint256[](0);
+        uint256 strategiesNumber = containerLocal.getStrategiesNumber();
+        address[] memory strategies = new address[](strategiesNumber);
+        strategies[0] = address(strategy);
+        uint256[][] memory inputAmounts = new uint256[][](strategiesNumber);
+        inputAmounts[0] = new uint256[](strategiesNumber);
+        inputAmounts[0][0] = DEPOSIT_AMOUNT;
+        uint256[] memory minNavDelta = new uint256[](strategiesNumber);
+        minNavDelta[0] = 0;
 
         vm.prank(roles.operator);
         containerLocal.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
@@ -24,21 +33,48 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
         assertEq(
             uint256(containerLocal.status()),
             uint256(IContainerLocal.ContainerLocalStatus.AllStrategiesEntered),
-            "test_EnterStrategyMultipleStatus: status mismatch"
+            "test_EnterStrategyMultiple: status mismatch"
         );
     }
 
-    function test_RevertsIf_IncorrectContainerStatusAndEnterStrategyMultiple() public {
-        address[] memory strategies = new address[](0);
-        uint256[][] memory inputAmounts = new uint256[][](0);
-        uint256[] memory minNavDelta = new uint256[](0);
+    function test_RevertIf_EnterStrategyMultiple_IncorrectContainerStatus() public {
+        uint256 strategiesNumber = containerLocal.getStrategiesNumber();
+        address[] memory strategies = new address[](strategiesNumber);
+        strategies[0] = address(strategy);
+        uint256[][] memory inputAmounts = new uint256[][](strategiesNumber);
+        inputAmounts[0] = new uint256[](strategiesNumber);
+        inputAmounts[0][0] = DEPOSIT_AMOUNT;
+        uint256[] memory minNavDelta = new uint256[](strategiesNumber);
+        minNavDelta[0] = 0;
 
         vm.expectRevert(Errors.IncorrectContainerStatus.selector);
         vm.prank(roles.operator);
         containerLocal.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
     }
 
-    function test_RevertsIf_ArrayLengthMismatchAndEnterStrategyMultiple() public {
+    function test_RevertIf_EnterStrategyMultiple_InvalidArrayLength() public {
+        _setContainerStatus(IContainerLocal.ContainerLocalStatus.DepositRequestRegistered);
+        uint256 strategiesNumber = containerLocal.getStrategiesNumber();
+        address[] memory strategies = new address[](0);
+        uint256[][] memory inputAmounts = new uint256[][](strategiesNumber);
+        inputAmounts[0] = new uint256[](strategiesNumber);
+        inputAmounts[0][0] = DEPOSIT_AMOUNT;
+        uint256[] memory minNavDelta = new uint256[](strategiesNumber);
+        minNavDelta[0] = 0;
+
+        vm.expectRevert(Errors.InvalidArrayLength.selector);
+        vm.prank(roles.operator);
+        containerLocal.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
+
+        strategies = new address[](strategiesNumber + 1);
+        strategies[0] = address(strategy);
+
+        vm.expectRevert(Errors.InvalidArrayLength.selector);
+        vm.prank(roles.operator);
+        containerLocal.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
+    }
+
+    function test_RevertIf_EnterStrategyMultiple_ArrayLengthMismatch() public {
         _setContainerStatus(IContainerLocal.ContainerLocalStatus.DepositRequestRegistered);
 
         address[] memory strategies = new address[](1);
@@ -49,55 +85,42 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
         vm.prank(roles.operator);
         containerLocal.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
 
-        strategies = new address[](0);
+        minNavDelta = new uint256[](1);
+
+        vm.expectRevert(Errors.ArrayLengthMismatch.selector);
+        vm.prank(roles.operator);
+        containerLocal.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
+
         inputAmounts = new uint256[][](1);
         minNavDelta = new uint256[](0);
-
-        vm.expectRevert(Errors.ArrayLengthMismatch.selector);
-        vm.prank(roles.operator);
-        containerLocal.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
-
-        strategies = new address[](0);
-        inputAmounts = new uint256[][](0);
-        minNavDelta = new uint256[](1);
-
-        vm.expectRevert(Errors.ArrayLengthMismatch.selector);
-        vm.prank(roles.operator);
-        containerLocal.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
-
-        strategies = new address[](1);
-        inputAmounts = new uint256[][](1);
-        minNavDelta = new uint256[](0);
-
-        vm.expectRevert(Errors.ArrayLengthMismatch.selector);
-        vm.prank(roles.operator);
-        containerLocal.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
-
-        strategies = new address[](0);
-        inputAmounts = new uint256[][](1);
-        minNavDelta = new uint256[](1);
-
-        vm.expectRevert(Errors.ArrayLengthMismatch.selector);
-        vm.prank(roles.operator);
-        containerLocal.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
-
-        strategies = new address[](1);
-        inputAmounts = new uint256[][](0);
-        minNavDelta = new uint256[](1);
 
         vm.expectRevert(Errors.ArrayLengthMismatch.selector);
         vm.prank(roles.operator);
         containerLocal.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
     }
 
-    function test_ExitStrategyMultipleStatus() public {
+    function test_ExitStrategyMultiple() public {
+        uint256 strategiesNumber = containerLocal.getStrategiesNumber();
+        _setContainerStatus(IContainerLocal.ContainerLocalStatus.DepositRequestRegistered);
+
+        uint256[] memory inputAmounts = new uint256[](strategiesNumber);
+        inputAmounts[0] = DEPOSIT_AMOUNT;
+        uint256 minNavDelta = 0;
+
+        vm.prank(roles.operator);
+        containerLocal.enterStrategy(address(strategy), inputAmounts, minNavDelta);
+
+        _setContainerStatus(IContainerLocal.ContainerLocalStatus.Idle);
+
         uint256 amount = vault.minWithdrawBatchRatio();
 
         vm.prank(address(vault));
         containerLocal.registerWithdrawRequest(amount);
 
-        address[] memory strategies = new address[](0);
-        uint256[] memory maxNavDeltas = new uint256[](0);
+        address[] memory strategies = new address[](strategiesNumber);
+        strategies[0] = address(strategy);
+        uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
+        maxNavDeltas[0] = DEPOSIT_AMOUNT;
 
         vm.prank(roles.operator);
         containerLocal.exitStrategyMultiple(strategies, maxNavDeltas);
@@ -105,11 +128,11 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
         assertEq(
             uint256(containerLocal.status()),
             uint256(IContainerLocal.ContainerLocalStatus.AllStrategiesExited),
-            "test_ExitStrategyMultipleStatus: status mismatch"
+            "test_ExitStrategyMultiple: status mismatch"
         );
     }
 
-    function test_RevertsIf_IncorrectContainerStatusAndExitStrategyMultiple() public {
+    function test_RevertIf_ExitStrategyMultiple_IncorrectContainerStatus() public {
         address[] memory strategies = new address[](0);
         uint256[] memory maxNavDeltas = new uint256[](0);
 
@@ -118,29 +141,48 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
         containerLocal.exitStrategyMultiple(strategies, maxNavDeltas);
     }
 
-    function test_RevertsIf_ArrayLengthMismatchAndExitStrategyMultiple() public {
+    function test_RevertIf_ExitStrategyMultiple_InvalidArrayLength() public {
         _setContainerStatus(IContainerLocal.ContainerLocalStatus.WithdrawalRequestRegistered);
+        uint256 strategiesNumber = containerLocal.getStrategiesNumber();
+        address[] memory strategies = new address[](0);
+        uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
+        maxNavDeltas[0] = DEPOSIT_AMOUNT;
 
-        address[] memory strategies = new address[](1);
-        uint256[] memory maxNavDeltas = new uint256[](0);
-
-        vm.expectRevert(Errors.ArrayLengthMismatch.selector);
+        vm.expectRevert(Errors.InvalidArrayLength.selector);
         vm.prank(roles.operator);
         containerLocal.exitStrategyMultiple(strategies, maxNavDeltas);
 
-        strategies = new address[](0);
-        maxNavDeltas = new uint256[](1);
+        strategies = new address[](strategiesNumber + 1);
+        strategies[0] = address(strategy);
+
+        vm.expectRevert(Errors.InvalidArrayLength.selector);
+        vm.prank(roles.operator);
+        containerLocal.exitStrategyMultiple(strategies, maxNavDeltas);
+    }
+
+    function test_RevertIf_ExitStrategyMultiple_ArrayLengthMismatch() public {
+        _setContainerStatus(IContainerLocal.ContainerLocalStatus.WithdrawalRequestRegistered);
+
+        uint256 strategiesNumber = containerLocal.getStrategiesNumber();
+        address[] memory strategies = new address[](strategiesNumber);
+        strategies[0] = address(strategy);
+        uint256[] memory maxNavDeltas = new uint256[](strategiesNumber + 1);
+        maxNavDeltas[0] = DEPOSIT_AMOUNT;
+        maxNavDeltas[1] = DEPOSIT_AMOUNT;
 
         vm.expectRevert(Errors.ArrayLengthMismatch.selector);
         vm.prank(roles.operator);
         containerLocal.exitStrategyMultiple(strategies, maxNavDeltas);
     }
 
-    function test_RevertsIf_NoSharesRegisteredForExitAndExitStrategyMultiple() public {
+    function test_RevertIf_ExitStrategyMultiple_NoSharesRegisteredForExit() public {
         _setContainerStatus(IContainerLocal.ContainerLocalStatus.WithdrawalRequestRegistered);
 
-        address[] memory strategies = new address[](0);
-        uint256[] memory maxNavDeltas = new uint256[](0);
+        uint256 strategiesNumber = containerLocal.getStrategiesNumber();
+        address[] memory strategies = new address[](strategiesNumber);
+        strategies[0] = address(strategy);
+        uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
+        maxNavDeltas[0] = DEPOSIT_AMOUNT;
 
         vm.expectRevert(IStrategyContainer.NoSharesRegisteredForExit.selector);
         vm.prank(roles.operator);
@@ -148,47 +190,54 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
     }
 
     function test_AddStrategy() public {
-        address[] memory inputTokens = new address[](1);
-        inputTokens[0] = address(notion);
-        address[] memory outputTokens = new address[](1);
-        outputTokens[0] = address(notion);
+        IStrategyTemplate _strategy = _deployMockStrategy(address(containerLocal));
+
+        uint256 strategiesNumberBefore = containerLocal.getStrategiesNumber();
 
         vm.prank(roles.strategyManager);
-        containerLocal.addStrategy(address(strategy), inputTokens, outputTokens);
+        containerLocal.addStrategy(
+            address(_strategy),
+            _createTokensArray(address(notion)),
+            _createTokensArray(address(notion))
+        );
 
-        assertEq(containerLocal.isStrategy(address(strategy)), true, "test_AddStrategy: strategy not added");
-        assertEq(containerLocal.getStrategies().length, 1, "test_AddStrategy: strategies length mismatch");
-        assertEq(containerLocal.getStrategies()[0], address(strategy), "test_AddStrategy: strategy address mismatch");
+        assertEq(containerLocal.isStrategy(address(_strategy)), true, "test_AddStrategy: strategy not added");
+        assertEq(
+            containerLocal.getStrategiesNumber(),
+            strategiesNumberBefore + 1,
+            "test_AddStrategy: strategies number mismatch"
+        );
     }
 
-    function test_RevertsIf_IncorrectContainerStatusAndAddStrategy() public {
+    function test_RevertIf_AddStrategy_IncorrectContainerStatus() public {
         _setContainerStatus(IContainerLocal.ContainerLocalStatus.DepositRequestRegistered);
 
-        address[] memory inputTokens = new address[](0);
-        address[] memory outputTokens = new address[](0);
+        IStrategyTemplate _strategy = _deployMockStrategy(address(containerLocal));
 
         vm.expectRevert(Errors.IncorrectContainerStatus.selector);
         vm.prank(roles.strategyManager);
-        containerLocal.addStrategy(address(1), inputTokens, outputTokens);
+        containerLocal.addStrategy(
+            address(_strategy),
+            _createTokensArray(address(notion)),
+            _createTokensArray(address(notion))
+        );
     }
 
     function test_RemoveStrategy() public {
-        address[] memory inputTokens = new address[](1);
-        inputTokens[0] = address(notion);
-        address[] memory outputTokens = new address[](1);
-        outputTokens[0] = address(notion);
-
-        vm.prank(roles.strategyManager);
-        containerLocal.addStrategy(address(strategy), inputTokens, outputTokens);
+        uint256 strategiesNumberBefore = containerLocal.getStrategiesNumber();
 
         vm.prank(roles.strategyManager);
         containerLocal.removeStrategy(address(strategy));
 
         assertEq(containerLocal.isStrategy(address(strategy)), false, "test_RemoveStrategy: strategy not removed");
-        assertEq(containerLocal.getStrategies().length, 0, "test_RemoveStrategy: strategies length mismatch");
+        assertEq(
+            containerLocal.getStrategiesNumber(),
+            strategiesNumberBefore - 1,
+            "test_RemoveStrategy: strategies number mismatch"
+        );
     }
 
-    function test_RevertsIf_IncorrectContainerStatusAndRemoveStrategy() public {
+    function test_RevertIf_RemoveStrategy_IncorrectContainerStatus() public {
         _setContainerStatus(IContainerLocal.ContainerLocalStatus.DepositRequestRegistered);
 
         vm.expectRevert(Errors.IncorrectContainerStatus.selector);
@@ -197,19 +246,10 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
     }
 
     function test_EnterStrategy() public {
-        address[] memory inputTokens = new address[](1);
-        inputTokens[0] = address(notion);
-        address[] memory outputTokens = new address[](1);
-        outputTokens[0] = address(notion);
-
-        vm.prank(roles.strategyManager);
-        containerLocal.addStrategy(address(strategy), inputTokens, outputTokens);
-
         _setContainerStatus(IContainerLocal.ContainerLocalStatus.DepositRequestRegistered);
-        deal(address(notion), address(containerLocal), 1);
 
         uint256[] memory inputAmounts = new uint256[](1);
-        inputAmounts[0] = 1;
+        inputAmounts[0] = DEPOSIT_AMOUNT;
         uint256 minNavDelta = 0;
 
         vm.prank(roles.operator);
@@ -221,9 +261,15 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
         );
     }
 
-    function test_RevertsIf_IncorrectContainerStatusAndEnterStrategy() public {
+    function test_RevertIf_EnterStrategy_IncorrectContainerStatus() public {
+        _setContainerStatus(IContainerLocal.ContainerLocalStatus.Idle);
+
+        uint256[] memory inputAmounts = new uint256[](1);
+        inputAmounts[0] = DEPOSIT_AMOUNT;
+        uint256 minNavDelta = 0;
+
         vm.expectRevert(Errors.IncorrectContainerStatus.selector);
         vm.prank(roles.operator);
-        containerLocal.enterStrategy(address(strategy), new uint256[](0), 0);
+        containerLocal.enterStrategy(address(strategy), inputAmounts, minNavDelta);
     }
 }

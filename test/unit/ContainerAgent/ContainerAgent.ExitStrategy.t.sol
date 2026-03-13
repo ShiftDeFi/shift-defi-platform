@@ -281,6 +281,23 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
         containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
     }
 
+    function test_RevertIf_ExitStrategyMultiple_InvalidArrayLength() public {
+        address[] memory strategies = new address[](0);
+        uint256[] memory maxNavDeltas = new uint256[](0);
+
+        vm.expectRevert(Errors.InvalidArrayLength.selector);
+        vm.prank(roles.operator);
+        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+
+        uint256 strategiesNumber = containerAgent.getStrategiesNumber();
+        strategies = new address[](strategiesNumber + 1);
+        maxNavDeltas = new uint256[](strategiesNumber + 1);
+
+        vm.expectRevert(Errors.InvalidArrayLength.selector);
+        vm.prank(roles.operator);
+        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+    }
+
     function test_RevertIf_ExitStrategyMultiple_NoSharesRegisteredForExit() public {
         uint256 strategiesNumber = 1;
         address[] memory strategies = new address[](strategiesNumber);

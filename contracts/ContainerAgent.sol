@@ -84,6 +84,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         require(status == ContainerAgentStatus.BridgeClaimed, Errors.IncorrectContainerStatus());
 
         uint256 length = strategies.length;
+        require(length > 0 && length <= getStrategiesNumber(), Errors.InvalidArrayLength());
         require(length == inputAmounts.length, Errors.ArrayLengthMismatch());
         require(length == minNavDelta.length, Errors.ArrayLengthMismatch());
 
@@ -122,6 +123,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         require(status == ContainerAgentStatus.WithdrawalRequestReceived, Errors.IncorrectContainerStatus());
 
         uint256 length = strategies.length;
+        require(length > 0 && length <= getStrategiesNumber(), Errors.InvalidArrayLength());
         require(length == minNavDeltas.length, Errors.ArrayLengthMismatch());
 
         uint256 registeredShareAmountCached = registeredWithdrawShareAmount;

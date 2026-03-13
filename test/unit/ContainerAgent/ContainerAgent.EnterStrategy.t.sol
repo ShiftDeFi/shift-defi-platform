@@ -240,6 +240,25 @@ contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
         containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
     }
 
+    function test_RevertIf_EnterStrategyMultiple_InvalidArrayLength() public {
+        address[] memory strategies = new address[](0);
+        uint256[][] memory inputAmountsMultiple = new uint256[][](0);
+        uint256[] memory minNavDelta = new uint256[](0);
+
+        vm.expectRevert(Errors.InvalidArrayLength.selector);
+        vm.prank(roles.operator);
+        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+
+        uint256 strategiesNumber = containerAgent.getStrategiesNumber();
+        strategies = new address[](strategiesNumber + 1);
+        inputAmountsMultiple = new uint256[][](strategiesNumber + 1);
+        minNavDelta = new uint256[](strategiesNumber + 1);
+
+        vm.expectRevert(Errors.InvalidArrayLength.selector);
+        vm.prank(roles.operator);
+        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+    }
+
     function test_RevertIf_EnterStrategyMultiple_InReshufflingMode() public {
         uint256 strategiesNumber = 2;
         address[] memory strategies = new address[](strategiesNumber);

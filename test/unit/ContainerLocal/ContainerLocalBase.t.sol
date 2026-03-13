@@ -31,6 +31,15 @@ contract ContainerLocalBaseTest is L1Base {
 
         vm.prank(roles.defaultAdmin);
         AccessControl(address(containerLocal)).grantRole(TOKEN_MANAGER_ROLE, roles.tokenManager);
+
+        vm.startPrank(roles.strategyManager);
+        containerLocal.addStrategy(
+            address(strategy),
+            _createTokensArray(address(notion)),
+            _createTokensArray(address(notion))
+        );
+        containerLocal.setTreasury(treasury);
+        vm.stopPrank();
     }
 
     function _setContainerStatus(IContainerLocal.ContainerLocalStatus status) internal {

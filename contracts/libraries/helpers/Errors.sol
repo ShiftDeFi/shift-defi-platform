@@ -17,6 +17,7 @@ library Errors {
     // -- Input Validation Errors --
 
     error ArrayLengthMismatch();
+    error InvalidArrayLength();
     error IncorrectAmount();
     error IncorrectContainerStatus();
     error IncorrectInput();

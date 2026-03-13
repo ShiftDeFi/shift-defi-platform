@@ -103,6 +103,7 @@ interface IStrategyTemplate {
     error NotInTargetState(bytes32 currentStateId, uint256 currentStateBitmask);
     error StateAlreadyExists(bytes32 stateId);
     error TargetStateAlreadySet();
+    error AlreadyInState(bytes32 stateId);
 
     // ---- Functions ----
 

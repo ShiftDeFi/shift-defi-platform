@@ -359,6 +359,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
         EmergencyExitLocalVars memory vars;
         vars.currentStateId = _currentStateId;
+        require(vars.currentStateId != toStateId, AlreadyInState(toStateId));
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.toStateBitmask = _stateBitmasks[toStateId];
 

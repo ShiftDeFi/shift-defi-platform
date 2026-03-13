@@ -185,6 +185,16 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         strategy.emergencyExit(toStateId, MAX_BPS);
     }
 
+    function test_RevertIf_EmergencyExit_AlreadyInState() public {
+        vm.prank(address(strategyContainer));
+        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+
+        bytes32 toStateId = strategy.currentStateId();
+        vm.prank(address(strategyContainer));
+        vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.AlreadyInState.selector, toStateId));
+        strategy.emergencyExit(toStateId, MAX_BPS);
+    }
+
     function test_RevertIf_EmergencyExit_ToHigherState() public {
         bytes32 higherStateId = bytes32(uint256(111));
         strategy.setState(higherStateId, false, true, false, 111);

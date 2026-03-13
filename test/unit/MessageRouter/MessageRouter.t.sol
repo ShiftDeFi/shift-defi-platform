@@ -150,12 +150,11 @@ contract MessageRouterTest is L1Base {
         assertEq(decodedMessage, message, "test_DecodeMessage: message mismatch");
     }
 
-    function test_DecodeMessageWithZeroLengthPayload() public view {
-        bytes32 part1 = bytes32(0);
-        bytes32 part2 = bytes32(0);
-        bytes memory zeroLengthMessage = abi.encodePacked(part1, part2);
-        (, , bytes memory decodedMessage) = messageRouter.decodeMessage(zeroLengthMessage);
-        assertEq(decodedMessage, new bytes(0), "test_DecodeMessageWithZeroLengthPayload: decoded message mismatch");
+    function test_RevertIf_DecodeMessageWithZeroLengthPayload() public {
+        bytes memory zeroLengthMessage = abi.encodePacked(bytes32(0), bytes32(0));
+        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.MessageTooShort.selector, zeroLengthMessage.length));
+        vm.prank(roles.governance);
+        messageRouter.decodeMessage(zeroLengthMessage);
     }
 
     function test_RevertIf_DecodedMessageIsTooShort() public {

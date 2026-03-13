@@ -73,9 +73,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
 
         // Extract remaining message bytes
         uint256 messageLength = message.length - 64; // Total length minus nonce and path
-        if (messageLength == 0) {
-            return (nonce, pathOnRemoteChain, new bytes(0));
-        }
+        require(messageLength > 0, MessageTooShort(message.length));
         bytes memory messageData = new bytes(messageLength);
         assembly {
             let src := add(message, 96)

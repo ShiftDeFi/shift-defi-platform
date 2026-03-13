@@ -7,6 +7,11 @@ import {ISwapAdapter} from "contracts/interfaces/ISwapAdapter.sol";
 
 contract MockSwapAdapter is ISwapAdapter {
     using SafeERC20 for IERC20;
+
+    function previewSwap(address, address, uint256, bytes memory) external view override returns (uint256) {
+        return 0;
+    }
+
     function swap(
         address tokenIn,
         address tokenOut,

@@ -103,6 +103,18 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
         );
     }
 
+    // @inheritrdoc ISwapRouter
+    function previewSwap(SwapInstruction memory instruction) external view returns (uint256) {
+        require(whitelistedAdapters[instruction.adapter], AdapterNotWhitelisted(instruction.adapter));
+        return
+            ISwapAdapter(instruction.adapter).previewSwap(
+                instruction.tokenIn,
+                instruction.tokenOut,
+                instruction.amountIn,
+                instruction.payload
+            );
+    }
+
     /// @inheritdoc ISwapRouter
     function swap(SwapInstruction memory instruction) public payable nonReentrant returns (uint256) {
         require(whitelistedAdapters[instruction.adapter], AdapterNotWhitelisted(instruction.adapter));

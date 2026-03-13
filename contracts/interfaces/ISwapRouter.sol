@@ -43,6 +43,14 @@ interface ISwapRouter {
     // ---- Functions ----
 
     /**
+     * @notice Preview the amount of output tokens that would be received for a given input amount.
+     * @dev The adapter must be whitelisted.
+     * @param instruction Swap instruction containing adapter, tokens, amounts, and payload.
+     * @return amountOut The amount of output tokens that would be received.
+     */
+    function previewSwap(SwapInstruction memory instruction) external view returns (uint256 amountOut);
+
+    /**
      * @notice Executes a token swap based on the provided instruction.
      * @dev The adapter must be whitelisted. Transfers tokens from the caller and returns output tokens.
      *      Reverts if the actual output amount is less than `minAmountOut`.

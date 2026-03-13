@@ -702,6 +702,8 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     }
 
     function _calculateSharesPercent(uint256 shares) internal view returns (uint256) {
-        return shares.mulDiv(MAX_BPS, totalSupply());
+        uint256 totalSupplyCached = totalSupply();
+        require(totalSupplyCached > 0, Errors.ZeroAmount());
+        return shares.mulDiv(MAX_BPS, totalSupplyCached);
     }
 }

@@ -71,6 +71,11 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
     }
 
     /// @inheritdoc IReshufflingGateway
+    function getWhitelistedTokens() external view returns (address[] memory) {
+        return _whitelistedTokens.values();
+    }
+
+    /// @inheritdoc IReshufflingGateway
     function whitelistToken(address token) external onlyRole(WHITELIST_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(_whitelistedTokens.add(token), AlreadyWhitelistedToken());

@@ -39,6 +39,12 @@ interface IReshufflingGateway {
     function swapRouter() external view returns (address);
 
     /**
+     * @notice Returns the whitelisted tokens.
+     * @return Array of whitelisted tokens.
+     */
+    function getWhitelistedTokens() external view returns (address[] memory);
+
+    /**
      * @notice Whitelists a token for reshuffling.
      * @param token Token address.
      */

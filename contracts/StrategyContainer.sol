@@ -254,6 +254,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
         address[] memory inputTokens = IStrategyTemplate(strategy).getInputTokens();
         vars.tokenNumber = inputTokens.length;
+        require(vars.tokenNumber > 0, Errors.ZeroArrayLength());
         require(inputAmounts.length == vars.tokenNumber, Errors.ArrayLengthMismatch());
 
         for (uint256 i = 0; i < vars.tokenNumber; ++i) {
@@ -304,7 +305,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
         address[] memory inputTokens = IStrategyTemplate(strategy).getInputTokens();
         uint256 tokenNumber = inputTokens.length;
-
+        require(tokenNumber > 0, Errors.ZeroArrayLength());
         require(tokenNumber == inputAmounts.length, Errors.ArrayLengthMismatch());
 
         uint256 nav0 = IStrategyTemplate(strategy).harvest();

@@ -108,7 +108,9 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         require(_whitelistedBridgeAdapters.contains(bridgeAdapter), NotWhitelistedBridgeAdapter(bridgeAdapter));
         require(_whitelistedTokens.contains(token), NotWhitelistedToken(token));
 
-        return IBridgeAdapter(bridgeAdapter).claim(token);
+        uint256 claimedAmount = IBridgeAdapter(bridgeAdapter).claim(token);
+        require(claimedAmount > 0, Errors.ZeroAmount());
+        return claimedAmount;
     }
 
     /// @inheritdoc IReshufflingGateway

@@ -202,7 +202,5 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
         address peer
     ) internal virtual returns (uint256);
 
-    function _validatePaylaod(bytes memory payload) internal virtual {}
-
     uint256[50] private __gap;
 }

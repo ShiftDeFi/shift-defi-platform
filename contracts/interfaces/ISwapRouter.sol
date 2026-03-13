@@ -37,7 +37,6 @@ interface ISwapRouter {
     event PredefinedSwapParametersUnset(address indexed tokenIn, address indexed tokenOut);
 
     error AdapterNotWhitelisted(address adapter);
-    error NotWhitelistManager(address sender);
     error SlippageNotMet(uint256 amountOutBefore, uint256 amountOutAfter, uint256 minAmountOut);
     error SwapParametersNotSetForTokenPair(address tokenIn, address tokenOut);
 

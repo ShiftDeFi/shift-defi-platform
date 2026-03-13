@@ -19,12 +19,6 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
     mapping(address => bool) public whitelistedAdapters;
     mapping(address => mapping(address => PredefinedSwapParameters)) public predefinedSwapParameters;
 
-    modifier onlyWhitelistManager() {
-        // onlyrole
-        require(hasRole(WHITELIST_MANAGER_ROLE, msg.sender), NotWhitelistManager(msg.sender));
-        _;
-    }
-
     constructor() {
         _disableInitializers();
     }
@@ -41,14 +35,14 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
     }
 
     /// @inheritdoc ISwapRouter
-    function whitelistSwapAdapter(address adapter) external onlyWhitelistManager {
+    function whitelistSwapAdapter(address adapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
         require(!whitelistedAdapters[adapter], Errors.AlreadyWhitelisted());
         whitelistedAdapters[adapter] = true;
         emit SwapAdapterWhitelisted(adapter);
     }
 
     /// @inheritdoc ISwapRouter
-    function blacklistSwapAdapter(address adapter) external onlyWhitelistManager {
+    function blacklistSwapAdapter(address adapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
         require(whitelistedAdapters[adapter], Errors.AlreadyBlacklisted());
         whitelistedAdapters[adapter] = false;
         emit SwapAdapterBlacklisted(adapter);
@@ -60,7 +54,7 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
         address tokenOut,
         address adapter,
         bytes calldata payload
-    ) external onlyWhitelistManager {
+    ) external onlyRole(WHITELIST_MANAGER_ROLE) {
         require(tokenIn != address(0), Errors.ZeroAddress());
         require(tokenOut != address(0), Errors.ZeroAddress());
         require(adapter != address(0), Errors.ZeroAddress());
@@ -70,7 +64,10 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
     }
 
     /// @inheritdoc ISwapRouter
-    function unsetPredefinedSwapParameters(address tokenIn, address tokenOut) external onlyWhitelistManager {
+    function unsetPredefinedSwapParameters(
+        address tokenIn,
+        address tokenOut
+    ) external onlyRole(WHITELIST_MANAGER_ROLE) {
         require(
             predefinedSwapParameters[tokenIn][tokenOut].adapter != address(0),
             SwapParametersNotSetForTokenPair(tokenIn, tokenOut)
@@ -110,9 +107,11 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
     function swap(SwapInstruction memory instruction) public payable nonReentrant returns (uint256) {
         require(whitelistedAdapters[instruction.adapter], AdapterNotWhitelisted(instruction.adapter));
 
-        IERC20(instruction.tokenIn).safeTransferFrom(msg.sender, address(this), instruction.amountIn);
-        IERC20(instruction.tokenIn).forceApprove(instruction.adapter, instruction.amountIn);
         uint256 amountOutBefore = IERC20(instruction.tokenOut).balanceOf(address(this));
+
+        IERC20(instruction.tokenIn).safeTransferFrom(msg.sender, address(this), instruction.amountIn);
+        IERC20(instruction.tokenIn).safeIncreaseAllowance(instruction.adapter, instruction.amountIn);
+
         ISwapAdapter(instruction.adapter).swap(
             instruction.tokenIn,
             instruction.tokenOut,

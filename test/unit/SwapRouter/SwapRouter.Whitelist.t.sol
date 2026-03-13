@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 import {ISwapRouter} from "contracts/interfaces/ISwapRouter.sol";
 import {Errors} from "contracts/libraries/helpers/Errors.sol";
@@ -16,8 +17,14 @@ contract SwapRouterWhitelistTest is L1Base {
         AccessControl(address(swapRouter)).grantRole(WHITELIST_MANAGER_ROLE, roles.whitelistManager);
     }
 
-    function test_RevertIf_NotWhiteslistManagerAndWhitelistSwapAdapter() public {
-        vm.expectRevert(abi.encodeWithSelector(ISwapRouter.NotWhitelistManager.selector, users.alice));
+    function test_RevertIf_WhitelistSwapAdapter_Unauthorized() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                users.alice,
+                WHITELIST_MANAGER_ROLE
+            )
+        );
         vm.prank(users.alice);
         swapRouter.whitelistSwapAdapter(address(1));
     }
@@ -45,8 +52,14 @@ contract SwapRouterWhitelistTest is L1Base {
         swapRouter.whitelistSwapAdapter(adapter);
     }
 
-    function test_RevertIf_NotWhiteslistManagerAndBlacklistSwapAdapter() public {
-        vm.expectRevert(abi.encodeWithSelector(ISwapRouter.NotWhitelistManager.selector, users.alice));
+    function test_RevertIf_BlacklistSwapAdapter_Unauthorized() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                users.alice,
+                WHITELIST_MANAGER_ROLE
+            )
+        );
         vm.prank(users.alice);
         swapRouter.blacklistSwapAdapter(address(1));
     }

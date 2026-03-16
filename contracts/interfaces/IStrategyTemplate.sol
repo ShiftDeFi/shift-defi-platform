@@ -70,6 +70,8 @@ interface IStrategyTemplate {
 
     struct EmergencyExitLocalVars {
         bytes32 currentStateId;
+        uint256 toStateNavBeforeExit;
+        uint256 toStateNavAfterExit;
         uint256 currentStateBitmask;
         uint256 toStateBitmask;
         bool isExitSuccess;
@@ -162,16 +164,9 @@ interface IStrategyTemplate {
      * @dev Callable by the strategy container or EMERGENCY_MANAGER_ROLE.
      * @param toStateId Destination state identifier for the emergency exit.
      * @param share Portion of the position to exit in basis points (10000 = 100%).
+     * @param minNavDelta Minimum required NAV increase (notion units) after exit.
      */
-    function emergencyExit(bytes32 toStateId, uint256 share) external payable;
-
-    /**
-     * @notice Performs multiple emergency exits in a single call.
-     * @dev Callable by the strategy container or EMERGENCY_MANAGER_ROLE.
-     * @param toStateIds Array of destination state identifiers for emergency exits.
-     * @param shares Portions to exit per state in basis points.
-     */
-    function emergencyExitMultiple(bytes32[] calldata toStateIds, uint256[] calldata shares) external payable;
+    function emergencyExit(bytes32 toStateId, uint256 share, uint256 minNavDelta) external payable;
 
     /**
      * @notice Internal function to attempt an emergency exit safely.

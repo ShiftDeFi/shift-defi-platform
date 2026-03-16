@@ -22,7 +22,7 @@ contract ContainerLocalBaseTest is L1Base {
         _addContainer(address(containerLocal), block.chainid);
 
         strategy = _deployMockStrategy(address(containerLocal));
-        MockStrategy(address(strategy)).setState(bytes32(uint256(1)), true, true, false, 0);
+        MockStrategy(address(strategy)).setState(bytes32(uint256(1)), true, true, false, 1);
         vm.prank(roles.defaultAdmin);
         AccessControl(address(containerLocal)).grantRole(STRATEGY_MANAGER_ROLE, roles.strategyManager);
 

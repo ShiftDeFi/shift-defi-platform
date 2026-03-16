@@ -352,7 +352,8 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     /// @inheritdoc IStrategyTemplate
     function emergencyExit(
         bytes32 toStateId,
-        uint256 share
+        uint256 share,
+        uint256 minNavDelta
     ) public payable onlyStrategyContainerOrEmergencyManager nonReentrant {
         require(share > 0 && share <= MAX_BPS, Errors.IncorrectAmount());
         require(_stateIds.contains(toStateId), StateNotFound(toStateId));
@@ -360,6 +361,8 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         EmergencyExitLocalVars memory vars;
         vars.currentStateId = _currentStateId;
         require(vars.currentStateId != toStateId, AlreadyInState(toStateId));
+
+        vars.toStateNavBeforeExit = stateNav(toStateId);
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.toStateBitmask = _stateBitmasks[toStateId];
 
@@ -375,22 +378,18 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         (vars.isExitSuccess, returnData) = address(this).call(
             abi.encodeWithSelector(this.tryEmergencyExit.selector, toStateId, share)
         );
+
+        vars.toStateNavAfterExit = stateNav(toStateId);
+        require(
+            vars.toStateNavAfterExit >= vars.toStateNavBeforeExit + minNavDelta,
+            SlippageCheckFailed(vars.toStateNavBeforeExit, vars.toStateNavAfterExit, minNavDelta)
+        );
+
         // Silently ignore return data - emergency exit failure is handled by isExitSuccess flag
         if (vars.isExitSuccess) {
             emit EmergencyExitSucceeded(toStateId);
         } else {
             emit EmergencyExitFailed(toStateId);
-        }
-    }
-
-    /// @inheritdoc IStrategyTemplate
-    function emergencyExitMultiple(
-        bytes32[] calldata toStateIds,
-        uint256[] calldata shares
-    ) external payable onlyStrategyContainerOrEmergencyManager {
-        require(toStateIds.length == shares.length, Errors.ArrayLengthMismatch());
-        for (uint256 i = 0; i < toStateIds.length; ++i) {
-            emergencyExit(toStateIds[i], shares[i]);
         }
     }
 

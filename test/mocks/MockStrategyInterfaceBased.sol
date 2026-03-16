@@ -61,9 +61,7 @@ contract MockStrategyInterfaceBased is IStrategyTemplate {
         return nav0;
     }
 
-    function emergencyExit(bytes32 toStateId, uint256 share) external payable {}
-
-    function emergencyExitMultiple(bytes32[] calldata toStateIds, uint256[] calldata shares) external payable {}
+    function emergencyExit(bytes32 toStateId, uint256 share, uint256 minNavDelta) external payable {}
 
     function tryEmergencyExit(bytes32 toStateId, uint256 share) external {}
 

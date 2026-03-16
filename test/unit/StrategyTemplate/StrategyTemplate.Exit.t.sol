@@ -8,6 +8,8 @@ import {Errors} from "contracts/libraries/helpers/Errors.sol";
 
 import {StrategyTemplateBaseTest} from "./StrategyTemplateBase.t.sol";
 
+import {console2 as console} from "forge-std/console2.sol";
+
 contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
     using Math for uint256;
 
@@ -19,21 +21,21 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
         bool stateOneIsTarget = false;
         bool stateOneIsProtocol = false;
         bool stateOneIsToken = true;
-        uint8 stateOneHeight = 0;
+        uint8 stateOneHeight = 1;
 
         strategy.setState(ONE_STATE_ID, stateOneIsTarget, stateOneIsProtocol, stateOneIsToken, stateOneHeight);
 
         bool stateTwoIsTarget = false;
         bool stateTwoIsProtocol = true;
         bool stateTwoIsToken = false;
-        uint8 stateTwoHeight = 1;
+        uint8 stateTwoHeight = 2;
 
         strategy.setState(TWO_STATE_ID, stateTwoIsTarget, stateTwoIsProtocol, stateTwoIsToken, stateTwoHeight);
 
         bool stateThreeIsTarget = true;
         bool stateThreeIsProtocol = true;
         bool stateThreeIsToken = false;
-        uint8 stateThreeHeight = 2;
+        uint8 stateThreeHeight = 3;
 
         strategy.setState(
             THREE_STATE_ID,
@@ -71,12 +73,12 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
             "test_Exit_FromTargetState_PartialExit: state after exit changed"
         );
         assertEq(
-            notion.balanceOf(address(strategy)),
+            strategy.stateNav(TWO_STATE_ID),
             DEPOSIT_AMOUNT.mulDiv(share, MAX_BPS),
             "test_Exit_FromTargetState_PartialExit: strategy notion balance should equal exited share from target"
         );
         assertEq(
-            notion.balanceOf(address(strategy.mockBuildingBlock())),
+            notion.balanceOf(address(strategy.stateToBuildingBlock(THREE_STATE_ID))),
             DEPOSIT_AMOUNT - DEPOSIT_AMOUNT.mulDiv(share, MAX_BPS),
             "test_Exit_FromTargetState_PartialExit: mockBuildingBlock should hold remaining after partial exit"
         );
@@ -97,12 +99,12 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
             "test_Exit_FromTargetState_FullExit: state after full exit not no allocation state"
         );
         assertEq(
-            notion.balanceOf(address(strategy)),
+            strategy.stateNav(TWO_STATE_ID),
             DEPOSIT_AMOUNT,
             "test_Exit_FromTargetState_FullExit: strategy notion balance should equal full deposit after exit"
         );
         assertEq(
-            notion.balanceOf(address(strategy.mockBuildingBlock())),
+            notion.balanceOf(address(strategy.stateToBuildingBlock(THREE_STATE_ID))),
             0,
             "test_Exit_FromTargetState_FullExit: mockBuildingBlock notion balance should be 0 after full exit"
         );
@@ -184,7 +186,7 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
             "test_Exit_FromProtocolState_PartialExit: strategy notion balance should equal exited share"
         );
         assertEq(
-            notion.balanceOf(address(strategy.mockBuildingBlock())),
+            notion.balanceOf(address(strategy.stateToBuildingBlock(TWO_STATE_ID))),
             DEPOSIT_AMOUNT - DEPOSIT_AMOUNT.mulDiv(share, MAX_BPS),
             "test_Exit_FromProtocolState_PartialExit: mockBuildingBlock should hold remaining after partial exit"
         );
@@ -192,6 +194,8 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
 
     function test_Exit_FromProtocolState_FullExit() public {
         deal(address(notion), address(strategy), DEPOSIT_AMOUNT);
+
+        console.log("allowance", notion.allowance(address(strategy), address(strategyContainer)));
 
         _enterToState(TWO_STATE_ID, ENTER_MIN_NAV_DELTA);
 
@@ -211,12 +215,12 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
             "test_Exit_FromProtocolState_FullExit: incorrect token out allowance to strategy container"
         );
         assertEq(
-            notion.balanceOf(address(strategy)),
+            strategy.stateNav(ONE_STATE_ID),
             DEPOSIT_AMOUNT,
             "test_Exit_FromProtocolState_FullExit: strategy notion balance should equal full deposit after exit"
         );
         assertEq(
-            notion.balanceOf(address(strategy.mockBuildingBlock())),
+            notion.balanceOf(address(strategy.stateToBuildingBlock(TWO_STATE_ID))),
             0,
             "test_Exit_FromProtocolState_FullExit: mockBuildingBlock notion balance should be 0 after full exit"
         );

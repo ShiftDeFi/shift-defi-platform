@@ -96,7 +96,7 @@ contract ContainerAgentBaseTest is L2Base {
         outputTokens[0] = address(notion);
         vm.prank(roles.strategyManager);
         containerAgent.addStrategy(strategy, inputTokens, outputTokens);
-        MockStrategy(strategy).setState(bytes32(uint256(1)), true, true, false, 0);
+        MockStrategy(strategy).setState(bytes32(uint256(1)), true, true, false, 1);
 
         return strategy;
     }

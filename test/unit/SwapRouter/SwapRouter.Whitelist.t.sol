@@ -12,9 +12,6 @@ import {L1Base} from "test/L1Base.t.sol";
 contract SwapRouterWhitelistTest is L1Base {
     function setUp() public virtual override {
         super.setUp();
-
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(swapRouter)).grantRole(WHITELIST_MANAGER_ROLE, roles.whitelistManager);
     }
 
     function test_RevertIf_WhitelistSwapAdapter_Unauthorized() public {

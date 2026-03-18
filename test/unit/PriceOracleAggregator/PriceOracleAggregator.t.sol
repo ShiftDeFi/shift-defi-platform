@@ -11,15 +11,12 @@ import {MockPriceOracle} from "test/mocks/MockPriceOracle.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 
 contract PriceOracleAggregatorTest is L1Base {
-    IPriceOracleAggregator internal priceOracleAggregator;
-
     MockPriceOracle internal mockPriceOracle;
     MockERC20 internal token0;
     MockERC20 internal token1;
 
     function setUp() public override {
         super.setUp();
-        priceOracleAggregator = _deployPriceOracleAggregator();
         mockPriceOracle = new MockPriceOracle(8);
         token0 = new MockERC20("Token0", "TKN0", 18);
         token1 = new MockERC20("Token1", "TKN1", 6);

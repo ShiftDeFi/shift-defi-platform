@@ -25,8 +25,8 @@ contract MessageRouterTest is L1Base {
             abi.encodeWithSelector(
                 MessageRouter.initialize.selector,
                 roles.defaultAdmin,
-                roles.governance,
-                roles.manager,
+                roles.whitelistManager,
+                roles.cacheManager,
                 MAX_CACHE_SIZE
             )
         );
@@ -69,7 +69,7 @@ contract MessageRouterTest is L1Base {
         uint256 _chainId,
         bytes memory _message
     ) internal returns (IMessageRouter.SendParams memory) {
-        vm.startPrank(roles.governance);
+        vm.startPrank(roles.whitelistManager);
         messageRouter.whitelistMessageAdapter(_adapter);
         messageRouter.whitelistPath(_sender, _receiver, _chainId);
         vm.stopPrank();
@@ -94,7 +94,7 @@ contract MessageRouterTest is L1Base {
         bytes32 path = messageRouter.calculatePath(sender, containerPrincipal, chainTo);
         bytes memory rawMessageWithPathAndNonce = messageRouter.encodeMessage(nonce, path, message);
 
-        vm.startPrank(roles.governance);
+        vm.startPrank(roles.whitelistManager);
         messageRouter.whitelistMessageAdapter(address(messageAdapter));
         messageRouter.whitelistPath(sender, containerPrincipal, chainTo);
         vm.stopPrank();
@@ -153,7 +153,7 @@ contract MessageRouterTest is L1Base {
     function test_RevertIf_DecodeMessageWithZeroLengthPayload() public {
         bytes memory zeroLengthMessage = abi.encodePacked(bytes32(0), bytes32(0));
         vm.expectRevert(abi.encodeWithSelector(IMessageRouter.MessageTooShort.selector, zeroLengthMessage.length));
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.decodeMessage(zeroLengthMessage);
     }
 
@@ -171,7 +171,7 @@ contract MessageRouterTest is L1Base {
         uint256 chainId = block.chainid + 1;
         bytes32 path = messageRouter.calculatePath(sender, receiver, chainId);
 
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.whitelistPath(sender, receiver, chainId);
 
         IMessageRouter.PathData memory pathData = _getPathData(path);
@@ -187,11 +187,11 @@ contract MessageRouterTest is L1Base {
         address receiver = address(0x456);
         uint256 chainId = block.chainid + 1;
 
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.whitelistPath(sender, receiver, chainId);
 
         vm.expectRevert(Errors.AlreadyWhitelisted.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.whitelistPath(sender, receiver, chainId);
     }
 
@@ -201,10 +201,10 @@ contract MessageRouterTest is L1Base {
         uint256 chainId = block.chainid + 1;
         bytes32 path = messageRouter.calculatePath(sender, receiver, chainId);
 
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.whitelistPath(sender, receiver, chainId);
 
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.blacklistPath(sender, receiver, chainId);
 
         IMessageRouter.PathData memory pathData = _getPathData(path);
@@ -218,13 +218,13 @@ contract MessageRouterTest is L1Base {
         bytes32 path = messageRouter.calculatePath(sender, receiver, chainId);
 
         vm.expectRevert(abi.encodeWithSelector(IMessageRouter.InvalidPath.selector, path));
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.blacklistPath(sender, receiver, chainId);
     }
 
     function test_WhitelistMessageAdapter() public {
         address adapter = address(0x123);
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.whitelistMessageAdapter(adapter);
 
         assertTrue(_isMessageAdapterWhitelisted(adapter), "test_WhitelistMessageAdapter: is whitelisted mismatch");
@@ -232,20 +232,20 @@ contract MessageRouterTest is L1Base {
 
     function test_RevertIf_WhitelistMessageAdapterAlreadyWhitelisted() public {
         address adapter = address(0x123);
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.whitelistMessageAdapter(adapter);
 
         vm.expectRevert(Errors.AlreadyWhitelisted.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.whitelistMessageAdapter(adapter);
     }
 
     function test_BlacklistMessageAdapter() public {
         address adapter = address(0x123);
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.whitelistMessageAdapter(adapter);
 
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.blacklistMessageAdapter(adapter);
 
         assertFalse(_isMessageAdapterWhitelisted(adapter), "test_BlacklistMessageAdapter: is whitelisted mismatch");
@@ -254,7 +254,7 @@ contract MessageRouterTest is L1Base {
     function test_RevertIf_BlacklistMessageAdapterNotWhitelisted() public {
         address adapter = address(0x123);
         vm.expectRevert(Errors.AlreadyBlacklisted.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.blacklistMessageAdapter(adapter);
     }
 
@@ -302,7 +302,7 @@ contract MessageRouterTest is L1Base {
             message
         );
 
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.blacklistMessageAdapter(address(messageAdapter));
 
         vm.expectRevert(abi.encodeWithSelector(IMessageRouter.UnsupportedAdapter.selector, address(messageAdapter)));
@@ -415,7 +415,7 @@ contract MessageRouterTest is L1Base {
         );
 
         uint256 value = 1 ether;
-        hoax(roles.manager, value);
+        hoax(roles.cacheManager, value);
         messageRouter.retryCachedMessage{value: value}(nonce, remotePath, sendParams);
 
         assertEq(_getNonce(), expectedNonce, "test_RetryMessageFromCache: nonce mismatch");
@@ -445,13 +445,13 @@ contract MessageRouterTest is L1Base {
             message
         );
 
-        vm.prank(roles.governance);
+        vm.prank(roles.whitelistManager);
         messageRouter.blacklistMessageAdapter(address(messageAdapter));
 
         bytes32 remotePath = messageRouter.calculatePath(sender, receiver, block.chainid);
 
         vm.expectRevert(abi.encodeWithSelector(IMessageRouter.UnsupportedAdapter.selector, address(messageAdapter)));
-        vm.prank(roles.manager);
+        vm.prank(roles.cacheManager);
         messageRouter.retryCachedMessage(nonce, remotePath, sendParams);
     }
 
@@ -476,7 +476,7 @@ contract MessageRouterTest is L1Base {
         bytes32 cachedKey = messageRouter.calculateCacheKey(chainTo, messageWithNonceAndPath);
 
         vm.expectRevert(abi.encodeWithSelector(RingCacheLibrary.DoesNotExists.selector, cacheId, cachedKey));
-        vm.prank(roles.manager);
+        vm.prank(roles.cacheManager);
         messageRouter.retryCachedMessage(nonce, remotePath, sendParams);
     }
 
@@ -504,7 +504,7 @@ contract MessageRouterTest is L1Base {
             "test_RemoveMessageFromCache: message should be cached before remove"
         );
 
-        vm.prank(roles.manager);
+        vm.prank(roles.cacheManager);
         messageRouter.removeMessageFromCache(nonce, chainTo, remotePath, message);
 
         assertFalse(
@@ -517,7 +517,7 @@ contract MessageRouterTest is L1Base {
         bytes32 cachedKey = messageRouter.calculateCacheKey(chainTo, messageWithNonceAndPath);
 
         vm.expectRevert(abi.encodeWithSelector(RingCacheLibrary.DoesNotExists.selector, cacheId, cachedKey));
-        vm.prank(roles.manager);
+        vm.prank(roles.cacheManager);
         messageRouter.retryCachedMessage(nonce, remotePath, sendParams);
     }
 
@@ -534,7 +534,7 @@ contract MessageRouterTest is L1Base {
         bytes32 cachedKey = messageRouter.calculateCacheKey(chainTo, messageWithNonceAndPath);
 
         vm.expectRevert(abi.encodeWithSelector(RingCacheLibrary.DoesNotExists.selector, cacheId, cachedKey));
-        vm.prank(roles.manager);
+        vm.prank(roles.cacheManager);
         messageRouter.removeMessageFromCache(nonce, chainTo, remotePath, message);
     }
 }

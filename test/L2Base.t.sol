@@ -8,6 +8,8 @@ import {Base} from "./Base.t.sol";
 import {IContainer} from "contracts/interfaces/IContainer.sol";
 import {IContainerAgent} from "contracts/interfaces/IContainerAgent.sol";
 import {ICrossChainContainer} from "contracts/interfaces/ICrossChainContainer.sol";
+import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
+import {IReshufflingGateway} from "contracts/interfaces/IReshufflingGateway.sol";
 
 import {ISwapRouter} from "contracts/interfaces/ISwapRouter.sol";
 import {IMessageRouter} from "contracts/interfaces/IMessageRouter.sol";
@@ -16,8 +18,8 @@ import {IMessageAdapter} from "contracts/interfaces/IMessageAdapter.sol";
 import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
 
 import {ContainerAgent} from "contracts/ContainerAgent.sol";
+import {ReshufflingGateway} from "contracts/ReshufflingGateway.sol";
 import {Utils} from "./Utils.sol";
-
 import {MockStrategy} from "test/mocks/MockStrategy.sol";
 
 abstract contract L2Base is Base {
@@ -27,6 +29,7 @@ abstract contract L2Base is Base {
     IMessageRouter internal messageRouter;
     IBridgeAdapter internal bridgeAdapter;
     IMessageAdapter internal messageAdapter;
+    IReshufflingGateway internal reshufflingGateway;
 
     address internal vault;
     IContainerAgent internal containerAgent;
@@ -38,16 +41,36 @@ abstract contract L2Base is Base {
 
         vault = makeAddr("VAULT");
 
-        swapRouter = _deploySwapRouter();
+        swapRouter = _deployMockSwapRouter();
         messageRouter = _deployMockMessageRouter(MAX_CACHE_SIZE);
         bridgeAdapter = _deployBridgeAdapter();
         messageAdapter = _deployMessageAdapter();
+        reshufflingGateway = _deployReshufflingGateway();
 
-        vm.startPrank(roles.governance);
+        vm.startPrank(roles.bridgeAdapterManager);
         bridgeAdapter.setBridgePath(address(notion), REMOTE_CHAIN_ID, address(notion));
         bridgeAdapter.setBridgePath(address(dai), REMOTE_CHAIN_ID, address(dai));
         bridgeAdapter.setPeer(REMOTE_CHAIN_ID, address(this));
         vm.stopPrank();
+    }
+
+    function _deployReshufflingGateway() internal returns (IReshufflingGateway) {
+        address implementation = address(new ReshufflingGateway());
+        address proxy = _proxify(
+            roles.deployer,
+            implementation,
+            roles.defaultAdmin,
+            abi.encodeWithSelector(
+                ReshufflingGateway.initialize.selector,
+                address(vault),
+                address(swapRouter),
+                roles.defaultAdmin,
+                roles.reshufflingManager,
+                roles.whitelistManager
+            )
+        );
+        vm.label(address(proxy), "RESHUFFLING_GATEWAY");
+        return IReshufflingGateway(proxy);
     }
 
     function _deployContainerAgent() internal returns (IContainerAgent) {
@@ -56,10 +79,9 @@ abstract contract L2Base is Base {
             notion: address(notion),
             defaultAdmin: roles.defaultAdmin,
             operator: roles.operator,
+            tokenManager: roles.tokenManager,
             swapRouter: address(swapRouter)
         });
-        ICrossChainContainer.CrossChainContainerInitParams memory crossChainInitParams = ICrossChainContainer
-            .CrossChainContainerInitParams({messageRouter: address(messageRouter), remoteChainId: REMOTE_CHAIN_ID});
 
         address implementation = address(new ContainerAgent());
         address proxy = _proxify(
@@ -69,8 +91,20 @@ abstract contract L2Base is Base {
             abi.encodeWithSelector(
                 ContainerAgent.initialize.selector,
                 containerInitParams,
-                crossChainInitParams,
-                roles.emergencyManager
+                address(messageRouter),
+                REMOTE_CHAIN_ID,
+                IStrategyContainer.RoleAddresses({
+                    strategyManager: roles.strategyManager,
+                    harvestManager: roles.harvestManager,
+                    reshufflingManager: roles.reshufflingManager,
+                    emergencyManager: roles.emergencyManager
+                }),
+                roles.messengerManager,
+                roles.bridgeAdapterManager,
+                address(reshufflingGateway),
+                treasury,
+                DEFAULT_FEE_PCT,
+                address(priceOracleAggregator)
             )
         );
 

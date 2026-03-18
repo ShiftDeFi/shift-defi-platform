@@ -23,13 +23,13 @@ import {Utils} from "./Utils.sol";
 import {IVault} from "contracts/interfaces/IVault.sol";
 import {IContainer} from "contracts/interfaces/IContainer.sol";
 import {ICrossChainContainer} from "contracts/interfaces/ICrossChainContainer.sol";
+import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {IContainerPrincipal} from "contracts/interfaces/IContainerPrincipal.sol";
 import {IContainerLocal} from "contracts/interfaces/IContainerLocal.sol";
 import {ISwapRouter} from "contracts/interfaces/ISwapRouter.sol";
 import {IMessageRouter} from "contracts/interfaces/IMessageRouter.sol";
 import {IMessageAdapter} from "contracts/interfaces/IMessageAdapter.sol";
 import {ISwapAdapter} from "contracts/interfaces/ISwapAdapter.sol";
-import {IPriceOracleAggregator} from "contracts/interfaces/IPriceOracleAggregator.sol";
 import {IReshufflingGateway} from "contracts/interfaces/IReshufflingGateway.sol";
 import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
 
@@ -72,14 +72,6 @@ abstract contract L1Base is Base {
         vault = _deployVault();
         vm.label(address(vault), "VAULT");
 
-        vm.startPrank(roles.defaultAdmin);
-        AccessControl(address(vault)).grantRole(CONTAINER_MANAGER_ROLE, roles.containerManager);
-        AccessControl(address(vault)).grantRole(OPERATOR_ROLE, roles.operator);
-        AccessControl(address(vault)).grantRole(CONFIGURATOR_ROLE, roles.configurator);
-        AccessControl(address(vault)).grantRole(EMERGENCY_MANAGER_ROLE, roles.emergencyManager);
-        AccessControl(address(vault)).grantRole(TOKEN_MANAGER_ROLE, roles.tokenManager);
-        vm.stopPrank();
-
         swapRouter = _deploySwapRouter();
         messageRouter = _deployMockMessageRouter(MAX_CACHE_SIZE);
         bridgeAdapter = _deployBridgeAdapter();
@@ -91,15 +83,6 @@ abstract contract L1Base is Base {
         deal(address(notion), address(this), 100_000_000e18);
         deal(address(notion), address(mockSwapAdapter), 100_000_000e18);
         reshufflingGateway = _deployReshufflingGateway();
-
-        vm.prank(roles.governance);
-        bridgeAdapter.setSlippageCapPct(MAX_BPS);
-
-        vm.startPrank(roles.defaultAdmin);
-        AccessControl(address(swapRouter)).grantRole(WHITELIST_MANAGER_ROLE, roles.whitelistManager);
-        AccessControl(address(reshufflingGateway)).grantRole(WHITELIST_MANAGER_ROLE, roles.whitelistManager);
-        AccessControl(address(reshufflingGateway)).grantRole(RESHUFFLING_MANAGER_ROLE, roles.reshufflingManager);
-        vm.stopPrank();
     }
 
     function _deployVault() internal returns (IVault) {
@@ -153,29 +136,34 @@ abstract contract L1Base is Base {
             notion: address(notion),
             defaultAdmin: roles.defaultAdmin,
             operator: roles.operator,
+            tokenManager: roles.tokenManager,
             swapRouter: address(swapRouter)
         });
-
-        ICrossChainContainer.CrossChainContainerInitParams memory crossChainInitParams = ICrossChainContainer
-            .CrossChainContainerInitParams({messageRouter: address(messageRouter), remoteChainId: REMOTE_CHAIN_ID});
 
         address implementation = address(new ContainerPrincipal());
         address proxy = _proxify(
             roles.deployer,
             implementation,
             roles.defaultAdmin,
-            abi.encodeWithSelector(ContainerPrincipal.initialize.selector, containerInitParams, crossChainInitParams)
+            abi.encodeWithSelector(
+                ContainerPrincipal.initialize.selector,
+                containerInitParams,
+                address(messageRouter),
+                REMOTE_CHAIN_ID,
+                roles.messengerManager,
+                roles.bridgeAdapterManager
+            )
         );
         return IContainerPrincipal(proxy);
     }
 
-    function _deploySwapRouter() internal override returns (ISwapRouter) {
+    function _deploySwapRouter() internal returns (ISwapRouter) {
         address implementation = address(new SwapRouter());
         address proxy = _proxify(
             roles.deployer,
             implementation,
             roles.defaultAdmin,
-            abi.encodeWithSelector(SwapRouter.initialize.selector, roles.defaultAdmin)
+            abi.encodeWithSelector(SwapRouter.initialize.selector, roles.defaultAdmin, roles.whitelistManager)
         );
         return ISwapRouter(proxy);
     }
@@ -186,6 +174,7 @@ abstract contract L1Base is Base {
             notion: address(notion),
             defaultAdmin: roles.defaultAdmin,
             operator: roles.operator,
+            tokenManager: roles.tokenManager,
             swapRouter: address(swapRouter)
         });
 
@@ -194,7 +183,20 @@ abstract contract L1Base is Base {
             roles.deployer,
             implementation,
             roles.defaultAdmin,
-            abi.encodeWithSelector(ContainerLocal.initialize.selector, containerInitParams)
+            abi.encodeWithSelector(
+                ContainerLocal.initialize.selector,
+                containerInitParams,
+                IStrategyContainer.RoleAddresses({
+                    strategyManager: roles.strategyManager,
+                    harvestManager: roles.harvestManager,
+                    reshufflingManager: roles.reshufflingManager,
+                    emergencyManager: roles.emergencyManager
+                }),
+                address(reshufflingGateway),
+                treasury,
+                DEFAULT_FEE_PCT,
+                address(priceOracleAggregator)
+            )
         );
         return IContainerLocal(proxy);
     }
@@ -214,12 +216,13 @@ abstract contract L1Base is Base {
                             notion: address(notion),
                             defaultAdmin: roles.defaultAdmin,
                             operator: roles.operator,
+                            tokenManager: roles.tokenManager,
                             swapRouter: address(swapRouter)
                         }),
-                        ICrossChainContainer.CrossChainContainerInitParams({
-                            messageRouter: address(messageRouter),
-                            remoteChainId: REMOTE_CHAIN_ID
-                        })
+                        address(messageRouter),
+                        REMOTE_CHAIN_ID,
+                        roles.messengerManager,
+                        roles.bridgeAdapterManager
                     )
                 )
             );
@@ -234,23 +237,14 @@ abstract contract L1Base is Base {
             abi.encodeWithSelector(
                 ReshufflingGateway.initialize.selector,
                 address(vault),
-                address(notion),
                 address(swapRouter),
-                roles.defaultAdmin
+                roles.defaultAdmin,
+                roles.reshufflingManager,
+                roles.whitelistManager
             )
         );
+        vm.label(address(proxy), "RESHUFFLING_GATEWAY");
         return IReshufflingGateway(proxy);
-    }
-
-    function _deployPriceOracleAggregator() internal returns (IPriceOracleAggregator) {
-        address implementation = address(new PriceOracleAggregator());
-        address proxy = _proxify(
-            roles.deployer,
-            implementation,
-            roles.defaultAdmin,
-            abi.encodeWithSelector(PriceOracleAggregator.initialize.selector, roles.defaultAdmin, roles.oracleManager)
-        );
-        return IPriceOracleAggregator(proxy);
     }
 
     function _addContainer(address container, uint256 chainId) internal {

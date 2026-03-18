@@ -15,7 +15,7 @@ contract CustomOracleWrapperTest is L1Base {
 
     function setUp() public virtual override {
         super.setUp();
-        customOracleWrapper = new CustomOracleWrapper(roles.defaultAdmin, roles.configurator);
+        customOracleWrapper = new CustomOracleWrapper(roles.defaultAdmin, roles.configurator, roles.feederRole);
     }
 
     function test_WhitelistFeeder() public {
@@ -32,12 +32,12 @@ contract CustomOracleWrapperTest is L1Base {
         );
     }
 
-    function test_RevertIf_NotGovernanceRoleAndWhitelistFeeder() public {
+    function test_RevertIf_WhitelistFeeder_NotOracleManager() public {
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 address(this),
-                GOVERNANCE_ROLE
+                ORACLE_MANAGER_ROLE
             )
         );
         customOracleWrapper.whitelistFeeder(users.bob);
@@ -60,12 +60,12 @@ contract CustomOracleWrapperTest is L1Base {
         );
     }
 
-    function test_RevertIf_NotGovernanceRoleAndBlacklistFeeder() public {
+    function test_RevertIf_BlacklistFeeder_NotOracleManager() public {
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 address(this),
-                GOVERNANCE_ROLE
+                ORACLE_MANAGER_ROLE
             )
         );
         customOracleWrapper.blacklistFeeder(users.bob);

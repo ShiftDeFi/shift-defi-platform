@@ -29,11 +29,6 @@ interface IReshufflingGateway {
     function vault() external view returns (address);
 
     /**
-     * @notice Address of the notion token.
-     */
-    function notion() external view returns (address);
-
-    /**
      * @notice Address of the swap router.
      */
     function swapRouter() external view returns (address);

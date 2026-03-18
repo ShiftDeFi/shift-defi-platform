@@ -27,7 +27,6 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
     bytes32 public constant WHITELIST_MANAGER_ROLE = keccak256("WHITELIST_MANAGER_ROLE");
 
     address public vault;
-    address public notion;
     address public swapRouter;
 
     EnumerableSet.AddressSet private _whitelistedTokens;
@@ -49,25 +48,35 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
 
     /**
      * @notice Initializes the ReshufflingGateway contract.
-     * @dev Sets up the vault, notion token, swap router, and grants DEFAULT_ADMIN_ROLE to the default admin.
      * @param _vault The address of the vault contract.
-     * @param _notion The address of the notion token.
      * @param _swapRouter The address of the swap router contract.
      * @param _defaultAdmin The address to receive DEFAULT_ADMIN_ROLE.
+     * @param _reshufflingManager The address to receive RESHUFFLING_MANAGER_ROLE.
+     * @param _whitelistManager The address to receive WHITELIST_MANAGER_ROLE.
      */
     function initialize(
         address _vault,
-        address _notion,
         address _swapRouter,
-        address _defaultAdmin
+        address _defaultAdmin,
+        address _reshufflingManager,
+        address _whitelistManager
     ) external initializer {
         __AccessControl_init();
         __ReentrancyGuard_init();
 
+        require(_vault != address(0), Errors.ZeroAddress());
+        require(_swapRouter != address(0), Errors.ZeroAddress());
+
         vault = _vault;
-        notion = _notion;
         swapRouter = _swapRouter;
+
+        require(_defaultAdmin != address(0), Errors.ZeroAddress());
+        require(_reshufflingManager != address(0), Errors.ZeroAddress());
+        require(_whitelistManager != address(0), Errors.ZeroAddress());
+
         _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
+        _grantRole(RESHUFFLING_MANAGER_ROLE, _reshufflingManager);
+        _grantRole(WHITELIST_MANAGER_ROLE, _whitelistManager);
     }
 
     /// @inheritdoc IReshufflingGateway

@@ -6,11 +6,6 @@ import {IContainer} from "./IContainer.sol";
 interface ICrossChainContainer is IContainer {
     // ---- Structs ----
 
-    struct CrossChainContainerInitParams {
-        address messageRouter;
-        uint256 remoteChainId;
-    }
-
     struct MessageInstruction {
         address adapter;
         bytes parameters;
@@ -30,7 +25,6 @@ interface ICrossChainContainer is IContainer {
     event TokenClaimed(address token, uint256 amount);
     event BridgeAdapterUpdated(address bridgeAdapter, bool isSupported);
     event PeerContainerUpdated(address previousPeerContainer, address newPeerContainer);
-    event RemoteChainIdUpdated(uint256 previousRemoteChainId, uint256 newRemoteChainId);
     event BridgeSent(address token, uint256 amount, address bridgeAdapter, address bridgeTo);
 
     // ---- Errors ----

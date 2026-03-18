@@ -16,7 +16,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     using Math for uint256;
     using RingCacheLibrary for RingCacheLibrary.RingCache;
 
-    bytes32 internal constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    bytes32 internal constant BRIDGE_ADAPTER_MANAGER_ROLE = keccak256("BRIDGE_ADAPTER_MANAGER_ROLE");
 
     mapping(address => mapping(uint256 => address)) public bridgePaths;
     mapping(address => mapping(address => uint256)) public claimableAmounts;
@@ -32,27 +32,42 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
 
     function __BridgeAdapter_init(
         address defaultAdmin,
-        address governance,
+        address bridgeAdapterManager,
+        uint256 slippageCapPct,
         uint256 maxCacheSize
     ) internal onlyInitializing {
         __AccessControl_init();
         __ReentrancyGuard_init();
 
+        require(defaultAdmin != address(0), Errors.ZeroAddress());
+        require(bridgeAdapterManager != address(0), Errors.ZeroAddress());
+
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
-        _grantRole(GOVERNANCE_ROLE, governance);
+        _grantRole(BRIDGE_ADAPTER_MANAGER_ROLE, bridgeAdapterManager);
+
+        _setSlippageCapPct(slippageCapPct);
 
         _cache.initialize("BRIDGE_CACHE", maxCacheSize);
     }
 
     /// @inheritdoc IBridgeAdapter
-    function setSlippageCapPct(uint256 slippageCapPct) external onlyRole(GOVERNANCE_ROLE) {
-        require(slippageCapPct <= MAX_SLIPPAGE_CAP_PCT, Errors.IncorrectAmount());
-        _slippageCapPct = slippageCapPct;
-        emit SlippageCapPctUpdated(_slippageCapPct);
+    function setSlippageCapPct(uint256 slippageCapPct) external onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
+        _setSlippageCapPct(slippageCapPct);
+    }
+
+    function _setSlippageCapPct(uint256 newSlippageCapPct) internal {
+        require(newSlippageCapPct <= MAX_SLIPPAGE_CAP_PCT, Errors.IncorrectAmount());
+        uint256 previousSlippageCapPct = _slippageCapPct;
+        _slippageCapPct = newSlippageCapPct;
+        emit SlippageCapPctUpdated(previousSlippageCapPct, newSlippageCapPct);
     }
 
     /// @inheritdoc IBridgeAdapter
-    function setBridgePath(address tokenOnSrc, uint256 chainId, address tokenOnDst) external onlyRole(GOVERNANCE_ROLE) {
+    function setBridgePath(
+        address tokenOnSrc,
+        uint256 chainId,
+        address tokenOnDst
+    ) external onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
         require(tokenOnSrc != address(0), Errors.ZeroAddress());
         require(chainId > 0, Errors.ZeroAmount());
         require(bridgePaths[tokenOnSrc][chainId] != tokenOnDst, Errors.AlreadySet());
@@ -62,7 +77,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     }
 
     /// @inheritdoc IBridgeAdapter
-    function setPeer(uint256 chainId, address peer) external onlyRole(GOVERNANCE_ROLE) {
+    function setPeer(uint256 chainId, address peer) external onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
         require(peer != address(0), Errors.ZeroAddress());
         require(chainId > 0, Errors.ZeroAmount());
         require(peers[chainId] != peer, Errors.AlreadySet());
@@ -72,7 +87,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     }
 
     /// @inheritdoc IBridgeAdapter
-    function whitelistBridger(address bridger) external onlyRole(GOVERNANCE_ROLE) {
+    function whitelistBridger(address bridger) external onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
         require(bridger != address(0), Errors.ZeroAddress());
         require(!whitelistedBridgers[bridger], Errors.AlreadyWhitelisted());
         whitelistedBridgers[bridger] = true;
@@ -80,7 +95,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     }
 
     /// @inheritdoc IBridgeAdapter
-    function blacklistBridger(address bridger) external onlyRole(GOVERNANCE_ROLE) {
+    function blacklistBridger(address bridger) external onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
         require(bridger != address(0), Errors.ZeroAddress());
         require(whitelistedBridgers[bridger], Errors.AlreadyBlacklisted());
         whitelistedBridgers[bridger] = false;

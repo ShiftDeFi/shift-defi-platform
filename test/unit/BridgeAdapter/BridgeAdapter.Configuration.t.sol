@@ -14,23 +14,23 @@ contract BridgeAdapterConfigurationTest is BridgeAdapterBase {
     function test_SetSlippageCapPct() public {
         uint256 slippageCapPct = 1234;
 
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setSlippageCapPct(slippageCapPct);
         assertEq(bridgeAdapter.slippageCapPct(), slippageCapPct, "test_SetSlippageCapPct: Incorrect slippage cap pct");
     }
 
     function test_RevertIf_SetSlippageCapPct_ExceedsMax() public {
         vm.expectRevert(Errors.IncorrectAmount.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setSlippageCapPct(MAX_SLIPPAGE_CAP_PCT + 1);
     }
 
-    function test_RevertIf_SetSlippageCapPct_NotGovernance() public {
+    function test_RevertIf_SetSlippageCapPct_NotBridgeAdapterManager() public {
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 users.alice,
-                GOVERNANCE_ROLE
+                BRIDGE_ADAPTER_MANAGER_ROLE
             )
         );
         vm.prank(users.alice);
@@ -43,7 +43,7 @@ contract BridgeAdapterConfigurationTest is BridgeAdapterBase {
             address(0),
             "test_SetBridgePath: Incorrect bridge path before setBridgePath"
         );
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setBridgePath(address(notion), REMOTE_CHAIN_ID, address(dai));
         assertEq(
             bridgeAdapter.bridgePaths(address(notion), REMOTE_CHAIN_ID),
@@ -52,19 +52,19 @@ contract BridgeAdapterConfigurationTest is BridgeAdapterBase {
         );
 
         vm.expectRevert(Errors.AlreadySet.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setBridgePath(address(notion), REMOTE_CHAIN_ID, address(dai));
     }
 
     function test_RevertIf_SetBridgePath_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setBridgePath(address(0), REMOTE_CHAIN_ID, address(dai));
     }
 
     function test_RevertIf_SetBridgePath_ZeroAmount() public {
         vm.expectRevert(Errors.ZeroAmount.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setBridgePath(address(notion), 0, address(dai));
     }
 
@@ -72,24 +72,24 @@ contract BridgeAdapterConfigurationTest is BridgeAdapterBase {
         address peer = makeAddr("Peer");
 
         assertEq(bridgeAdapter.peers(REMOTE_CHAIN_ID), address(0));
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setPeer(REMOTE_CHAIN_ID, peer);
         assertEq(bridgeAdapter.peers(REMOTE_CHAIN_ID), peer, "test_SetPeer: Incorrect peer after setPeer");
 
         vm.expectRevert(Errors.AlreadySet.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setPeer(REMOTE_CHAIN_ID, peer);
     }
 
     function test_RevertIf_SetPeer_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setPeer(REMOTE_CHAIN_ID, address(0));
     }
 
     function test_RevertIf_SetPeer_ZeroAmount() public {
         vm.expectRevert(Errors.ZeroAmount.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setPeer(0, address(dai));
     }
 
@@ -99,7 +99,7 @@ contract BridgeAdapterConfigurationTest is BridgeAdapterBase {
             false,
             "test_WhitelistBridger: Incorrect whitelisted status before whitelistBridger"
         );
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.whitelistBridger(BRIDGER);
         assertEq(
             bridgeAdapter.whitelistedBridgers(BRIDGER),
@@ -108,26 +108,26 @@ contract BridgeAdapterConfigurationTest is BridgeAdapterBase {
         );
 
         vm.expectRevert(Errors.AlreadyWhitelisted.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.whitelistBridger(BRIDGER);
     }
 
     function test_RevertIf_WhitelistBridger_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.whitelistBridger(address(0));
     }
 
     function test_BlacklistBridger() public {
         vm.expectRevert(Errors.AlreadyBlacklisted.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.blacklistBridger(BRIDGER);
 
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.whitelistBridger(BRIDGER);
 
         assertEq(bridgeAdapter.whitelistedBridgers(BRIDGER), true);
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.blacklistBridger(BRIDGER);
         assertEq(
             bridgeAdapter.whitelistedBridgers(BRIDGER),
@@ -138,7 +138,7 @@ contract BridgeAdapterConfigurationTest is BridgeAdapterBase {
 
     function test_RevertIf_BlacklistBridger_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.blacklistBridger(address(0));
     }
 }

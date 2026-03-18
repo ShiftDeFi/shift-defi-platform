@@ -14,8 +14,16 @@ contract MockStrategyContainer is StrategyContainer {
 
     IStrategyContainer.CurrentBatchType public currentBatchType;
 
-    function initialize(IContainer.ContainerInitParams memory containerParams) public initializer {
+    function initialize(
+        IContainer.ContainerInitParams memory containerParams,
+        IStrategyContainer.RoleAddresses calldata roleAddresses,
+        address _reshufflingGateway,
+        address _treasury,
+        uint256 _feePct,
+        address _priceOracle
+    ) public initializer {
         __Container_init(containerParams);
+        __StrategyContainer_init(roleAddresses, _reshufflingGateway, _treasury, _feePct, _priceOracle);
     }
 
     function craftCurrentBatchType(IStrategyContainer.CurrentBatchType _currentBatchType) external {
@@ -52,14 +60,6 @@ contract MockStrategyContainer is StrategyContainer {
 
     function _getCurrentBatchType() internal view override returns (CurrentBatchType) {
         return currentBatchType;
-    }
-
-    function bridgeCollector() external view returns (address) {
-        return _bridgeCollector;
-    }
-
-    function isReshufflingMode() external view returns (bool) {
-        return _reshufflingMode;
     }
 
     function getStrategyUnresolvedNavBitmask() external view returns (uint256) {

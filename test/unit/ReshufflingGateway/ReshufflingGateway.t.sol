@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import {L1Base} from "test/L1Base.t.sol";
 
 import {IReshufflingGateway} from "contracts/interfaces/IReshufflingGateway.sol";
@@ -16,6 +18,8 @@ import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {Errors} from "contracts/libraries/helpers/Errors.sol";
 
 contract ReshufflingGatewayTest is L1Base {
+    using Math for uint256;
+
     IContainerLocal containerLocal;
 
     function setUp() public override {
@@ -35,7 +39,7 @@ contract ReshufflingGatewayTest is L1Base {
         reshufflingGateway.whitelistToken(address(notion));
         vm.stopPrank();
 
-        vm.startPrank(roles.governance);
+        vm.startPrank(roles.bridgeAdapterManager);
         bridgeAdapter.whitelistBridger(address(reshufflingGateway));
         bridgeAdapter.setBridgePath(address(notion), REMOTE_CHAIN_ID, address(notion));
         bridgeAdapter.setPeer(REMOTE_CHAIN_ID, address(this));
@@ -272,7 +276,7 @@ contract ReshufflingGatewayTest is L1Base {
         instructions[0] = IBridgeAdapter.BridgeInstruction({
             token: address(notion),
             amount: bridgeAmount,
-            minTokenAmount: 0,
+            minTokenAmount: bridgeAmount.mulDiv(DEFAULT_SLIPPAGE_CAP_PCT, MAX_SLIPPAGE_CAP_PCT),
             chainTo: REMOTE_CHAIN_ID,
             payload: "0x"
         });

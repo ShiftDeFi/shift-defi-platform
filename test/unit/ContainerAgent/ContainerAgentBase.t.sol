@@ -19,9 +19,11 @@ contract ContainerAgentBaseTest is L2Base {
     bytes32 internal constant REMOTE_CHAIN_ID_SLOT = bytes32(uint256(8));
     bytes32 internal constant STRATEGY_ENTER_BITMASK_SLOT = bytes32(uint256(16));
     bytes32 internal constant STRATEGY_EXIT_BITMASK_SLOT = bytes32(uint256(17));
-    bytes32 internal constant IS_RESOLVING_EMERGENCY_AND_RESHUFFLING_MODE_SLOT = bytes32(uint256(23));
-    bytes32 internal constant REGISTERED_WITHDRAW_SHARE_AMOUNT_SLOT = bytes32(uint256(75));
-    uint256 internal constant IS_RESOLVING_EMERGENCY_OFFSET = 8;
+    bytes32 internal constant IS_RESOLVING_EMERGENCY_AND_RESHUFFLING_MODE_SLOT = bytes32(uint256(22));
+    bytes32 internal constant REGISTERED_WITHDRAW_SHARE_AMOUNT_SLOT = bytes32(uint256(74));
+
+    uint256 internal constant RESHUFFLING_MODE_OFFSET = 160;
+    uint256 internal constant IS_RESOLVING_EMERGENCY_OFFSET = 168;
 
     uint256 internal constant DEPOSIT_AMOUNT = 1_000_000 * NOTION_PRECISION;
     uint256 internal constant WITHDRAWN_AMOUNT = 1_000_000 * NOTION_PRECISION;
@@ -30,14 +32,6 @@ contract ContainerAgentBaseTest is L2Base {
         super.setUp();
 
         containerAgent = _deployContainerAgent();
-
-        vm.startPrank(roles.defaultAdmin);
-        AccessControl(address(containerAgent)).grantRole(STRATEGY_MANAGER_ROLE, roles.strategyManager);
-        AccessControl(address(containerAgent)).grantRole(RESHUFFLING_MANAGER_ROLE, roles.reshufflingManager);
-        AccessControl(address(containerAgent)).grantRole(MESSENGER_MANAGER_ROLE, roles.messengerManager);
-        AccessControl(address(containerAgent)).grantRole(BRIDGE_ADAPTER_MANAGER_ROLE, roles.bridgeAdapterManager);
-        AccessControl(address(containerAgent)).grantRole(TOKEN_MANAGER_ROLE, roles.tokenManager);
-        vm.stopPrank();
 
         vm.prank(roles.strategyManager);
         containerAgent.setTreasury(treasury);
@@ -48,7 +42,7 @@ contract ContainerAgentBaseTest is L2Base {
         vm.prank(roles.bridgeAdapterManager);
         containerAgent.setBridgeAdapter(address(bridgeAdapter), true);
 
-        vm.startPrank(roles.governance);
+        vm.startPrank(roles.bridgeAdapterManager);
         bridgeAdapter.setSlippageCapPct(MAX_BPS);
         bridgeAdapter.whitelistBridger(address(containerAgent));
         vm.stopPrank();
@@ -77,14 +71,10 @@ contract ContainerAgentBaseTest is L2Base {
 
     function test_ToggleReshufflingMode() public {
         _toggleReshufflingMode(true);
-        uint256 isReshuffling = uint256(
-            vm.load(address(containerAgent), IS_RESOLVING_EMERGENCY_AND_RESHUFFLING_MODE_SLOT)
-        );
-        assertTrue((isReshuffling & 1) != 0, "test_ToggleReshufflingMode: reshuffling bit should be set");
+        assertTrue(containerAgent.isReshufflingMode(), "test_ToggleReshufflingMode: reshuffling mode not enabled");
 
         _toggleReshufflingMode(false);
-        isReshuffling = uint256(vm.load(address(containerAgent), IS_RESOLVING_EMERGENCY_AND_RESHUFFLING_MODE_SLOT));
-        assertTrue((isReshuffling & 1) == 0, "test_ToggleReshufflingMode: reshuffling bit should be unset");
+        assertFalse(containerAgent.isReshufflingMode(), "test_ToggleReshufflingMode: reshuffling mode not disabled");
     }
 
     function _addStrategyNotionInputOutput() internal returns (address) {
@@ -184,9 +174,9 @@ contract ContainerAgentBaseTest is L2Base {
         uint256 value = uint256(vm.load(address(containerAgent), IS_RESOLVING_EMERGENCY_AND_RESHUFFLING_MODE_SLOT));
 
         if (isReshuffling) {
-            value |= uint256(1);
+            value |= uint256(1) << RESHUFFLING_MODE_OFFSET;
         } else {
-            value &= ~uint256(1);
+            value &= ~(uint256(1) << RESHUFFLING_MODE_OFFSET);
         }
 
         vm.store(address(containerAgent), IS_RESOLVING_EMERGENCY_AND_RESHUFFLING_MODE_SLOT, bytes32(value));

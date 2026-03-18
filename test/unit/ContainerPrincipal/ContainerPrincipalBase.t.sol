@@ -27,22 +27,13 @@ contract ContainerPrincipalBaseTest is L1Base {
         containerPrincipal = _deployContainerPrincipal();
         _addContainer(address(containerPrincipal), REMOTE_CHAIN_ID);
 
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(containerPrincipal)).grantRole(TOKEN_MANAGER_ROLE, roles.tokenManager);
-
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(containerPrincipal)).grantRole(MESSENGER_MANAGER_ROLE, roles.messengerManager);
-
         vm.prank(roles.messengerManager);
         containerPrincipal.setPeerContainer(makeAddr("ContainerAgent"));
-
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(containerPrincipal)).grantRole(BRIDGE_ADAPTER_MANAGER_ROLE, roles.bridgeAdapterManager);
 
         vm.prank(roles.bridgeAdapterManager);
         containerPrincipal.setBridgeAdapter(address(bridgeAdapter), true);
 
-        vm.startPrank(roles.governance);
+        vm.startPrank(roles.bridgeAdapterManager);
         bridgeAdapter.whitelistBridger(address(containerPrincipal));
         bridgeAdapter.setBridgePath(address(notion), REMOTE_CHAIN_ID, address(dai));
         bridgeAdapter.setPeer(REMOTE_CHAIN_ID, address(containerPrincipal));

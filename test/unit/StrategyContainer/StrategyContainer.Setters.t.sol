@@ -22,36 +22,36 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
         strategyContainer.whitelistToken(whitelistedToken);
     }
 
-    // ---- setBridgeCollector tests ----
+    // ---- setReshufflingGateway tests ----
 
-    function test_SetBridgeCollector() public {
-        address bridgeCollector = makeAddr("BRIDGE_COLLECTOR");
-        vm.prank(roles.strategyManager);
-        strategyContainer.setBridgeCollector(bridgeCollector);
+    function test_SetReshufflingGateway() public {
+        address reshufflingGateway = makeAddr("RESHUFFLING_GATEWAY");
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.setReshufflingGateway(reshufflingGateway);
         assertEq(
-            strategyContainer.bridgeCollector(),
-            bridgeCollector,
-            "test_SetBridgeCollector: Bridge collector not set"
+            strategyContainer.reshufflingGateway(),
+            reshufflingGateway,
+            "test_SetReshufflingGateway: Reshuffling gateway not set"
         );
     }
 
-    function test_RevertIf_BridgeCollectorIsZeroAddress() public {
-        vm.prank(roles.strategyManager);
+    function test_RevertIf_SetReshufflingGateway_ZeroAddress() public {
+        vm.prank(roles.reshufflingManager);
         vm.expectRevert(Errors.ZeroAddress.selector);
-        strategyContainer.setBridgeCollector(address(0));
+        strategyContainer.setReshufflingGateway(address(0));
     }
 
-    function test_RevertIf_NotStrategyManagerInSetBridgeCollector() public {
+    function test_RevertIf_SetReshufflingGateway_NotReshufflingManager() public {
         address randomAddress = makeAddr("RANDOM_ADDRESS");
         vm.prank(randomAddress);
         vm.expectRevert(
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 randomAddress,
-                STRATEGY_MANAGER_ROLE
+                RESHUFFLING_MANAGER_ROLE
             )
         );
-        strategyContainer.setBridgeCollector(makeAddr("BRIDGE_COLLECTOR"));
+        strategyContainer.setReshufflingGateway(makeAddr("RESHUFFLING_GATEWAY"));
     }
 
     // ---- setFeePct tests ----
@@ -63,13 +63,13 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
         assertEq(strategyContainer.feePct(), feePct, "test_SetFeePct: Fee percentage not set");
     }
 
-    function test_RevertIf_FeePctExceedsBPS() public {
+    function test_RevertIf_SetFeePct_ExceedsBPS() public {
         vm.prank(roles.strategyManager);
         vm.expectRevert(Errors.IncorrectAmount.selector);
         strategyContainer.setFeePct(MAX_BPS + 1);
     }
 
-    function test_RevertIf_NotStrategyManagerInSetFeePct() public {
+    function test_RevertIf_SetFeePct_NotStrategyManager() public {
         address randomAddress = makeAddr("RANDOM_ADDRESS");
         vm.prank(randomAddress);
         vm.expectRevert(
@@ -91,13 +91,13 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
         assertEq(strategyContainer.priceOracle(), priceOracle, "test_SetPriceOracle: Price oracle not set");
     }
 
-    function test_RevertIf_PriceOracleIsZeroAddress() public {
+    function test_RevertIf_SetPriceOracle_ZeroAddress() public {
         vm.prank(roles.strategyManager);
         vm.expectRevert(Errors.ZeroAddress.selector);
         strategyContainer.setPriceOracle(address(0));
     }
 
-    function test_RevertIf_NotStrategyManagerInSetPriceOracle() public {
+    function test_RevertIf_SetPriceOracle_NotStrategyManager() public {
         address randomAddress = makeAddr("RANDOM_ADDRESS");
         vm.prank(randomAddress);
         vm.expectRevert(
@@ -113,19 +113,19 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
     // ---- setTreasury tests ----
 
     function test_SetTreasury() public {
-        address treasury = makeAddr("TREASURY");
+        address _treasury = makeAddr("TREASURY");
         vm.prank(roles.strategyManager);
-        strategyContainer.setTreasury(treasury);
-        assertEq(strategyContainer.treasury(), treasury, "test_SetTreasury: Treasury not set");
+        strategyContainer.setTreasury(_treasury);
+        assertEq(strategyContainer.treasury(), _treasury, "test_SetTreasury: Treasury not set");
     }
 
-    function test_RevertIf_TreasuryIsZeroAddress() public {
+    function test_RevertIf_SetTreasury_ZeroAddress() public {
         vm.prank(roles.strategyManager);
         vm.expectRevert(Errors.ZeroAddress.selector);
         strategyContainer.setTreasury(address(0));
     }
 
-    function test_RevertIf_NotStrategyManagerInSetTreasury() public {
+    function test_RevertIf_SetTreasury_NotStrategyManager() public {
         address randomAddress = makeAddr("RANDOM_ADDRESS");
         vm.prank(randomAddress);
         vm.expectRevert(
@@ -140,7 +140,7 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
 
     // ---- setStrategyInputTokens tests ----
 
-    function test_SetStrategyInputTokens_EmptyContainer() public {
+    function test_SetStrategyInputTokens_EmptyContainer_StrategyNotFound() public {
         address[] memory inputTokens = _createTokensArray(address(notion));
         _addStrategyWithTokens(address(strategy), inputTokens, _createTokensArray(address(notion)));
 

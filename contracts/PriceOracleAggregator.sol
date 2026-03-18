@@ -27,6 +27,9 @@ contract PriceOracleAggregator is Initializable, AccessControlUpgradeable, IPric
     function initialize(address defaultAdmin, address oracleManager) external initializer {
         __AccessControl_init();
 
+        require(defaultAdmin != address(0), Errors.ZeroAddress());
+        require(oracleManager != address(0), Errors.ZeroAddress());
+
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(ORACLE_MANAGER_ROLE, oracleManager);
     }

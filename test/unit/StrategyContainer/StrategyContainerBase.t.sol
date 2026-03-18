@@ -18,14 +18,11 @@ contract StrategyContainerBaseTest is Base {
 
     function setUp() public virtual override {
         super.setUp();
-        swapRouter = _deploySwapRouter();
+        swapRouter = _deployMockSwapRouter();
         strategyContainer = _deployMockStrategyContainer();
 
-        vm.startPrank(roles.defaultAdmin);
-        AccessControl(address(strategyContainer)).grantRole(TOKEN_MANAGER_ROLE, roles.tokenManager);
-        AccessControl(address(strategyContainer)).grantRole(STRATEGY_MANAGER_ROLE, roles.strategyManager);
-        AccessControl(address(strategyContainer)).grantRole(RESHUFFLING_MANAGER_ROLE, roles.reshufflingManager);
-        AccessControl(address(strategyContainer)).grantRole(EMERGENCY_MANAGER_ROLE, roles.emergencyManager);
+        vm.startPrank(roles.strategyManager);
+        strategyContainer.setTreasury(treasury);
         vm.stopPrank();
     }
 

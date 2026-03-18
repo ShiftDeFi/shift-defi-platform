@@ -38,12 +38,15 @@ contract ContainerLocalReshufflingTest is ContainerLocalBaseTest {
         containerLocal.withdrawToReshufflingGateway(tokens, amounts);
     }
 
-    function test_RevertIf_BridgeCollectorIsZeroAddressAndWithdrawToReshufflingGateway() public {
+    function test_RevertIf_WithdrawToReshufflingGateway_ReshufflingGatewayIsZeroAddress() public {
         vm.prank(roles.reshufflingManager);
         containerLocal.enableReshufflingMode();
 
         address[] memory tokens = new address[](1);
         uint256[] memory amounts = new uint256[](1);
+
+        bytes32 reshufflingGatewaySlot = bytes32(uint256(13));
+        vm.store(address(containerLocal), reshufflingGatewaySlot, bytes32(uint256(0)));
 
         vm.prank(roles.reshufflingManager);
         vm.expectRevert(Errors.ZeroAddress.selector);
@@ -54,8 +57,8 @@ contract ContainerLocalReshufflingTest is ContainerLocalBaseTest {
         vm.prank(roles.reshufflingManager);
         containerLocal.enableReshufflingMode();
 
-        vm.prank(roles.strategyManager);
-        containerLocal.setBridgeCollector(address(1));
+        vm.prank(roles.reshufflingManager);
+        containerLocal.setReshufflingGateway(address(1));
 
         address[] memory tokens = new address[](1);
         tokens[0] = address(notion);

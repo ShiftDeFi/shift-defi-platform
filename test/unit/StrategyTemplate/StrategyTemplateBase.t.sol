@@ -35,11 +35,6 @@ abstract contract StrategyTemplateBaseTest is Base {
 
         strategyContainer = _deployMockStrategyContainer();
         strategy = _deployMockStrategy(address(strategyContainer));
-
-        vm.startPrank(roles.defaultAdmin);
-        strategyContainer.grantRole(STRATEGY_MANAGER_ROLE, roles.strategyManager);
-        strategyContainer.grantRole(EMERGENCY_MANAGER_ROLE, roles.emergencyManager);
-        vm.stopPrank();
     }
 
     function _prepareEnterInputAmounts(address _strategy) internal view returns (uint256[] memory) {

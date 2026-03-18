@@ -30,11 +30,19 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
 
     function initialize(
         ContainerInitParams calldata containerParams,
-        CrossChainContainerInitParams calldata crossChainParams,
-        address emergencyManager
+        address _messageRouter,
+        uint256 _remoteChainId,
+        RoleAddresses calldata roleAddresses,
+        address _messengerManager,
+        address _bridgeAdapterManager,
+        address _reshufflingGateway,
+        address _treasury,
+        uint256 _feePct,
+        address _priceOracle
     ) public initializer {
-        _grantRole(EMERGENCY_MANAGER_ROLE, emergencyManager);
-        __CrossChainContainer_init(containerParams, crossChainParams);
+        __Container_init(containerParams);
+        __CrossChainContainer_init(_messageRouter, _remoteChainId, _messengerManager, _bridgeAdapterManager);
+        __StrategyContainer_init(roleAddresses, _reshufflingGateway, _treasury, _feePct, _priceOracle);
     }
 
     // ---- Strategy management logic ----
@@ -322,12 +330,12 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
             _validateBridgeAdapter(bridgeAdapters[i]);
         }
 
-        address bridgeCollectorCached = _bridgeCollector;
-        require(bridgeCollectorCached != address(0), Errors.ZeroAddress());
+        address reshufflingGatewayCached = reshufflingGateway;
+        require(reshufflingGatewayCached != address(0), Errors.ZeroAddress());
 
         uint256 length = instructions.length;
         for (uint256 i = 0; i < length; ++i) {
-            _bridgeToken(bridgeAdapters[i], bridgeCollectorCached, instructions[i]);
+            _bridgeToken(bridgeAdapters[i], reshufflingGatewayCached, instructions[i]);
         }
     }
 

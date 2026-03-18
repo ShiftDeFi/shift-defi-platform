@@ -117,14 +117,14 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
      * @param strategyContainer Address of the strategy container.
      */
     function __StrategyTemplate_init(address strategyContainer) internal onlyInitializing {
+        __ReentrancyGuard_init();
+
         require(strategyContainer != address(0), Errors.ZeroAddress());
         address notion = IContainer(strategyContainer).notion();
         require(notion != address(0), Errors.ZeroAddress());
 
         _strategyContainer = strategyContainer;
         _notion = notion;
-
-        __ReentrancyGuard_init();
     }
 
     /// @inheritdoc IStrategyTemplate

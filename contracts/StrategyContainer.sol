@@ -19,10 +19,10 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     using EnumerableAddressSetExtended for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
-    bytes32 internal constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
     bytes32 internal constant STRATEGY_MANAGER_ROLE = keccak256("STRATEGY_MANAGER_ROLE");
-    bytes32 internal constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
     bytes32 internal constant HARVEST_MANAGER_ROLE = keccak256("HARVEST_MANAGER_ROLE");
+    bytes32 internal constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
+    bytes32 internal constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
 
     EnumerableSet.AddressSet internal _strategies;
 
@@ -35,12 +35,11 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     //      0: resolved, 1: unresolved
     uint256 internal _strategyUnresolvedNavBitmask;
 
-    address internal _bridgeCollector; // address where funds stores after cross-chain migration
+    address public reshufflingGateway;
 
     address public treasury;
-    address public priceOracle;
-
     uint256 public feePct;
+    address public priceOracle;
 
     uint256 private constant MAX_BPS = 1e18;
     uint256 private constant MAX_STRATEGIES = 255;
@@ -63,14 +62,34 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         _;
     }
 
+    function __StrategyContainer_init(
+        RoleAddresses calldata roleAddresses,
+        address _reshufflingGateway,
+        address _treasury,
+        uint256 _feePct,
+        address _priceOracle
+    ) internal onlyInitializing {
+        require(roleAddresses.strategyManager != address(0), Errors.ZeroAddress());
+        require(roleAddresses.harvestManager != address(0), Errors.ZeroAddress());
+        require(roleAddresses.reshufflingManager != address(0), Errors.ZeroAddress());
+        require(roleAddresses.emergencyManager != address(0), Errors.ZeroAddress());
+
+        _grantRole(STRATEGY_MANAGER_ROLE, roleAddresses.strategyManager);
+        _grantRole(RESHUFFLING_MANAGER_ROLE, roleAddresses.reshufflingManager);
+        _grantRole(HARVEST_MANAGER_ROLE, roleAddresses.harvestManager);
+        _grantRole(EMERGENCY_MANAGER_ROLE, roleAddresses.emergencyManager);
+
+        _setReshufflingGateway(_reshufflingGateway);
+        _setTreasury(_treasury);
+        _setFeePct(_feePct);
+        _setPriceOracle(_priceOracle);
+    }
+
     // ---- Configuration ----
 
     /// @inheritdoc IStrategyContainer
-    function setBridgeCollector(address newBridgeCollector) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        require(newBridgeCollector != address(0), Errors.ZeroAddress());
-        address oldBridgeCollector = _bridgeCollector;
-        _bridgeCollector = newBridgeCollector;
-        emit BridgeCollectorUpdated(oldBridgeCollector, newBridgeCollector);
+    function setReshufflingGateway(address newReshufflingGateway) external onlyRole(RESHUFFLING_MANAGER_ROLE) {
+        _setReshufflingGateway(newReshufflingGateway);
     }
 
     /// @inheritdoc IStrategyContainer
@@ -79,20 +98,20 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     }
 
     /// @inheritdoc IStrategyContainer
-    function setPriceOracle(address newPriceOracle) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        _setPriceOracle(newPriceOracle);
-    }
-
-    /// @inheritdoc IStrategyContainer
     function setFeePct(uint256 newFeePct) external onlyRole(STRATEGY_MANAGER_ROLE) {
         _setFeePct(newFeePct);
     }
 
-    function _setPriceOracle(address newPriceOracle) internal {
-        require(newPriceOracle != address(0), Errors.ZeroAddress());
-        address oldPriceOracle = priceOracle;
-        priceOracle = newPriceOracle;
-        emit PriceOracleUpdated(oldPriceOracle, priceOracle);
+    /// @inheritdoc IStrategyContainer
+    function setPriceOracle(address newPriceOracle) external onlyRole(STRATEGY_MANAGER_ROLE) {
+        _setPriceOracle(newPriceOracle);
+    }
+
+    function _setReshufflingGateway(address newReshufflingGateway) internal {
+        require(newReshufflingGateway != address(0), Errors.ZeroAddress());
+        address oldReshufflingGateway = reshufflingGateway;
+        reshufflingGateway = newReshufflingGateway;
+        emit ReshufflingGatewayUpdated(oldReshufflingGateway, newReshufflingGateway);
     }
 
     function _setTreasury(address newTreasury) internal {
@@ -107,6 +126,13 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         uint256 previousFeePct = feePct;
         feePct = newFeePct;
         emit FeePctUpdated(previousFeePct, newFeePct);
+    }
+
+    function _setPriceOracle(address newPriceOracle) internal {
+        require(newPriceOracle != address(0), Errors.ZeroAddress());
+        address oldPriceOracle = priceOracle;
+        priceOracle = newPriceOracle;
+        emit PriceOracleUpdated(oldPriceOracle, priceOracle);
     }
 
     // ---- Reshuffling mode management logic ----
@@ -401,6 +427,11 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
             _isResolvingEmergency = true;
             emit EmergencyResolutionStarted(msg.sender);
         }
+    }
+
+    /// @inheritdoc IStrategyContainer
+    function isReshufflingMode() external view returns (bool) {
+        return _reshufflingMode;
     }
 
     /// @inheritdoc IStrategyContainer

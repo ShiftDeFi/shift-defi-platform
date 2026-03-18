@@ -27,11 +27,17 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
      * @notice Initializes the SwapRouter contract.
      * @dev Sets up access control and grants DEFAULT_ADMIN_ROLE to the default admin.
      * @param defaultAdmin The address to receive DEFAULT_ADMIN_ROLE.
+     * @param whitelistManager The address to receive WHITELIST_MANAGER_ROLE.
      */
-    function initialize(address defaultAdmin) external initializer {
-        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
+    function initialize(address defaultAdmin, address whitelistManager) external initializer {
         __AccessControl_init();
         __ReentrancyGuard_init();
+
+        require(whitelistManager != address(0), Errors.ZeroAddress());
+        require(defaultAdmin != address(0), Errors.ZeroAddress());
+
+        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
+        _grantRole(WHITELIST_MANAGER_ROLE, whitelistManager);
     }
 
     /// @inheritdoc ISwapRouter

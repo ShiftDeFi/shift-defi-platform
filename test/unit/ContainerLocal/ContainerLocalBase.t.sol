@@ -23,14 +23,6 @@ contract ContainerLocalBaseTest is L1Base {
 
         strategy = _deployMockStrategy(address(containerLocal));
         MockStrategy(address(strategy)).setState(bytes32(uint256(1)), true, true, false, 1);
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(containerLocal)).grantRole(STRATEGY_MANAGER_ROLE, roles.strategyManager);
-
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(containerLocal)).grantRole(RESHUFFLING_MANAGER_ROLE, roles.reshufflingManager);
-
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(containerLocal)).grantRole(TOKEN_MANAGER_ROLE, roles.tokenManager);
 
         vm.startPrank(roles.strategyManager);
         containerLocal.addStrategy(

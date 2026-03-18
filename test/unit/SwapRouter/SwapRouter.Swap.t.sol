@@ -17,9 +17,6 @@ contract SwapRouterSwapTest is L1Base {
 
         tokenIn = address(dai);
         tokenOut = address(notion);
-
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(swapRouter)).grantRole(WHITELIST_MANAGER_ROLE, roles.whitelistManager);
     }
 
     function _swapDaiToNotion(uint256 amountIn, uint256 minAmountOut) internal returns (uint256 amountOut) {

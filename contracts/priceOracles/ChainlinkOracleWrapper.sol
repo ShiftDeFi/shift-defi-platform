@@ -19,8 +19,10 @@ contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracle
     constructor(address defaultAdmin, address oracleManager, uint256 stalenessThreshold) AccessControl() {
         require(defaultAdmin != address(0), Errors.ZeroAddress());
         require(oracleManager != address(0), Errors.ZeroAddress());
+
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(ORACLE_MANAGER_ROLE, oracleManager);
+
         _setPriceFeedStalenessThreshold(stalenessThreshold);
     }
 

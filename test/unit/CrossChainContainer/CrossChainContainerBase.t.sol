@@ -18,16 +18,7 @@ abstract contract CrossChainContainerBaseTest is L1Base {
         containerPrincipal = _deployContainerPrincipal();
         crossChainContainer = _deployMockCrossChainContainer();
 
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(crossChainContainer)).grantRole(MESSENGER_MANAGER_ROLE, roles.messengerManager);
-
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(crossChainContainer)).grantRole(BRIDGE_ADAPTER_MANAGER_ROLE, roles.bridgeAdapterManager);
-
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(crossChainContainer)).grantRole(TOKEN_MANAGER_ROLE, roles.tokenManager);
-
-        vm.startPrank(roles.governance);
+        vm.startPrank(roles.bridgeAdapterManager);
         bridgeAdapter.whitelistBridger(address(crossChainContainer));
         bridgeAdapter.setBridgePath(address(notion), REMOTE_CHAIN_ID, address(notion));
         bridgeAdapter.setPeer(REMOTE_CHAIN_ID, address(crossChainContainer));

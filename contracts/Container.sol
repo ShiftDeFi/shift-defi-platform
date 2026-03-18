@@ -34,19 +34,22 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
     }
 
     function __Container_init(ContainerInitParams memory params) internal onlyInitializing {
+        __AccessControl_init();
+        __ReentrancyGuard_init();
+
         require(params.vault != address(0), Errors.ZeroAddress());
-        vault = params.vault;
         require(params.notion != address(0), Errors.ZeroAddress());
+        require(params.tokenManager != address(0), Errors.ZeroAddress());
+
+        vault = params.vault;
         notion = params.notion;
 
         _whitelistedTokens.add(notion);
         _setSwapRouter(params.swapRouter);
 
-        __AccessControl_init();
-        __ReentrancyGuard_init();
-
-        _grantRole(OPERATOR_ROLE, params.operator);
         _grantRole(DEFAULT_ADMIN_ROLE, params.defaultAdmin);
+        _grantRole(OPERATOR_ROLE, params.operator);
+        _grantRole(TOKEN_MANAGER_ROLE, params.tokenManager);
     }
 
     // ---- Token management logic ----

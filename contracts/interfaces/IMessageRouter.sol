@@ -89,7 +89,7 @@ interface IMessageRouter {
 
     /**
      * @notice Whitelists a message path.
-     * @dev Can only be called by accounts with GOVERNANCE_ROLE.
+     * @dev Can only be called by accounts with WHITELIST_MANAGER_ROLE.
      * @param sender The address of the message sender
      * @param receiver The address of the message receiver
      * @param chainId The destination chain ID
@@ -98,7 +98,7 @@ interface IMessageRouter {
 
     /**
      * @notice Blacklists a message path.
-     * @dev Can only be called by accounts with GOVERNANCE_ROLE.
+     * @dev Can only be called by accounts with WHITELIST_MANAGER_ROLE.
      * @param sender The address of the message sender
      * @param receiver The address of the message receiver
      * @param chainId The destination chain ID
@@ -107,14 +107,14 @@ interface IMessageRouter {
 
     /**
      * @notice Whitelists a message adapter.
-     * @dev Can only be called by accounts with GOVERNANCE_ROLE.
+     * @dev Can only be called by accounts with WHITELIST_MANAGER_ROLE.
      * @param adapter The address of the message adapter
      */
     function whitelistMessageAdapter(address adapter) external;
 
     /**
      * @notice Blacklists a message adapter.
-     * @dev Can only be called by accounts with GOVERNANCE_ROLE.
+     * @dev Can only be called by accounts with WHITELIST_MANAGER_ROLE.
      * @param adapter The address of the message adapter
      */
     function blacklistMessageAdapter(address adapter) external;
@@ -136,7 +136,7 @@ interface IMessageRouter {
 
     /**
      * @notice Retries sending a cached message.
-     * @dev Can only be called by accounts with MANAGER_ROLE.
+     * @dev Can only be called by accounts with CACHE_MANAGER_ROLE.
      * @param nonce_ The nonce of the message to retry
      * @param path The path of the message
      * @param sendParams The parameters for sending the message
@@ -145,7 +145,7 @@ interface IMessageRouter {
 
     /**
      * @notice Removes a message from the cache.
-     * @dev Can only be called by accounts with MANAGER_ROLE.
+     * @dev Can only be called by accounts with CACHE_MANAGER_ROLE.
      * @param nonce The nonce of the message
      * @param chainTo The destination chain ID
      * @param path The path of the message

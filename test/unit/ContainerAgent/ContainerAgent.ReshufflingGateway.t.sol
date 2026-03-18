@@ -1,4 +1,4 @@
-// SPDX License-Identifier: UNLICENSED
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
 import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
@@ -10,12 +10,8 @@ import {Errors} from "contracts/libraries/helpers/Errors.sol";
 import {ContainerAgentBaseTest} from "test/unit/ContainerAgent/ContainerAgentBase.t.sol";
 
 contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
-    address internal bridgeCollector;
-
     function setUp() public override {
         super.setUp();
-
-        bridgeCollector = makeAddr("BRIDGE_COLLECTOR");
 
         vm.prank(roles.tokenManager);
         containerAgent.whitelistToken(address(dai));
@@ -27,8 +23,8 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
     function test_WithdrawToReshufflingGateway() public {
         _toggleReshufflingMode(true);
 
-        vm.prank(roles.strategyManager);
-        containerAgent.setBridgeCollector(bridgeCollector);
+        vm.prank(roles.reshufflingManager);
+        containerAgent.setReshufflingGateway(address(reshufflingGateway));
 
         uint256 tokenNumber = 2;
         address[] memory bridgeAdapters = new address[](tokenNumber);
@@ -72,8 +68,8 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
     function test_RevertIf_WithdrawToReshufflingGateway_ArrayLengthMismatch() public {
         _toggleReshufflingMode(true);
 
-        vm.prank(roles.strategyManager);
-        containerAgent.setBridgeCollector(bridgeCollector);
+        vm.prank(roles.reshufflingManager);
+        containerAgent.setReshufflingGateway(address(reshufflingGateway));
 
         uint256 tokenNumber = 1;
         address[] memory bridgeAdapters = new address[](tokenNumber + 1);
@@ -90,8 +86,8 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
     function test_RevertIf_WithdrawToReshufflingGateway_ZeroArrayLength() public {
         _toggleReshufflingMode(true);
 
-        vm.prank(roles.strategyManager);
-        containerAgent.setBridgeCollector(bridgeCollector);
+        vm.prank(roles.reshufflingManager);
+        containerAgent.setReshufflingGateway(address(reshufflingGateway));
 
         address[] memory bridgeAdapters = new address[](0);
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](0);
@@ -101,7 +97,7 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
         containerAgent.withdrawToReshufflingGateway(bridgeAdapters, instructions);
     }
 
-    function test_RevertIf_WithdrawToReshufflingGateway_BridgeCollectorIsZeroAddress() public {
+    function test_RevertIf_WithdrawToReshufflingGateway_ReshufflingGatewayIsZeroAddress() public {
         _toggleReshufflingMode(true);
 
         uint256 tokenNumber = 1;
@@ -111,6 +107,9 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](tokenNumber);
         instructions[0] = _craftBridgeInstruction(address(notion), DEPOSIT_AMOUNT);
 
+        bytes32 reshufflingGatewaySlot = bytes32(uint256(19));
+        vm.store(address(containerAgent), reshufflingGatewaySlot, bytes32(uint256(0)));
+
         vm.prank(roles.reshufflingManager);
         vm.expectRevert(Errors.ZeroAddress.selector);
         containerAgent.withdrawToReshufflingGateway(bridgeAdapters, instructions);
@@ -119,8 +118,8 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
     function test_RevertIf_WithdrawToReshufflingGateway_BridgeAdapterIsNotWhitelisted() public {
         _toggleReshufflingMode(true);
 
-        vm.prank(roles.strategyManager);
-        containerAgent.setBridgeCollector(bridgeCollector);
+        vm.prank(roles.reshufflingManager);
+        containerAgent.setReshufflingGateway(address(reshufflingGateway));
 
         address[] memory bridgeAdapters = new address[](1);
         bridgeAdapters[0] = address(makeAddr("BRIDGE_ADAPTER"));

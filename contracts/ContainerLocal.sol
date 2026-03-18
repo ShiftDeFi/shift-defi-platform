@@ -22,8 +22,16 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         _disableInitializers();
     }
 
-    function initialize(ContainerInitParams memory containerParams) public initializer {
+    function initialize(
+        ContainerInitParams memory containerParams,
+        RoleAddresses calldata roleAddresses,
+        address _reshufflingGateway,
+        address _treasury,
+        uint256 _feePct,
+        address _priceOracle
+    ) public initializer {
         __Container_init(containerParams);
+        __StrategyContainer_init(roleAddresses, _reshufflingGateway, _treasury, _feePct, _priceOracle);
         IERC20(notion).forceApprove(vault, type(uint256).max);
     }
 
@@ -223,8 +231,8 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         require(tokens.length == amounts.length, Errors.ArrayLengthMismatch());
         require(tokens.length > 0, Errors.ZeroArrayLength());
 
-        address bridgeCollectorCached = _bridgeCollector;
-        require(bridgeCollectorCached != address(0), Errors.ZeroAddress());
+        address reshufflingGatewayCached = reshufflingGateway;
+        require(reshufflingGatewayCached != address(0), Errors.ZeroAddress());
 
         for (uint256 i = 0; i < length; ++i) {
             address token = tokens[i];
@@ -232,7 +240,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
 
             require(_isTokenWhitelisted(token), NotWhitelistedToken(token));
             if (amount > 0) {
-                IERC20(token).safeTransfer(bridgeCollectorCached, amount);
+                IERC20(token).safeTransfer(reshufflingGatewayCached, amount);
             }
         }
     }

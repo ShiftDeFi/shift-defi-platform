@@ -12,6 +12,7 @@ interface IReshufflingGateway {
     event TokenBlacklisted(address indexed token);
     event BridgeAdapterWhitelisted(address indexed bridgeAdapter);
     event BridgeAdapterBlacklisted(address indexed bridgeAdapter);
+    event SwapRouterUpdated(address indexed previousSwapRouter, address indexed newSwapRouter);
 
     error NotContainer(address container);
     error NotVault(address vault);
@@ -62,6 +63,12 @@ interface IReshufflingGateway {
      * @param bridgeAdapter Bridge adapter address.
      */
     function blacklistBridgeAdapter(address bridgeAdapter) external;
+
+    /**
+     * @notice Sets the swap router address.
+     * @param newSwapRouter The address of the new swap router contract.
+     */
+    function setSwapRouter(address newSwapRouter) external;
 
     /**
      * @notice Claims bridged tokens from a bridge adapter.

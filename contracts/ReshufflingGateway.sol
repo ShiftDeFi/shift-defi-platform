@@ -65,10 +65,9 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         __ReentrancyGuard_init();
 
         require(_vault != address(0), Errors.ZeroAddress());
-        require(_swapRouter != address(0), Errors.ZeroAddress());
 
         vault = _vault;
-        swapRouter = _swapRouter;
+        _setSwapRouter(_swapRouter);
 
         require(_defaultAdmin != address(0), Errors.ZeroAddress());
         require(_reshufflingManager != address(0), Errors.ZeroAddress());
@@ -110,6 +109,29 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         require(bridgeAdapter != address(0), Errors.ZeroAddress());
         require(_whitelistedBridgeAdapters.remove(bridgeAdapter), NotWhitelistedBridgeAdapter(bridgeAdapter));
         emit BridgeAdapterBlacklisted(bridgeAdapter);
+    }
+
+    /// @inheritdoc IReshufflingGateway
+    function setSwapRouter(address newSwapRouter) external onlyRole(WHITELIST_MANAGER_ROLE) {
+        _setSwapRouter(newSwapRouter);
+    }
+
+    function _setSwapRouter(address newSwapRouter) internal {
+        require(newSwapRouter != address(0), Errors.ZeroAddress());
+        swapRouter = newSwapRouter;
+        address previousSwapRouter = swapRouter;
+        if (previousSwapRouter != address(0)) {
+            _dropApprovesFromWhitelistedTokens(previousSwapRouter);
+        }
+        emit SwapRouterUpdated(previousSwapRouter, newSwapRouter);
+    }
+
+    function _dropApprovesFromWhitelistedTokens(address addr) internal {
+        uint256 length = _whitelistedTokens.length();
+        for (uint256 i = 0; i < length; ++i) {
+            address token = _whitelistedTokens.at(i);
+            IERC20(token).forceApprove(addr, 0);
+        }
     }
 
     /// @inheritdoc IReshufflingGateway

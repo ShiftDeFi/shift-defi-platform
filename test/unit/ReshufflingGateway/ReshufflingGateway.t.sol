@@ -174,6 +174,23 @@ contract ReshufflingGatewayTest is L1Base {
         reshufflingGateway.blacklistBridgeAdapter(notWhitelistedBridgeAdapter);
     }
 
+    function test_SetSwapRouter() public {
+        address newSwapRouter = makeAddr("NEW_SWAP_ROUTER");
+        address previousSwapRouter = reshufflingGateway.swapRouter();
+
+        vm.prank(roles.whitelistManager);
+        reshufflingGateway.setSwapRouter(newSwapRouter);
+
+        assertEq(reshufflingGateway.swapRouter(), newSwapRouter);
+        assertEq(IERC20(notion).allowance(address(reshufflingGateway), previousSwapRouter), 0);
+    }
+
+    function test_RevertIf_SetSwapRouter_ZeroAddress() public {
+        vm.prank(roles.whitelistManager);
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        reshufflingGateway.setSwapRouter(address(0));
+    }
+
     function test_ClaimBridge() public {
         uint256 amount = vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT);
 

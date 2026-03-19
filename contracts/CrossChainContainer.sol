@@ -38,19 +38,19 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
     function __CrossChainContainer_init(
         address _messageRouter,
         uint256 _remoteChainId,
-        address messenerManager,
-        address bridgeAdapterManager
+        address _messengerManager,
+        address _bridgeAdapterManager
     ) internal onlyInitializing {
         _setMessageRouter(_messageRouter);
 
         require(_remoteChainId > 0, Errors.ZeroAmount());
         remoteChainId = _remoteChainId;
 
-        require(messenerManager != address(0), Errors.ZeroAddress());
-        require(bridgeAdapterManager != address(0), Errors.ZeroAddress());
+        require(_messengerManager != address(0), Errors.ZeroAddress());
+        require(_bridgeAdapterManager != address(0), Errors.ZeroAddress());
 
-        _grantRole(MESSENGER_MANAGER_ROLE, messenerManager);
-        _grantRole(BRIDGE_ADAPTER_MANAGER_ROLE, bridgeAdapterManager);
+        _grantRole(MESSENGER_MANAGER_ROLE, _messengerManager);
+        _grantRole(BRIDGE_ADAPTER_MANAGER_ROLE, _bridgeAdapterManager);
     }
 
     // ---- Messaging logic ----

@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {CrossChainContainer} from "./CrossChainContainer.sol";
-import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
-import {IContainerPrincipal} from "./interfaces/IContainerPrincipal.sol";
-import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
+
 import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
+import {IContainerPrincipal} from "./interfaces/IContainerPrincipal.sol";
+import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
 import {IMessageRouter} from "./interfaces/IMessageRouter.sol";
+import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 import {IVault} from "./interfaces/IVault.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
+
 import {Codec} from "./libraries/Codec.sol";
+import {Errors} from "./libraries/helpers/Errors.sol";
 
 contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     using SafeERC20 for IERC20;

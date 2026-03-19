@@ -4,19 +4,18 @@ pragma solidity ^0.8.28;
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-
-import {Errors} from "./libraries/helpers/Errors.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {IVault} from "./interfaces/IVault.sol";
 import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
-import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 import {IContainer} from "./interfaces/IContainer.sol";
 import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
 import {IReshufflingGateway} from "./interfaces/IReshufflingGateway.sol";
+import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
+import {IVault} from "./interfaces/IVault.sol";
+
+import {Errors} from "./libraries/helpers/Errors.sol";
 
 contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradeable, IReshufflingGateway {
     using Math for uint256;

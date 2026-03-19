@@ -6,11 +6,13 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {Container} from "./Container.sol";
 import {StrategyContainer} from "./StrategyContainer.sol";
+
 import {IContainer} from "./interfaces/IContainer.sol";
-import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
 import {IContainerLocal} from "./interfaces/IContainerLocal.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
 import {IVault} from "./interfaces/IVault.sol";
+
+import {Errors} from "./libraries/helpers/Errors.sol";
 
 contract ContainerLocal is StrategyContainer, IContainerLocal {
     using SafeERC20 for IERC20;

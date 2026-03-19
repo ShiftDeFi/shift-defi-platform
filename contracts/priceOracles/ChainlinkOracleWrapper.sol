@@ -2,11 +2,12 @@
 pragma solidity ^0.8.28;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {Errors} from "../libraries/helpers/Errors.sol";
 
-import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
 import {AggregatorV3Interface} from "../dependencies/interfaces/chainlink/AggregatorV3Interface.sol";
 import {IChainlinkOracleWrapper} from "../interfaces/IChainlinkOracleWrapper.sol";
+import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
+
+import {Errors} from "../libraries/helpers/Errors.sol";
 
 contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracleWrapper {
     bytes32 private constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");

@@ -2,8 +2,9 @@
 pragma solidity ^0.8.28;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
+
 import {ICustomOracleWrapper} from "../interfaces/ICustomOracleWrapper.sol";
+import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
 
 import {Errors} from "../libraries/helpers/Errors.sol";
 

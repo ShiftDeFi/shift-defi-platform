@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {Container} from "./Container.sol";
 
-import {EnumerableAddressSetExtended} from "./libraries/helpers/EnumerableAddressSetExtended.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
-import {IStrategyTemplate} from "./interfaces/IStrategyTemplate.sol";
 import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
+import {IStrategyTemplate} from "./interfaces/IStrategyTemplate.sol";
+
+import {EnumerableAddressSetExtended} from "./libraries/helpers/EnumerableAddressSetExtended.sol";
+import {Errors} from "./libraries/helpers/Errors.sol";
 
 abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable, Container, IStrategyContainer {
     using EnumerableSet for EnumerableSet.AddressSet;

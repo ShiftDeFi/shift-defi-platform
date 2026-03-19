@@ -8,8 +8,6 @@ import {Errors} from "contracts/libraries/helpers/Errors.sol";
 
 import {StrategyTemplateBaseTest} from "./StrategyTemplateBase.t.sol";
 
-import {console2 as console} from "forge-std/console2.sol";
-
 contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
     using Math for uint256;
 
@@ -194,8 +192,6 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
 
     function test_Exit_FromProtocolState_FullExit() public {
         deal(address(notion), address(strategy), DEPOSIT_AMOUNT);
-
-        console.log("allowance", notion.allowance(address(strategy), address(strategyContainer)));
 
         _enterToState(TWO_STATE_ID, ENTER_MIN_NAV_DELTA);
 

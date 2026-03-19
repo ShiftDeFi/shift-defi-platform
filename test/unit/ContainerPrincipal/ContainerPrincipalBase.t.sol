@@ -10,8 +10,8 @@ import {IContainerPrincipal} from "contracts/interfaces/IContainerPrincipal.sol"
 import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
 
 import {Codec} from "contracts/libraries/Codec.sol";
-import {Common} from "contracts/libraries/helpers/Common.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Common} from "contracts/libraries/Common.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {L1Base} from "test/L1Base.t.sol";
 import {Utils} from "test/Utils.sol";

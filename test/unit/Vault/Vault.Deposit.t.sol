@@ -5,7 +5,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 import {IVault} from "contracts/interfaces/IVault.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {L1Base} from "test/L1Base.t.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";

@@ -10,8 +10,8 @@ import {IMessageAdapter} from "./interfaces/IMessageAdapter.sol";
 import {IMessageReceiver} from "./interfaces/IMessageReceiver.sol";
 import {IMessageRouter} from "./interfaces/IMessageRouter.sol";
 
-import {Errors} from "./libraries/helpers/Errors.sol";
-import {RingCacheLibrary} from "./libraries/helpers/RingCacheLibrary.sol";
+import {Errors} from "./libraries/Errors.sol";
+import {RingCacheLibrary} from "./libraries/RingCacheLibrary.sol";
 
 contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IMessageRouter {
     using RingCacheLibrary for RingCacheLibrary.RingCache;

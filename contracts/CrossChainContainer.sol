@@ -11,8 +11,8 @@ import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
 import {IContainer} from "./interfaces/IContainer.sol";
 import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
 
-import {Common} from "./libraries/helpers/Common.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {Common} from "./libraries/Common.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 abstract contract CrossChainContainer is Container, ICrossChainContainer {
     using SafeERC20 for IERC20;

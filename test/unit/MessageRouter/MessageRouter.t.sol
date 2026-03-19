@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {MessageRouter} from "contracts/MessageRouter.sol";
 import {IMessageRouter} from "contracts/interfaces/IMessageRouter.sol";
 
-import {RingCacheLibrary} from "contracts/libraries/helpers/RingCacheLibrary.sol";
+import {RingCacheLibrary} from "contracts/libraries/RingCacheLibrary.sol";
 
 import {L1Base} from "test/L1Base.t.sol";
 

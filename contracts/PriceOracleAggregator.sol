@@ -8,8 +8,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IPriceOracle} from "./interfaces/IPriceOracle.sol";
 import {IPriceOracleAggregator} from "./interfaces/IPriceOracleAggregator.sol";
 
-import {Common} from "./libraries/helpers/Common.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {Common} from "./libraries/Common.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 contract PriceOracleAggregator is Initializable, AccessControlUpgradeable, IPriceOracleAggregator {
     using Math for uint256;

@@ -6,7 +6,7 @@ import {StrategyContainer} from "contracts/StrategyContainer.sol";
 import {IContainer} from "contracts/interfaces/IContainer.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {EnumerableAddressSetExtended} from "contracts/libraries/helpers/EnumerableAddressSetExtended.sol";
+import {EnumerableAddressSetExtended} from "contracts/libraries/EnumerableAddressSetExtended.sol";
 
 contract MockStrategyContainer is StrategyContainer {
     using EnumerableSet for EnumerableSet.AddressSet;

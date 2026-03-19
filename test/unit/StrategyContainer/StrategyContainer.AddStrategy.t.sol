@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {StrategyContainerBaseTest} from "test/unit/StrategyContainer/StrategyContainerBase.t.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {IContainer} from "contracts/interfaces/IContainer.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 import {MockStrategyInterfaceBased} from "test/mocks/MockStrategyInterfaceBased.sol";
 import {MockStrategy} from "test/mocks/MockStrategy.sol";
 

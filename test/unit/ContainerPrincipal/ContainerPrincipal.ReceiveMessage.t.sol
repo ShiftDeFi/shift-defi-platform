@@ -6,8 +6,8 @@ import {IContainerPrincipal} from "contracts/interfaces/IContainerPrincipal.sol"
 
 import {Codec} from "contracts/libraries/Codec.sol";
 import {FaultyCodec} from "test/mocks/FaultyCodec.sol";
-import {Common} from "contracts/libraries/helpers/Common.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Common} from "contracts/libraries/Common.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 import {ContainerPrincipalBaseTest} from "test/unit/ContainerPrincipal/ContainerPrincipalBase.t.sol";
 
 contract ContainerPrincipalReceiveMessageTest is ContainerPrincipalBaseTest {

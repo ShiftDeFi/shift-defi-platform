@@ -11,7 +11,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IContainer} from "./interfaces/IContainer.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 abstract contract Container is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IContainer {
     using EnumerableSet for EnumerableSet.AddressSet;

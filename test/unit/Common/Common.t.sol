@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {L1Base} from "test/L1Base.t.sol";
-import {Common} from "contracts/libraries/helpers/Common.sol";
+import {Common} from "contracts/libraries/Common.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 
 contract WrappedCommon {

@@ -5,7 +5,7 @@ import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
 import {ICrossChainContainer} from "contracts/interfaces/ICrossChainContainer.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {ContainerAgentBaseTest} from "test/unit/ContainerAgent/ContainerAgentBase.t.sol";
 

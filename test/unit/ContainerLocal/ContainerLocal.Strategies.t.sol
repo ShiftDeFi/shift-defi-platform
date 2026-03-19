@@ -5,7 +5,7 @@ import {IContainerLocal} from "contracts/interfaces/IContainerLocal.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {ContainerLocalBaseTest} from "test/unit/ContainerLocal/ContainerLocalBase.t.sol";
 

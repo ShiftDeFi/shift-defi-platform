@@ -12,8 +12,8 @@ import {Container} from "./Container.sol";
 import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
 import {IStrategyTemplate} from "./interfaces/IStrategyTemplate.sol";
 
-import {EnumerableAddressSetExtended} from "./libraries/helpers/EnumerableAddressSetExtended.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {EnumerableAddressSetExtended} from "./libraries/EnumerableAddressSetExtended.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable, Container, IStrategyContainer {
     using EnumerableSet for EnumerableSet.AddressSet;

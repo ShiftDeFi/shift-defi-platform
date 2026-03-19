@@ -7,7 +7,7 @@ import {IContainer} from "contracts/interfaces/IContainer.sol";
 import {ICrossChainContainer} from "contracts/interfaces/ICrossChainContainer.sol";
 import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {MockStrategy} from "test/mocks/MockStrategy.sol";
 import {L2Base} from "test/L2Base.t.sol";

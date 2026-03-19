@@ -5,7 +5,7 @@ import {StrategyContainerBaseTest} from "test/unit/StrategyContainer/StrategyCon
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {IContainer} from "contracts/interfaces/IContainer.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 import {MockStrategyInterfaceBased} from "test/mocks/MockStrategyInterfaceBased.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";

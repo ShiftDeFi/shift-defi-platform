@@ -15,7 +15,7 @@ import {MockERC20} from "test/mocks/MockERC20.sol";
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 contract ReshufflingGatewayTest is L1Base {
     using Math for uint256;

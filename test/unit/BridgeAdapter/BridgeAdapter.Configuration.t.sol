@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {IAccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 import {BridgeAdapterBase} from "test/unit/BridgeAdapter/BridgeAdapterBase.t.sol";
 
 contract BridgeAdapterConfigurationTest is BridgeAdapterBase {

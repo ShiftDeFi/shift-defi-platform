@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {IContainerPrincipal} from "contracts/interfaces/IContainerPrincipal.sol";
 import {IContainerLocal} from "contracts/interfaces/IContainerLocal.sol";
 import {IVault} from "contracts/interfaces/IVault.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {L1Base} from "test/L1Base.t.sol";
 

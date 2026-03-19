@@ -6,7 +6,7 @@ import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol"
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
 import {IContainer} from "contracts/interfaces/IContainer.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 import {MockStrategyInterfaceBased} from "test/mocks/MockStrategyInterfaceBased.sol";
 
 contract StrategyContainerSettersTest is StrategyContainerBaseTest {

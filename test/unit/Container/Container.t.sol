@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import {IContainer} from "contracts/interfaces/IContainer.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {MockContainer} from "test/mocks/MockContainer.sol";
 import {MockSwapRouter} from "test/mocks/MockSwapRouter.sol";

@@ -15,8 +15,8 @@ import {IContainer} from "./interfaces/IContainer.sol";
 import {IContainerPrincipal} from "./interfaces/IContainerPrincipal.sol";
 import {IVault} from "./interfaces/IVault.sol";
 
-import {EnumerableAddressSetExtended} from "./libraries/helpers/EnumerableAddressSetExtended.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {EnumerableAddressSetExtended} from "./libraries/EnumerableAddressSetExtended.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradeable, ReentrancyGuardUpgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;

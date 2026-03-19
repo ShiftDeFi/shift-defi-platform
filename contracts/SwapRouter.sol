@@ -10,7 +10,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ISwapAdapter} from "./interfaces/ISwapAdapter.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, ISwapRouter {
     using SafeERC20 for IERC20;

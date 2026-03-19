@@ -10,8 +10,8 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
 
-import {Errors} from "./libraries/helpers/Errors.sol";
-import {RingCacheLibrary} from "./libraries/helpers/RingCacheLibrary.sol";
+import {Errors} from "./libraries/Errors.sol";
+import {RingCacheLibrary} from "./libraries/RingCacheLibrary.sol";
 
 abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IBridgeAdapter {
     using SafeERC20 for IERC20;

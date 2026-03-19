@@ -14,7 +14,7 @@ import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 import {IVault} from "./interfaces/IVault.sol";
 
 import {Codec} from "./libraries/Codec.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     using SafeERC20 for IERC20;

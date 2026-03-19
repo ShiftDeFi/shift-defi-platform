@@ -15,7 +15,7 @@ import {IReshufflingGateway} from "./interfaces/IReshufflingGateway.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 import {IVault} from "./interfaces/IVault.sol";
 
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradeable, IReshufflingGateway {
     using Math for uint256;

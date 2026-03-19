@@ -12,7 +12,7 @@ import {IContainerLocal} from "./interfaces/IContainerLocal.sol";
 import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
 import {IVault} from "./interfaces/IVault.sol";
 
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 contract ContainerLocal is StrategyContainer, IContainerLocal {
     using SafeERC20 for IERC20;

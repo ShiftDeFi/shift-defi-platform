@@ -6,7 +6,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {ICustomOracleWrapper} from "../interfaces/ICustomOracleWrapper.sol";
 import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
 
-import {Errors} from "../libraries/helpers/Errors.sol";
+import {Errors} from "../libraries/Errors.sol";
 
 contract CustomOracleWrapper is AccessControl, IPriceOracle, ICustomOracleWrapper {
     bytes32 private constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");

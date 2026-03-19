@@ -5,8 +5,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
-import {RingCacheLibrary} from "contracts/libraries/helpers/RingCacheLibrary.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
+import {RingCacheLibrary} from "contracts/libraries/RingCacheLibrary.sol";
 import {BridgeAdapterBase} from "test/unit/BridgeAdapter/BridgeAdapterBase.t.sol";
 
 contract BridgeAdapterBridgeTest is BridgeAdapterBase {

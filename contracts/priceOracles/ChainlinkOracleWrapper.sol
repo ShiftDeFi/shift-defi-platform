@@ -7,7 +7,7 @@ import {AggregatorV3Interface} from "../dependencies/interfaces/chainlink/Aggreg
 import {IChainlinkOracleWrapper} from "../interfaces/IChainlinkOracleWrapper.sol";
 import {IPriceOracle} from "../interfaces/IPriceOracle.sol";
 
-import {Errors} from "../libraries/helpers/Errors.sol";
+import {Errors} from "../libraries/Errors.sol";
 
 contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracleWrapper {
     bytes32 private constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");

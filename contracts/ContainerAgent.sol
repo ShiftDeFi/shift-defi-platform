@@ -16,7 +16,7 @@ import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 
 import {Codec} from "./libraries/Codec.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAgent {
     using SafeERC20 for IERC20;

@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {IContainerPrincipal} from "contracts/interfaces/IContainerPrincipal.sol";
 
 import {MockERC20} from "test/mocks/MockERC20.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {ContainerPrincipalBaseTest} from "test/unit/ContainerPrincipal/ContainerPrincipalBase.t.sol";
 

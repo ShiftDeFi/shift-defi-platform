@@ -15,7 +15,7 @@ import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
 import {IStrategyTemplate} from "./interfaces/IStrategyTemplate.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {Errors} from "./libraries/Errors.sol";
 import {StrategyStateLib} from "./libraries/StrategyStateLib.sol";
 
 abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable, IStrategyTemplate {

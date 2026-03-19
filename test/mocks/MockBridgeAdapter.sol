@@ -6,7 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {BridgeAdapter} from "contracts/BridgeAdapter.sol";
 import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
-import {RingCacheLibrary} from "contracts/libraries/helpers/RingCacheLibrary.sol";
+import {RingCacheLibrary} from "contracts/libraries/RingCacheLibrary.sol";
 
 contract MockBridgeAdapter is BridgeAdapter {
     using SafeERC20 for IERC20;

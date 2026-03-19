@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {Test} from "forge-std/Test.sol";
 
-import {RingCacheLibrary} from "contracts/libraries/helpers/RingCacheLibrary.sol";
+import {RingCacheLibrary} from "contracts/libraries/RingCacheLibrary.sol";
 
 contract RingCacheLibraryTest is Test {
     RingCacheLibrary.RingCache ringCache;

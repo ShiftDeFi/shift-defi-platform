@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {Errors} from "./helpers/Errors.sol";
+import {Errors} from "./Errors.sol";
 
 /// @title Codec
 /// @notice Library for encoding and decoding cross-chain messages for deposit and withdrawal operations

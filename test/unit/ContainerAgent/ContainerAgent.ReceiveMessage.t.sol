@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {IContainerAgent} from "contracts/interfaces/IContainerAgent.sol";
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 import {Codec} from "contracts/libraries/Codec.sol";
 
 import {ContainerAgentBaseTest} from "test/unit/ContainerAgent/ContainerAgentBase.t.sol";

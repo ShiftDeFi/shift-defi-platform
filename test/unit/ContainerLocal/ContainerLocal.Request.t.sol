@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {ContainerLocalBaseTest} from "test/unit/ContainerLocal/ContainerLocalBase.t.sol";
 import {IContainerLocal} from "contracts/interfaces/IContainerLocal.sol";
 import {IVault} from "contracts/interfaces/IVault.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 contract ContainerLocalRequestTest is ContainerLocalBaseTest {
     function setUp() public override {

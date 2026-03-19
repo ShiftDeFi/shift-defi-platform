@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {Codec} from "contracts/libraries/Codec.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {CodecBaseTest} from "test/unit/Codec/CodecBase.t.sol";
 

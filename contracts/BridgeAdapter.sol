@@ -69,7 +69,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
         address tokenOnDst
     ) external onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
         require(tokenOnSrc != address(0), Errors.ZeroAddress());
-        require(chainId > 0, Errors.ZeroAmount());
+        require(chainId > 0, Errors.IncorrectChainId(chainId));
         require(bridgePaths[tokenOnSrc][chainId] != tokenOnDst, Errors.AlreadySet());
 
         bridgePaths[tokenOnSrc][chainId] = tokenOnDst;
@@ -79,7 +79,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     /// @inheritdoc IBridgeAdapter
     function setPeer(uint256 chainId, address peer) external onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
         require(peer != address(0), Errors.ZeroAddress());
-        require(chainId > 0, Errors.ZeroAmount());
+        require(chainId > 0, Errors.IncorrectChainId(chainId));
         require(peers[chainId] != peer, Errors.AlreadySet());
 
         peers[chainId] = peer;
@@ -183,7 +183,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
         uint256 amountOnContract = IERC20(token).balanceOf(address(this));
 
         require(amount > 0 && amountOnContract > 0, Errors.ZeroAmount());
-        require(amount <= amountOnContract, Errors.NotEnoughTokens(token, amount));
+        require(amount <= amountOnContract, Errors.NotEnoughTokens(token, amount, amountOnContract));
 
         claimableAmounts[claimer][token] = 0;
 
@@ -196,7 +196,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
 
     function _validateBridgeInstruction(BridgeInstruction calldata instruction) internal view {
         require(instruction.token != address(0), Errors.ZeroAddress());
-        require(instruction.chainTo > 0, Errors.ZeroAmount());
+        require(instruction.chainTo > 0, Errors.IncorrectChainId(instruction.chainTo));
         require(instruction.amount > 0, Errors.ZeroAmount());
         require(
             bridgePaths[instruction.token][instruction.chainTo] != address(0),

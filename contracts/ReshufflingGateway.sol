@@ -32,11 +32,6 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
     EnumerableSet.AddressSet private _whitelistedTokens;
     EnumerableSet.AddressSet private _whitelistedBridgeAdapters;
 
-    modifier onlyVault() {
-        require(msg.sender == vault, NotVault(vault));
-        _;
-    }
-
     modifier onlyReshufflingMode() {
         require(IVault(vault).isReshuffling(), VaultNotInReshufflingMode());
         _;
@@ -140,7 +135,7 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         require(_whitelistedTokens.contains(token), NotWhitelistedToken(token));
 
         uint256 claimedAmount = IBridgeAdapter(bridgeAdapter).claim(token);
-        require(claimedAmount > 0, Errors.ZeroAmount());
+        require(claimedAmount > 0, NothingClaimed(bridgeAdapter, token));
         return claimedAmount;
     }
 
@@ -149,7 +144,7 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         ISwapRouter.SwapInstruction[] calldata swapInstructions
     ) external nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
         uint256 length = swapInstructions.length;
-        require(length > 0, Errors.IncorrectAmount());
+        require(length > 0, Errors.ZeroArrayLength());
         for (uint256 i = 0; i < length; i++) {
             require(
                 _whitelistedTokens.contains(swapInstructions[i].tokenIn),
@@ -171,7 +166,7 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         address[] memory bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata instructions
     ) external payable onlyReshufflingMode nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
-        require(bridgeAdapters.length > 0, Errors.IncorrectAmount());
+        require(bridgeAdapters.length > 0, Errors.ZeroArrayLength());
         require(bridgeAdapters.length == instructions.length, Errors.ArrayLengthMismatch());
 
         IContainer.ContainerType containerType = IContainer(container).containerType();
@@ -182,8 +177,8 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
 
         require(IVault(vault).isContainer(container), NotContainer(container));
 
-        address agentAddress = ICrossChainContainer(container).peerContainer();
-        require(agentAddress != address(0), Errors.ZeroAddress());
+        address peerContainer = ICrossChainContainer(container).peerContainer();
+        require(peerContainer != address(0), IncorrectPeerContainer(container));
 
         uint256 containerRemoteChainId = ICrossChainContainer(container).remoteChainId();
         uint256 length = instructions.length;
@@ -197,9 +192,10 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
                 WrongRemoteChainId(instructions[i].chainTo, containerRemoteChainId)
             );
             require(_whitelistedTokens.contains(instructions[i].token), NotWhitelistedToken(instructions[i].token));
+            uint256 balance = IERC20(instructions[i].token).balanceOf(address(this));
             require(
-                IERC20(instructions[i].token).balanceOf(address(this)) >= instructions[i].amount,
-                Errors.IncorrectAmount()
+                balance >= instructions[i].amount,
+                Errors.NotEnoughTokens(instructions[i].token, instructions[i].amount, balance)
             );
             require(
                 IContainer(container).isTokenWhitelisted(instructions[i].token),
@@ -207,8 +203,11 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
             );
 
             IERC20(instructions[i].token).safeIncreaseAllowance(bridgeAdapters[i], instructions[i].amount);
-            uint256 amount = IBridgeAdapter(bridgeAdapters[i]).bridge(instructions[i], agentAddress);
-            require(amount >= instructions[i].minTokenAmount, Errors.IncorrectAmount());
+            uint256 amount = IBridgeAdapter(bridgeAdapters[i]).bridge(instructions[i], peerContainer);
+            require(
+                amount >= instructions[i].minTokenAmount,
+                NotEnoughTokensBridged(instructions[i].token, instructions[i].minTokenAmount, amount)
+            );
             emit SentToCrossChainContainer(container, instructions[i].token, amount);
         }
     }
@@ -219,7 +218,7 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         address[] memory tokens,
         uint256[] memory amounts
     ) external payable onlyReshufflingMode nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
-        require(tokens.length > 0, Errors.IncorrectAmount());
+        require(tokens.length > 0, Errors.ZeroArrayLength());
         require(tokens.length == amounts.length, Errors.ArrayLengthMismatch());
         require(IVault(vault).isContainer(container), NotContainer(container));
 
@@ -235,7 +234,7 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
             require(_whitelistedTokens.contains(token), NotWhitelistedToken(token));
             require(IContainer(container).isTokenWhitelisted(token), TokenNotWhitelistedOnContainer(token));
             uint256 balance = IERC20(token).balanceOf(address(this));
-            require(balance >= amount, Errors.IncorrectAmount());
+            require(balance >= amount, Errors.NotEnoughTokens(token, amount, balance));
             IERC20(token).safeTransfer(container, amount);
             emit SentToLocalContainer(container, token, amount);
         }

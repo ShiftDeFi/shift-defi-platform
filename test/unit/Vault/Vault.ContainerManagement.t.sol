@@ -103,7 +103,7 @@ contract VaultContainerManagementTest is L1Base {
 
         _setVaultStatus(IVault.VaultStatus.DepositBatchProcessingStarted);
 
-        vm.expectRevert(IVault.IncorrectStatus.selector);
+        vm.expectRevert(IVault.IncorrectVaultStatus.selector);
         _addContainer(address(container), REMOTE_CHAIN_ID);
     }
 
@@ -368,7 +368,7 @@ contract VaultContainerManagementTest is L1Base {
         weights[0] = TOTAL_CONTAINER_WEIGHT;
 
         _setVaultStatus(IVault.VaultStatus.DepositBatchProcessingStarted);
-        vm.expectRevert(IVault.IncorrectStatus.selector);
+        vm.expectRevert(IVault.IncorrectVaultStatus.selector);
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
     }

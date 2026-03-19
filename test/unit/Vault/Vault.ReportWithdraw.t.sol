@@ -74,7 +74,7 @@ contract VaultReportWithdrawTest is VaultBaseTest {
         vault.reportWithdraw(notionAmount);
 
         vm.prank(containers[0]);
-        vm.expectRevert(IVault.ContainerAlreadyReported.selector);
+        vm.expectRevert(abi.encodeWithSelector(IVault.ContainerAlreadyReported.selector, containers[0]));
         vault.reportWithdraw(notionAmount);
     }
 }

@@ -79,7 +79,7 @@ contract SwapRouterSwapTest is L1Base {
 
         IERC20(tokenIn).approve(address(swapRouter), amountIn);
 
-        vm.expectRevert(abi.encodeWithSelector(ISwapRouter.SlippageNotMet.selector, 0, 1, minAmountOut));
+        vm.expectRevert(abi.encodeWithSelector(ISwapRouter.SlippageCheckFailed.selector, 0, 1, minAmountOut));
         _swapDaiToNotion(amountIn, minAmountOut);
     }
 

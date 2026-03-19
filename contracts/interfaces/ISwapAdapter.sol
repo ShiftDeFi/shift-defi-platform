@@ -2,7 +2,7 @@
 pragma solidity ^0.8.28;
 
 interface ISwapAdapter {
-    error SlippageNotMet(address token, uint256 amountOut, uint256 minAmountOut);
+    error SlippageCheckFailed(address token, uint256 amountOut, uint256 minAmountOut);
 
     /**
      * @notice Swap the input tokens for the output tokens.

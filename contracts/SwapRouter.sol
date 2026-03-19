@@ -142,7 +142,7 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
         uint256 deltaTokenOut = amountOutAfter - amountOutBefore;
         require(
             deltaTokenOut >= instruction.minAmountOut,
-            SlippageNotMet(amountOutBefore, amountOutAfter, instruction.minAmountOut)
+            SlippageCheckFailed(amountOutBefore, amountOutAfter, instruction.minAmountOut)
         );
 
         IERC20(instruction.tokenOut).safeTransfer(msg.sender, deltaTokenOut);

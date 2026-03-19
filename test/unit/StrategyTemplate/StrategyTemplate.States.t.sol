@@ -95,7 +95,7 @@ contract StrategyTemplateStatesTest is StrategyTemplateBaseTest {
         bool isProtocolState = false;
         bool isTokenState = false;
 
-        vm.expectRevert(Errors.IncorrectInput.selector);
+        vm.expectRevert(IStrategyTemplate.IncorrectStateId.selector);
         strategy.setState(NO_ALLOCATION_STATE_ID, isTargetState, isProtocolState, isTokenState, STARTING_HEIGHT);
     }
 

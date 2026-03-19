@@ -74,7 +74,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         require(status == ContainerPrincipalStatus.DepositRequestRegistered, Errors.IncorrectContainerStatus());
 
         uint256 bridgeInstructionsLength = bridgeInstructions.length;
-        require(bridgeInstructionsLength > 0, Errors.ZeroAmount());
+        require(bridgeInstructionsLength > 0, Errors.ZeroArrayLength());
         require(bridgeAdapters.length == bridgeInstructionsLength, Errors.ArrayLengthMismatch());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
         require(remoteChainId > 0, RemoteChainIdNotSet());

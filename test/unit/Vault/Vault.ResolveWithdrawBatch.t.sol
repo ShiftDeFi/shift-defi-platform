@@ -30,7 +30,7 @@ contract VaultResolveWithdrawBatchTest is VaultBaseTest {
 
     function test_RevertIf_ResolveWithdrawBatch_IncorrectStatus() public {
         _setVaultStatus(IVault.VaultStatus.Idle);
-        vm.expectRevert(IVault.IncorrectBatchStatus.selector);
+        vm.expectRevert(IVault.IncorrectVaultStatus.selector);
         vm.prank(roles.operator);
         vault.resolveWithdrawBatch();
     }

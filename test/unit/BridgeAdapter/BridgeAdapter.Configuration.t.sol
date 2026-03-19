@@ -62,8 +62,8 @@ contract BridgeAdapterConfigurationTest is BridgeAdapterBase {
         bridgeAdapter.setBridgePath(address(0), REMOTE_CHAIN_ID, address(dai));
     }
 
-    function test_RevertIf_SetBridgePath_ZeroAmount() public {
-        vm.expectRevert(Errors.ZeroAmount.selector);
+    function test_RevertIf_SetBridgePath_ZeroChainId() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectChainId.selector, 0));
         vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setBridgePath(address(notion), 0, address(dai));
     }
@@ -87,8 +87,8 @@ contract BridgeAdapterConfigurationTest is BridgeAdapterBase {
         bridgeAdapter.setPeer(REMOTE_CHAIN_ID, address(0));
     }
 
-    function test_RevertIf_SetPeer_ZeroAmount() public {
-        vm.expectRevert(Errors.ZeroAmount.selector);
+    function test_RevertIf_SetPeer_ZeroChainId() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectChainId.selector, 0));
         vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setPeer(0, address(dai));
     }

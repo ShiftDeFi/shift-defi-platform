@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import {MessageRouter} from "contracts/MessageRouter.sol";
 import {IMessageRouter} from "contracts/interfaces/IMessageRouter.sol";
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
 import {RingCacheLibrary} from "contracts/libraries/helpers/RingCacheLibrary.sol";
 
 import {L1Base} from "test/L1Base.t.sol";
@@ -186,11 +185,12 @@ contract MessageRouterTest is L1Base {
         address sender = address(0x123);
         address receiver = address(0x456);
         uint256 chainId = block.chainid + 1;
+        bytes32 path = messageRouter.calculatePath(sender, receiver, chainId);
 
         vm.prank(roles.whitelistManager);
         messageRouter.whitelistPath(sender, receiver, chainId);
 
-        vm.expectRevert(Errors.AlreadyWhitelisted.selector);
+        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.PathAlreadyWhitelisted.selector, path));
         vm.prank(roles.whitelistManager);
         messageRouter.whitelistPath(sender, receiver, chainId);
     }
@@ -217,7 +217,7 @@ contract MessageRouterTest is L1Base {
         uint256 chainId = block.chainid + 1;
         bytes32 path = messageRouter.calculatePath(sender, receiver, chainId);
 
-        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.InvalidPath.selector, path));
+        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.PathNotWhitelisted.selector, path));
         vm.prank(roles.whitelistManager);
         messageRouter.blacklistPath(sender, receiver, chainId);
     }
@@ -235,7 +235,7 @@ contract MessageRouterTest is L1Base {
         vm.prank(roles.whitelistManager);
         messageRouter.whitelistMessageAdapter(adapter);
 
-        vm.expectRevert(Errors.AlreadyWhitelisted.selector);
+        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.AdapterAlreadyWhitelisted.selector, adapter));
         vm.prank(roles.whitelistManager);
         messageRouter.whitelistMessageAdapter(adapter);
     }
@@ -253,7 +253,7 @@ contract MessageRouterTest is L1Base {
 
     function test_RevertIf_BlacklistMessageAdapterNotWhitelisted() public {
         address adapter = address(0x123);
-        vm.expectRevert(Errors.AlreadyBlacklisted.selector);
+        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.AdapterNotWhitelisted.selector, adapter));
         vm.prank(roles.whitelistManager);
         messageRouter.blacklistMessageAdapter(adapter);
     }
@@ -305,7 +305,7 @@ contract MessageRouterTest is L1Base {
         vm.prank(roles.whitelistManager);
         messageRouter.blacklistMessageAdapter(address(messageAdapter));
 
-        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.UnsupportedAdapter.selector, address(messageAdapter)));
+        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.AdapterNotWhitelisted.selector, address(messageAdapter)));
         messageRouter.send(receiver, sendParams);
     }
 
@@ -327,7 +327,7 @@ contract MessageRouterTest is L1Base {
         address incorrectSender = address(0x789);
         bytes32 incorrectSenderPath = messageRouter.calculatePath(incorrectSender, receiver, chainTo);
 
-        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.InvalidPath.selector, incorrectSenderPath));
+        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.PathNotWhitelisted.selector, incorrectSenderPath));
         vm.prank(incorrectSender);
         messageRouter.send(receiver, sendParams);
     }
@@ -369,7 +369,7 @@ contract MessageRouterTest is L1Base {
         bytes memory message = "test";
         (, bytes memory rawMessageWithPathAndNonce) = _prepareReceiveMessage(nonce, sender, message);
 
-        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.UnsupportedAdapter.selector, notWhitelistedAdapter));
+        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.AdapterNotWhitelisted.selector, notWhitelistedAdapter));
         vm.prank(notWhitelistedAdapter);
         messageRouter.receiveMessage(rawMessageWithPathAndNonce);
     }
@@ -383,7 +383,7 @@ contract MessageRouterTest is L1Base {
         bytes32 path = messageRouter.calculatePath(sender, address(this), block.chainid + 1);
         rawMessageWithPathAndNonce = messageRouter.encodeMessage(nonce, path, message);
 
-        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.InvalidPath.selector, path));
+        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.PathNotWhitelisted.selector, path));
         vm.prank(address(messageAdapter));
         messageRouter.receiveMessage(rawMessageWithPathAndNonce);
     }
@@ -450,7 +450,7 @@ contract MessageRouterTest is L1Base {
 
         bytes32 remotePath = messageRouter.calculatePath(sender, receiver, block.chainid);
 
-        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.UnsupportedAdapter.selector, address(messageAdapter)));
+        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.AdapterNotWhitelisted.selector, address(messageAdapter)));
         vm.prank(roles.cacheManager);
         messageRouter.retryCachedMessage(nonce, remotePath, sendParams);
     }

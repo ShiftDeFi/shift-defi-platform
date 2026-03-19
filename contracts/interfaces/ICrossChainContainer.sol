@@ -36,8 +36,7 @@ interface ICrossChainContainer is IContainer {
     error BridgeAdapterNotSupported();
     error SameBridgeAdapterStatus();
     error PeerContainerAlreadySet();
-    error RemoteChainIdAlreadySet();
-    error InvalidDecimals();
+    error InvalidBridgeInstructionSlippage(uint256 minTokenAmount, uint256 minAllowedAmount);
     error BridgeSlippageExceeded(uint256 expected, uint256 received);
     error RemoteChainIdNotSet();
     error PeerContainerNotSet();

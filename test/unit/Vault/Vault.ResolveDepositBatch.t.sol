@@ -119,7 +119,7 @@ contract VaultResolveDepositBatchTest is VaultBaseTest {
     }
 
     function test_RevertIf_ResolveDepositBatch_IncorrectStatus() public {
-        vm.expectRevert(IVault.IncorrectBatchStatus.selector);
+        vm.expectRevert(IVault.IncorrectVaultStatus.selector);
         vm.prank(roles.operator);
         vault.resolveDepositBatch();
     }

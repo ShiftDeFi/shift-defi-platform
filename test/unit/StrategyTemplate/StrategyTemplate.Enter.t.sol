@@ -107,7 +107,7 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
     function test_RevertIf_EnterToState_NoAllocationStateId() public {
         bytes32 toStateId = NO_ALLOCATION_STATE_ID;
 
-        vm.expectRevert(Errors.IncorrectInput.selector);
+        vm.expectRevert(IStrategyTemplate.IncorrectStateId.selector);
         _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
     }
 
@@ -125,7 +125,9 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
         _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
 
         toStateId = ONE_STATE_ID;
-        vm.expectRevert(Errors.IncorrectInput.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(IStrategyTemplate.CannotEnterStateWithLowerHeight.selector, toStateId, TWO_STATE_ID)
+        );
         _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
     }
 

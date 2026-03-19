@@ -43,7 +43,7 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
     ) internal onlyInitializing {
         _setMessageRouter(_messageRouter);
 
-        require(_remoteChainId > 0, Errors.ZeroAmount());
+        require(_remoteChainId > 0, Errors.IncorrectChainId(_remoteChainId));
         remoteChainId = _remoteChainId;
 
         require(_messengerManager != address(0), Errors.ZeroAddress());
@@ -149,11 +149,14 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
         vars.tokenBalanceBefore = IERC20(instruction.token).balanceOf(address(this));
         require(
             vars.tokenBalanceBefore >= instruction.amount,
-            Errors.NotEnoughTokens(instruction.token, instruction.amount)
+            Errors.NotEnoughTokens(instruction.token, instruction.amount, vars.tokenBalanceBefore)
         );
         vars.tokenOnDestinationChain = _getTokenOnDestinationChain(bridgeAdapter, instruction.token);
         vars.minAllowedAmount = instruction.amount.mulDiv(MAX_BRIDGE_SLIPPAGE, MAX_BPS);
-        require(instruction.minTokenAmount >= vars.minAllowedAmount, Errors.IncorrectAmount());
+        require(
+            instruction.minTokenAmount >= vars.minAllowedAmount,
+            InvalidBridgeInstructionSlippage(instruction.minTokenAmount, vars.minAllowedAmount)
+        );
 
         _approveTokenToBridgeAdapter(instruction.token, bridgeAdapter, instruction.amount);
 

@@ -15,7 +15,6 @@ interface IReshufflingGateway {
     event SwapRouterUpdated(address indexed previousSwapRouter, address indexed newSwapRouter);
 
     error NotContainer(address container);
-    error NotVault(address vault);
     error VaultNotInReshufflingMode();
     error AlreadyWhitelistedToken();
     error NotWhitelistedToken(address token);
@@ -23,6 +22,9 @@ interface IReshufflingGateway {
     error NotWhitelistedBridgeAdapter(address bridgeAdapter);
     error WrongRemoteChainId(uint256 expected, uint256 received);
     error TokenNotWhitelistedOnContainer(address token);
+    error NothingClaimed(address bridgeAdapter, address token);
+    error IncorrectPeerContainer(address container);
+    error NotEnoughTokensBridged(address token, uint256 minAmount, uint256 actualAmount);
 
     /**
      * @notice Address of the vault.

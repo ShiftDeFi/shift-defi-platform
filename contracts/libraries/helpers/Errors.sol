@@ -20,17 +20,16 @@ library Errors {
     error InvalidArrayLength();
     error IncorrectAmount();
     error IncorrectContainerStatus();
-    error IncorrectInput();
     error ZeroAddress();
     error ZeroAmount();
     error ZeroArrayLength();
-    error NonZeroAmount();
     error IncorrectContainerType(address container, uint8 expected, uint8 received);
     error DuplicatingAddressInArray(address entry);
     error IncorrectChainId(uint256 chainId);
+    error SettingSameBooleanValue();
 
     // -- Business Logic Errors --
 
-    error NotEnoughTokens(address token, uint256 amount);
+    error NotEnoughTokens(address token, uint256 amount, uint256 balance);
     error SwapFailed(address tokenIn, address tokenOut, uint256 amountIn, uint256 minAmountOut);
 }

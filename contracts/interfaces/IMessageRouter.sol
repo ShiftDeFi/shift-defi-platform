@@ -50,10 +50,13 @@ interface IMessageRouter {
     event PathWhitelisted(address indexed sender, address indexed receiver, uint256 indexed chainId, bytes32 path);
     event PathBlacklisted(address indexed sender, address indexed receiver, uint256 indexed chainId, bytes32 path);
 
-    error UnsupportedAdapter(address);
-    error InvalidPath(bytes32 path);
     error ReplayCheckFailed(uint256 nonce);
     error MessageTooShort(uint256 length);
+    error PathAlreadyWhitelisted(bytes32 path);
+    error PathNotWhitelisted(bytes32 path);
+    error AdapterAlreadyWhitelisted(address adapter);
+    error AdapterNotWhitelisted(address adapter);
+    error ReceiverMismatch(address expected, address received);
 
     /**
      * @notice Calculates the path identifier from sender/receiver/chain.

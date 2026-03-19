@@ -94,8 +94,12 @@ interface IStrategyTemplate {
 
     // ---- Errors ----
 
+    error IncorrectStateId();
+    error StateHasZeroBitmask(bytes32 stateId);
+    error CannotEnterStateWithLowerHeight(bytes32 toStateId, bytes32 currentStateId);
+    error CannotExitToStateWithHigherHeight(bytes32 toStateId, bytes32 currentStateId);
     error EnterUnavailable();
-    error ExitUnavailable();
+    error CannotExitFromNoAllocationState();
     error EmergencyExitUnavailable();
     error SlippageCheckFailed(uint256 navBefore, uint256 navAfter, uint256 minNavDelta);
     error NavResolutionModeActivated();
@@ -106,6 +110,8 @@ interface IStrategyTemplate {
     error StateAlreadyExists(bytes32 stateId);
     error TargetStateAlreadySet();
     error AlreadyInState(bytes32 stateId);
+    error TreasuryNotSet();
+    error TokenNotFound(address token);
 
     // ---- Functions ----
 

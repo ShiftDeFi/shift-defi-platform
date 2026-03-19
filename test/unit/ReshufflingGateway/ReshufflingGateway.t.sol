@@ -275,7 +275,7 @@ contract ReshufflingGatewayTest is L1Base {
 
     function test_RevertIf_PrepareLiquidity_ZeroArrayLength() public {
         vm.prank(roles.reshufflingManager);
-        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vm.expectRevert(Errors.ZeroArrayLength.selector);
         reshufflingGateway.prepareLiquidity(new ISwapRouter.SwapInstruction[](0));
     }
 
@@ -317,7 +317,7 @@ contract ReshufflingGatewayTest is L1Base {
         _setReshufflingMode();
 
         vm.prank(roles.reshufflingManager);
-        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vm.expectRevert(Errors.ZeroArrayLength.selector);
         reshufflingGateway.sendToCrossChainContainer(
             address(containerPrincipal),
             new address[](0),
@@ -393,7 +393,9 @@ contract ReshufflingGatewayTest is L1Base {
         _setReshufflingMode();
 
         vm.prank(roles.reshufflingManager);
-        vm.expectRevert(Errors.ZeroAddress.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(IReshufflingGateway.IncorrectPeerContainer.selector, address(containerPrincipal))
+        );
         reshufflingGateway.sendToCrossChainContainer(
             address(containerPrincipal),
             new address[](1),
@@ -502,10 +504,11 @@ contract ReshufflingGatewayTest is L1Base {
     function test_RevertIf_SendToCrossChainContainer_IncorrectAmount() public {
         _setReshufflingMode();
 
+        uint256 amount = vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT);
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](1);
         instructions[0] = IBridgeAdapter.BridgeInstruction({
             token: address(notion),
-            amount: vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT),
+            amount: amount,
             minTokenAmount: 0,
             chainTo: REMOTE_CHAIN_ID,
             payload: "0x"
@@ -515,7 +518,7 @@ contract ReshufflingGatewayTest is L1Base {
         bridgeAdapters[0] = address(bridgeAdapter);
 
         vm.prank(roles.reshufflingManager);
-        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughTokens.selector, address(notion), amount, 0));
         reshufflingGateway.sendToCrossChainContainer(address(containerPrincipal), bridgeAdapters, instructions);
     }
 
@@ -523,6 +526,7 @@ contract ReshufflingGatewayTest is L1Base {
         _setReshufflingMode();
 
         uint256 amount = vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT);
+        uint256 bridgedAmount = amount - 1;
 
         notion.mint(address(reshufflingGateway), amount);
 
@@ -538,16 +542,23 @@ contract ReshufflingGatewayTest is L1Base {
         address[] memory bridgeAdapters = new address[](1);
         bridgeAdapters[0] = address(bridgeAdapter);
 
-        address agentAddress = ICrossChainContainer(address(containerPrincipal)).peerContainer();
+        address peerContainer = ICrossChainContainer(address(containerPrincipal)).peerContainer();
 
         vm.mockCall(
             address(bridgeAdapter),
-            abi.encodeWithSelector(IBridgeAdapter.bridge.selector, instructions[0], agentAddress),
-            abi.encode(vm.randomUint(MIN_TOKEN_AMOUNT, amount - 1))
+            abi.encodeWithSelector(IBridgeAdapter.bridge.selector, instructions[0], peerContainer),
+            abi.encode(bridgedAmount)
         );
 
         vm.prank(roles.reshufflingManager);
-        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IReshufflingGateway.NotEnoughTokensBridged.selector,
+                address(notion),
+                amount,
+                bridgedAmount
+            )
+        );
         reshufflingGateway.sendToCrossChainContainer(address(containerPrincipal), bridgeAdapters, instructions);
     }
 
@@ -658,15 +669,16 @@ contract ReshufflingGatewayTest is L1Base {
 
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT);
+        uint256 balance = amounts[0] - 1;
 
         vm.mockCall(
             address(notion),
             abi.encodeWithSelector(IERC20.balanceOf.selector, address(reshufflingGateway)),
-            abi.encode(vm.randomUint(MIN_TOKEN_AMOUNT, amounts[0] - 1))
+            abi.encode(balance)
         );
 
         vm.prank(roles.reshufflingManager);
-        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughTokens.selector, address(notion), amounts[0], balance));
         reshufflingGateway.sendToLocalContainer(address(containerLocal), tokens, amounts);
     }
 
@@ -674,7 +686,7 @@ contract ReshufflingGatewayTest is L1Base {
         _setReshufflingMode();
 
         vm.prank(roles.reshufflingManager);
-        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vm.expectRevert(Errors.ZeroArrayLength.selector);
         reshufflingGateway.sendToLocalContainer(address(containerLocal), new address[](0), new uint256[](0));
     }
 }

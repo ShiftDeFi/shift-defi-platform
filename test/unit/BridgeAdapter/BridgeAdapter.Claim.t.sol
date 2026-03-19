@@ -65,7 +65,9 @@ contract BridgeAdapterClaimTest is BridgeAdapterBase {
         bridgeAdapter.finalizeBridge(users.alice, address(notion), 2 * BRIDGE_AMOUNT);
         notion.mint(address(bridgeAdapter), BRIDGE_AMOUNT);
 
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughTokens.selector, address(notion), 2 * BRIDGE_AMOUNT));
+        vm.expectRevert(
+            abi.encodeWithSelector(Errors.NotEnoughTokens.selector, address(notion), 2 * BRIDGE_AMOUNT, BRIDGE_AMOUNT)
+        );
         vm.prank(users.alice);
         bridgeAdapter.claim(address(notion));
     }

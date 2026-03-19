@@ -160,7 +160,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         bool isTokenState,
         uint8 height
     ) internal {
-        require(stateId != NO_ALLOCATION_STATE_ID, Errors.IncorrectInput());
+        require(stateId != NO_ALLOCATION_STATE_ID, IncorrectStateId());
         _stateBitmasks[stateId] = StrategyStateLib.createState(isTargetState, isProtocolState, isTokenState, height);
         if (isTargetState) {
             require(_targetStateId == bytes32(0), TargetStateAlreadySet());
@@ -229,15 +229,18 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     function _enterToState(bytes32 toStateId, uint256 minNavDelta) private {
         EnterToStateLocalVars memory vars;
 
-        require(toStateId != NO_ALLOCATION_STATE_ID, Errors.IncorrectInput());
+        require(toStateId != NO_ALLOCATION_STATE_ID, IncorrectStateId());
         require(_stateIds.contains(toStateId), StateNotFound(toStateId));
 
         vars.currentStateId = _currentStateId;
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.toStateBitmask = _stateBitmasks[toStateId];
 
-        require(vars.toStateBitmask != 0, Errors.ZeroAmount());
-        require(vars.toStateBitmask.height() >= vars.currentStateBitmask.height(), Errors.IncorrectInput());
+        require(vars.toStateBitmask != 0, StateHasZeroBitmask(toStateId));
+        require(
+            vars.toStateBitmask.height() >= vars.currentStateBitmask.height(),
+            CannotEnterStateWithLowerHeight(toStateId, vars.currentStateId)
+        );
 
         if (vars.currentStateId != toStateId) {
             _currentStateId = toStateId;
@@ -302,7 +305,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.outputTokens = _outputTokens.values();
         vars.currentStateNavBeforeExit = stateNav(vars.currentStateId);
         vars.amountsBeforeExit = _tokensAmountsDump(vars.outputTokens, MAX_BPS);
-        require(vars.currentStateId != NO_ALLOCATION_STATE_ID, ExitUnavailable());
+        require(vars.currentStateId != NO_ALLOCATION_STATE_ID, CannotExitFromNoAllocationState());
 
         if (share == MAX_BPS) {
             _currentStateId = NO_ALLOCATION_STATE_ID;
@@ -341,7 +344,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.treasury = IStrategyContainer(_strategyContainer).treasury();
         vars.feePct = IStrategyContainer(_strategyContainer).feePct();
 
-        require(vars.treasury != address(0), Errors.ZeroAddress());
+        require(vars.treasury != address(0), TreasuryNotSet());
 
         _harvest(vars.currentStateId, vars.treasury, vars.feePct);
         vars.currentStateNav = stateNav(vars.currentStateId);
@@ -366,8 +369,11 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.toStateBitmask = _stateBitmasks[toStateId];
 
-        require(vars.toStateBitmask != 0, Errors.ZeroAmount());
-        require(vars.toStateBitmask.height() <= vars.currentStateBitmask.height(), Errors.IncorrectInput());
+        require(vars.toStateBitmask != 0, StateHasZeroBitmask(toStateId));
+        require(
+            vars.toStateBitmask.height() <= vars.currentStateBitmask.height(),
+            CannotExitToStateWithHigherHeight(toStateId, vars.currentStateId)
+        );
 
         IStrategyContainer(_strategyContainer).startEmergencyResolution();
 
@@ -492,7 +498,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         uint256 minAmountOut,
         bool mustSucceed
     ) internal virtual {
-        require(_inputTokens.contains(tokenOut), Errors.Unauthorized());
+        require(_inputTokens.contains(tokenOut), TokenNotFound(tokenOut));
         uint256 amountIn = IERC20(tokenIn).balanceOf(address(this));
         if (amountIn == 0) {
             return;

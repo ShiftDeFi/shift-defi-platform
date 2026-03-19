@@ -98,11 +98,11 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
     ) external onlyRole(WHITELIST_MANAGER_ROLE) {
         require(sender != address(0), Errors.ZeroAddress());
         require(receiver != address(0), Errors.ZeroAddress());
-        require(chainId > 0, Errors.ZeroAmount());
+        require(chainId > 0, Errors.IncorrectChainId(chainId));
 
         bytes32 path = calculatePath(sender, receiver, chainId);
         PathData memory pathData = _paths[path];
-        require(!pathData.isWhitelisted, Errors.AlreadyWhitelisted());
+        require(!pathData.isWhitelisted, PathAlreadyWhitelisted(path));
         _paths[path] = PathData({
             lastNonce: pathData.lastNonce,
             chainId: chainId,
@@ -121,21 +121,21 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
     ) external onlyRole(WHITELIST_MANAGER_ROLE) {
         bytes32 path = calculatePath(sender, receiver, chainId);
         PathData memory pathData = _paths[path];
-        require(pathData.isWhitelisted, InvalidPath(path));
+        require(pathData.isWhitelisted, PathNotWhitelisted(path));
         _paths[path].isWhitelisted = false;
         emit PathBlacklisted(pathData.sender, pathData.receiver, pathData.chainId, path);
     }
 
     /// @inheritdoc IMessageRouter
     function whitelistMessageAdapter(address adapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
-        require(!_whitelistedMessageAdapters[adapter], Errors.AlreadyWhitelisted());
+        require(!_whitelistedMessageAdapters[adapter], AdapterAlreadyWhitelisted(adapter));
         _whitelistedMessageAdapters[adapter] = true;
         emit AdapterWhitelisted(adapter);
     }
 
     /// @inheritdoc IMessageRouter
     function blacklistMessageAdapter(address adapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
-        require(_whitelistedMessageAdapters[adapter], Errors.AlreadyBlacklisted());
+        require(_whitelistedMessageAdapters[adapter], AdapterNotWhitelisted(adapter));
         _whitelistedMessageAdapters[adapter] = false;
         emit AdapterBlacklisted(adapter);
     }
@@ -154,7 +154,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
 
     /// @inheritdoc IMessageRouter
     function send(address receiver, SendParams calldata sendParams) external payable nonReentrant {
-        require(_whitelistedMessageAdapters[sendParams.adapter], UnsupportedAdapter(sendParams.adapter));
+        require(_whitelistedMessageAdapters[sendParams.adapter], AdapterNotWhitelisted(sendParams.adapter));
 
         SendLocalVars memory sendLocalVars;
         sendLocalVars.localPath = calculatePath(msg.sender, receiver, sendParams.chainTo);
@@ -163,8 +163,11 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         sendLocalVars.remotePathData = _paths[sendLocalVars.remotePath];
         sendLocalVars.nonce = ++_nonce;
 
-        require(sendLocalVars.localPathData.isWhitelisted, InvalidPath(sendLocalVars.localPath));
-        require(sendLocalVars.localPathData.receiver == receiver, InvalidPath(sendLocalVars.localPath));
+        require(sendLocalVars.localPathData.isWhitelisted, PathNotWhitelisted(sendLocalVars.localPath));
+        require(
+            sendLocalVars.localPathData.receiver == receiver,
+            ReceiverMismatch(sendLocalVars.localPathData.receiver, receiver)
+        );
 
         sendLocalVars.rawMessageWithPathAndNonce = encodeMessage(
             sendLocalVars.nonce,
@@ -196,8 +199,8 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         PathData memory pathData = _paths[path];
 
         require(nonce > pathData.lastNonce, ReplayCheckFailed(nonce));
-        require(_whitelistedMessageAdapters[msg.sender], UnsupportedAdapter(msg.sender));
-        require(pathData.isWhitelisted, InvalidPath(path));
+        require(_whitelistedMessageAdapters[msg.sender], AdapterNotWhitelisted(msg.sender));
+        require(pathData.isWhitelisted, PathNotWhitelisted(path));
 
         _paths[path].lastNonce = nonce;
         IMessageReceiver(pathData.receiver).receiveMessage(rawMessage);
@@ -211,7 +214,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         bytes32 path,
         SendParams calldata sendParams
     ) external payable nonReentrant onlyRole(CACHE_MANAGER_ROLE) {
-        require(_whitelistedMessageAdapters[sendParams.adapter], UnsupportedAdapter(sendParams.adapter));
+        require(_whitelistedMessageAdapters[sendParams.adapter], AdapterNotWhitelisted(sendParams.adapter));
 
         bytes memory messageWithPathAndNonce = encodeMessage(nonce, path, sendParams.message);
         bytes32 cachedKey = calculateCacheKey(sendParams.chainTo, messageWithPathAndNonce);

@@ -139,24 +139,30 @@ interface IVault {
     error ContainerAlreadyExists();
     error ContainerNotFound(address container);
     error DuplicatingContainer(address container);
-    error ContainerAlreadyReported();
-    error ContainerNotReallocating();
+    error ContainerAlreadyReported(address container);
     error NoContainers();
     error NotEnoughNotion();
-    error NotEnoughSharesWithdrawn();
+    error NotEnoughSharesWithdrawn(uint256 batchSharesPercent);
     error ReshufflingGatewayNotSet();
     error VaultIsInReshufflingMode();
 
     // Input Validation
     error NothingToWithdraw();
     error IncorrectBatchId();
-    error IncorrectBatchStatus();
     error IncorrectReport();
-    error IncorrectStatus();
+    error IncorrectVaultStatus();
     error IncorrectWeights(uint256 weightsSum);
     error WeightRoundsToZero(address container, uint256 weight);
     error ContainerForChainIdAlreadyExists(uint256 chainId, address container);
     error IncorrectContainerType();
+    error IncorrectMaxDepositAmount();
+    error IncorrectMinDepositAmount();
+    error IncorrectMaxDepositBatchSize();
+    error IncorrectMinDepositBatchSize();
+    error IncorrectMinWithdrawBatchRatio();
+    error IncorrectForcedDepositThreshold();
+    error IncorrectForcedWithdrawThreshold();
+    error IncorrectForcedBatchBlockLimit();
 
     // Business Logic
     error DepositBatchCapReached();
@@ -167,8 +173,7 @@ interface IVault {
     error IncorrectNotionDistribution();
     error MaxContainersReached();
     error MissingContainerReport();
-    error NotionNotAllocated();
-    error ContainerWeightZero(address container);
+    error ZeroContainerWeight(address container);
     error IncorrectContainerAmount(address container);
 
     // ---- Functions ----

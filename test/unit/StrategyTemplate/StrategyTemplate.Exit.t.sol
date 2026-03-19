@@ -248,7 +248,7 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
 
     function test_RevertIf_Exit_NoAllocationState() public {
         vm.prank(address(strategyContainer));
-        vm.expectRevert(IStrategyTemplate.ExitUnavailable.selector);
+        vm.expectRevert(IStrategyTemplate.CannotExitFromNoAllocationState.selector);
         strategy.exit(MAX_BPS, 0);
     }
 

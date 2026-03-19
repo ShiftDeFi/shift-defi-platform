@@ -251,7 +251,7 @@ contract CrossChainContainerBridgeTest is CrossChainContainerBaseTest {
         crossChainContainer.setBridgeAdapter(address(bridgeAdapter), true);
 
         IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughTokens.selector, address(notion), BRIDGE_AMOUNT));
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughTokens.selector, address(notion), BRIDGE_AMOUNT, 0));
         crossChainContainer.bridgeToken(address(bridgeAdapter), bridgeReceiver, instruction);
     }
 
@@ -261,10 +261,17 @@ contract CrossChainContainerBridgeTest is CrossChainContainerBaseTest {
 
         IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
         instruction.minTokenAmount = BRIDGE_AMOUNT.mulDiv(crossChainContainer.MAX_BRIDGE_SLIPPAGE() - 1, MAX_BPS);
+        uint256 minAllowedAmount = BRIDGE_AMOUNT.mulDiv(crossChainContainer.MAX_BRIDGE_SLIPPAGE(), MAX_BPS);
 
         notion.mint(address(crossChainContainer), BRIDGE_AMOUNT);
 
-        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ICrossChainContainer.InvalidBridgeInstructionSlippage.selector,
+                instruction.minTokenAmount,
+                minAllowedAmount
+            )
+        );
         crossChainContainer.bridgeToken(address(bridgeAdapter), bridgeReceiver, instruction);
     }
 

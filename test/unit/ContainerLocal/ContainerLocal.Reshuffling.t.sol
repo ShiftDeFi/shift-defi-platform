@@ -34,7 +34,7 @@ contract ContainerLocalReshufflingTest is ContainerLocalBaseTest {
         amounts = new uint256[](1);
 
         vm.prank(roles.reshufflingManager);
-        vm.expectRevert(Errors.ArrayLengthMismatch.selector);
+        vm.expectRevert(Errors.ZeroArrayLength.selector);
         containerLocal.withdrawToReshufflingGateway(tokens, amounts);
     }
 

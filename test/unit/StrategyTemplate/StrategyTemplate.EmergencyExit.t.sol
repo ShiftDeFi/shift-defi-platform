@@ -249,7 +249,13 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         strategy.setState(toStateId, false, true, false, 111);
 
         vm.prank(address(strategyContainer));
-        vm.expectRevert(Errors.IncorrectInput.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IStrategyTemplate.CannotExitToStateWithHigherHeight.selector,
+                toStateId,
+                NO_ALLOCATION_STATE_ID
+            )
+        );
         strategy.emergencyExit(toStateId, exitShare, 0);
     }
 

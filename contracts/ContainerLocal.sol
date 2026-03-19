@@ -228,8 +228,8 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         uint256[] memory amounts
     ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
         uint256 length = tokens.length;
-        require(tokens.length == amounts.length, Errors.ArrayLengthMismatch());
-        require(tokens.length > 0, Errors.ZeroArrayLength());
+        require(length > 0, Errors.ZeroArrayLength());
+        require(length == amounts.length, Errors.ArrayLengthMismatch());
 
         address reshufflingGatewayCached = reshufflingGateway;
         require(reshufflingGatewayCached != address(0), Errors.ZeroAddress());

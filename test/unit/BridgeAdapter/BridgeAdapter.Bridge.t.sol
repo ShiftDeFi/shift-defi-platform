@@ -111,7 +111,7 @@ contract BridgeAdapterBridgeTest is BridgeAdapterBase {
 
         instruction.chainTo = 0;
 
-        vm.expectRevert(Errors.ZeroAmount.selector);
+        vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectChainId.selector, 0));
         vm.prank(users.alice);
         bridgeAdapter.bridge(instruction, makeAddr("Receiver"));
     }

@@ -159,7 +159,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     /// @inheritdoc IVault
     function setReshufflingMode(bool _isReshuffling) external onlyRole(EMERGENCY_MANAGER_ROLE) {
         require(reshufflingGateway != address(0), ReshufflingGatewayNotSet());
-        require(isReshuffling != _isReshuffling, Errors.IncorrectInput());
+        require(isReshuffling != _isReshuffling, Errors.SettingSameBooleanValue());
         isReshuffling = _isReshuffling;
         emit ReshufflingModeUpdated(_isReshuffling);
     }
@@ -207,14 +207,14 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     function _setMaxDepositAmount(uint256 _maxDepositAmount) internal {
         require(
             _maxDepositAmount >= minDepositAmount && _maxDepositAmount <= maxDepositBatchSize,
-            Errors.IncorrectAmount()
+            IncorrectMaxDepositAmount()
         );
         maxDepositAmount = _maxDepositAmount;
         emit MaxDepositAmountUpdated(_maxDepositAmount);
     }
 
     function _setMinDepositAmount(uint256 _minDepositAmount) internal {
-        require(_minDepositAmount > 0 && _minDepositAmount <= maxDepositAmount, Errors.IncorrectAmount());
+        require(_minDepositAmount > 0 && _minDepositAmount <= maxDepositAmount, IncorrectMinDepositAmount());
         minDepositAmount = _minDepositAmount;
         emit MinDepositAmountUpdated(_minDepositAmount);
     }
@@ -222,40 +222,43 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     function _setMaxDepositBatchSize(uint256 _maxDepositBatchSize) internal {
         require(
             _maxDepositBatchSize > minDepositBatchSize && _maxDepositBatchSize >= maxDepositAmount,
-            Errors.IncorrectAmount()
+            IncorrectMaxDepositBatchSize()
         );
         maxDepositBatchSize = _maxDepositBatchSize;
         emit MaxDepositBatchSizeUpdated(_maxDepositBatchSize);
     }
 
     function _setMinDepositBatchSize(uint256 _minDepositBatchSize) internal {
-        require(_minDepositBatchSize > 0 && _minDepositBatchSize < maxDepositBatchSize, Errors.IncorrectAmount());
+        require(_minDepositBatchSize > 0 && _minDepositBatchSize < maxDepositBatchSize, IncorrectMinDepositBatchSize());
         minDepositBatchSize = _minDepositBatchSize;
         emit MinDepositBatchSizeUpdated(_minDepositBatchSize);
     }
 
     function _setMinWithdrawBatchRatio(uint256 _minWithdrawBatchRatio) internal {
-        require(_minWithdrawBatchRatio > 0 && _minWithdrawBatchRatio <= MAX_BPS, Errors.IncorrectAmount());
+        require(_minWithdrawBatchRatio > 0 && _minWithdrawBatchRatio <= MAX_BPS, IncorrectMinWithdrawBatchRatio());
         minWithdrawBatchRatio = _minWithdrawBatchRatio;
         emit MinWithdrawBatchRatioUpdated(_minWithdrawBatchRatio);
     }
 
     function _setForcedDepositThreshold(uint256 _forcedDepositThreshold) internal {
-        require(_forcedDepositThreshold > 0 && _forcedDepositThreshold < maxDepositBatchSize, Errors.IncorrectAmount());
+        require(
+            _forcedDepositThreshold > 0 && _forcedDepositThreshold < maxDepositBatchSize,
+            IncorrectForcedDepositThreshold()
+        );
         uint256 previousForcedDepositThreshold = forcedDepositThreshold;
         forcedDepositThreshold = _forcedDepositThreshold;
         emit ForcedDepositThresholdUpdated(previousForcedDepositThreshold, _forcedDepositThreshold);
     }
 
     function _setForcedWithdrawThreshold(uint256 _forcedWithdrawThreshold) internal {
-        require(_forcedWithdrawThreshold > 0, Errors.IncorrectAmount());
+        require(_forcedWithdrawThreshold > 0, IncorrectForcedWithdrawThreshold());
         uint256 previousForcedWithdrawThreshold = forcedWithdrawThreshold;
         forcedWithdrawThreshold = _forcedWithdrawThreshold;
         emit ForcedWithdrawThresholdUpdated(previousForcedWithdrawThreshold, _forcedWithdrawThreshold);
     }
 
     function _setForcedBatchBlockLimit(uint256 _forcedBatchBlockLimit) internal {
-        require(_forcedBatchBlockLimit > 0, Errors.IncorrectAmount());
+        require(_forcedBatchBlockLimit > 0, IncorrectForcedBatchBlockLimit());
         uint256 previousForcedBatchBlockLimit = forcedBatchBlockLimit;
         forcedBatchBlockLimit = _forcedBatchBlockLimit;
         emit ForcedBatchBlockLimitUpdated(previousForcedBatchBlockLimit, _forcedBatchBlockLimit);
@@ -279,7 +282,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function addContainer(address container, uint256 chainId) external nonReentrant onlyRole(CONTAINER_MANAGER_ROLE) {
-        require(status == VaultStatus.Idle, IncorrectStatus());
+        require(status == VaultStatus.Idle, IncorrectVaultStatus());
         require(container != address(0), Errors.ZeroAddress());
         require(chainId > 0, Errors.IncorrectChainId(chainId));
 
@@ -314,7 +317,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         address[] calldata containers,
         uint256[] calldata weights
     ) external onlyRole(CONTAINER_MANAGER_ROLE) {
-        require(status == VaultStatus.Idle, IncorrectStatus());
+        require(status == VaultStatus.Idle, IncorrectVaultStatus());
         uint256 length = containers.length;
         require(length == weights.length, Errors.ArrayLengthMismatch());
 
@@ -505,7 +508,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function startDepositBatchProcessing() external onlyRole(OPERATOR_ROLE) notInReshufflingMode {
-        require(status == VaultStatus.Idle, IncorrectStatus());
+        require(status == VaultStatus.Idle, IncorrectVaultStatus());
 
         DepositBatchProcessingLocalVars memory vars;
         vars.totalBatchDepositAmount = bufferedDeposits;
@@ -525,7 +528,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         for (uint256 i = 0; i < vars.containersNumber; ++i) {
             address container = _containers.at(i);
             uint256 containerWeight = containerWeights[container];
-            require(containerWeight > 0, ContainerWeightZero(container));
+            require(containerWeight > 0, ZeroContainerWeight(container));
 
             vars.containerAmount = vars.undistributedNotionAmount.mulDiv(containerWeight, vars.undistributedWeight);
             require(vars.containerAmount > 0, IncorrectContainerAmount(container));
@@ -544,7 +547,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function skipDepositBatch() external onlyRole(OPERATOR_ROLE) {
-        require(status == VaultStatus.Idle, IncorrectBatchStatus());
+        require(status == VaultStatus.Idle, IncorrectVaultStatus());
         require(totalSupply() > 0, CannotSkipBatchInEmptyVault());
         uint256 bufferedDepositsCached = bufferedDeposits;
         require(bufferedDepositsCached < minDepositBatchSize, CannotSkipBatch());
@@ -560,14 +563,14 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function reportDeposit(ContainerReport calldata report, uint256 notionRemainder) external onlyContainer {
-        require(status == VaultStatus.DepositBatchProcessingStarted, IncorrectStatus());
+        require(status == VaultStatus.DepositBatchProcessingStarted, IncorrectVaultStatus());
         require(report.nav1 >= report.nav0, IncorrectReport());
 
         (, uint256 containerIndex) = _containers.indexOf(msg.sender);
         uint256 mask = 1 << containerIndex;
         uint256 reportBitmask = _depositReportBitmask;
 
-        require(reportBitmask & mask == 0, ContainerAlreadyReported());
+        require(reportBitmask & mask == 0, ContainerAlreadyReported(msg.sender));
 
         uint256 previousBatchId = depositBatchId - 1;
 
@@ -585,7 +588,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function resolveDepositBatch() external onlyRole(OPERATOR_ROLE) {
-        require(status == VaultStatus.DepositBatchProcessingStarted, IncorrectBatchStatus());
+        require(status == VaultStatus.DepositBatchProcessingStarted, IncorrectVaultStatus());
         require(isDepositReportComplete(), MissingContainerReport());
 
         ResolveDepositBatchLocalVars memory vars;
@@ -632,12 +635,12 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function startWithdrawBatchProcessing() external onlyRole(OPERATOR_ROLE) notInReshufflingMode {
-        require(status == VaultStatus.DepositBatchProcessingFinished, IncorrectBatchStatus());
+        require(status == VaultStatus.DepositBatchProcessingFinished, IncorrectVaultStatus());
         WithdrawBatchProcessingLocalVars memory vars;
 
         vars.bufferedSharesToWithdrawCached = bufferedSharesToWithdraw;
         vars.batchSharesPercent = _calculateSharesPercent(vars.bufferedSharesToWithdrawCached);
-        require(vars.batchSharesPercent >= minWithdrawBatchRatio, NotEnoughSharesWithdrawn());
+        require(vars.batchSharesPercent >= minWithdrawBatchRatio, NotEnoughSharesWithdrawn(vars.batchSharesPercent));
 
         status = VaultStatus.WithdrawBatchProcessingStarted;
         vars.batchId = withdrawBatchId++;
@@ -653,7 +656,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function skipWithdrawBatch() external onlyRole(OPERATOR_ROLE) {
-        require(status == VaultStatus.DepositBatchProcessingFinished, IncorrectBatchStatus());
+        require(status == VaultStatus.DepositBatchProcessingFinished, IncorrectVaultStatus());
         uint256 bufferedSharesToWithdrawCached = bufferedSharesToWithdraw;
         uint256 batchSharesPercent = _calculateSharesPercent(bufferedSharesToWithdrawCached);
         require(batchSharesPercent < minWithdrawBatchRatio, CannotSkipBatch());
@@ -669,14 +672,14 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function reportWithdraw(uint256 notionAmount) external onlyContainer {
-        require(status == VaultStatus.WithdrawBatchProcessingStarted, IncorrectBatchStatus());
+        require(status == VaultStatus.WithdrawBatchProcessingStarted, IncorrectVaultStatus());
         require(notionAmount > 0, IncorrectReport());
 
         (, uint256 containerIndex) = _containers.indexOf(msg.sender);
 
         uint256 mask = 1 << containerIndex;
         uint256 reportBitmask = _withdrawReportBitmask;
-        require(reportBitmask & mask == 0, ContainerAlreadyReported());
+        require(reportBitmask & mask == 0, ContainerAlreadyReported(msg.sender));
 
         _withdrawReportBitmask = reportBitmask | mask;
         uint256 previousBatchId = withdrawBatchId - 1;
@@ -690,7 +693,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function resolveWithdrawBatch() external onlyRole(OPERATOR_ROLE) {
-        require(status == VaultStatus.WithdrawBatchProcessingStarted, IncorrectBatchStatus());
+        require(status == VaultStatus.WithdrawBatchProcessingStarted, IncorrectVaultStatus());
         require(isWithdrawReportComplete(), MissingContainerReport());
 
         status = VaultStatus.Idle;

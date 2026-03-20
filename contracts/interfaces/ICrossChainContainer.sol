@@ -6,6 +6,13 @@ import {IContainer} from "./IContainer.sol";
 interface ICrossChainContainer is IContainer {
     // ---- Structs ----
 
+    struct CrossChainContainerInitParams {
+        address messageRouter;
+        uint256 remoteChainId;
+        address messengerManager;
+        address bridgeAdapterManager;
+    }
+
     struct MessageInstruction {
         address adapter;
         bytes parameters;

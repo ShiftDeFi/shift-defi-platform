@@ -21,6 +21,14 @@ interface IStrategyContainer is IContainer {
         address emergencyManager;
     }
 
+    struct StrategyContainerInitParams {
+        RoleAddresses roleAddresses;
+        address reshufflingGateway;
+        address treasury;
+        uint256 feePct;
+        address priceOracle;
+    }
+
     struct NAVReport {
         uint256 nav0;
         uint256 nav1;

@@ -16,14 +16,10 @@ contract MockStrategyContainer is StrategyContainer {
 
     function initialize(
         IContainer.ContainerInitParams memory containerParams,
-        IStrategyContainer.RoleAddresses calldata roleAddresses,
-        address _reshufflingGateway,
-        address _treasury,
-        uint256 _feePct,
-        address _priceOracle
+        StrategyContainerInitParams calldata strategyContainerParams
     ) public initializer {
         __Container_init(containerParams);
-        __StrategyContainer_init(roleAddresses, _reshufflingGateway, _treasury, _feePct, _priceOracle);
+        __StrategyContainer_init(strategyContainerParams);
     }
 
     function craftCurrentBatchType(IStrategyContainer.CurrentBatchType _currentBatchType) external {

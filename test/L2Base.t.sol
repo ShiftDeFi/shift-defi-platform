@@ -89,20 +89,24 @@ abstract contract L2Base is Base {
             abi.encodeWithSelector(
                 ContainerAgent.initialize.selector,
                 containerInitParams,
-                address(messageRouter),
-                REMOTE_CHAIN_ID,
-                IStrategyContainer.RoleAddresses({
-                    strategyManager: roles.strategyManager,
-                    harvestManager: roles.harvestManager,
-                    reshufflingManager: roles.reshufflingManager,
-                    emergencyManager: roles.emergencyManager
+                ICrossChainContainer.CrossChainContainerInitParams({
+                    messageRouter: address(messageRouter),
+                    remoteChainId: REMOTE_CHAIN_ID,
+                    messengerManager: roles.messengerManager,
+                    bridgeAdapterManager: roles.bridgeAdapterManager
                 }),
-                roles.messengerManager,
-                roles.bridgeAdapterManager,
-                address(reshufflingGateway),
-                treasury,
-                DEFAULT_FEE_PCT,
-                address(priceOracleAggregator)
+                IStrategyContainer.StrategyContainerInitParams({
+                    roleAddresses: IStrategyContainer.RoleAddresses({
+                        strategyManager: roles.strategyManager,
+                        harvestManager: roles.harvestManager,
+                        reshufflingManager: roles.reshufflingManager,
+                        emergencyManager: roles.emergencyManager
+                    }),
+                    reshufflingGateway: address(reshufflingGateway),
+                    treasury: treasury,
+                    feePct: DEFAULT_FEE_PCT,
+                    priceOracle: address(priceOracleAggregator)
+                })
             )
         );
 

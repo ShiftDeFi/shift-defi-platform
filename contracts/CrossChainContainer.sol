@@ -37,22 +37,17 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
         _;
     }
 
-    function __CrossChainContainer_init(
-        address _messageRouter,
-        uint256 _remoteChainId,
-        address _messengerManager,
-        address _bridgeAdapterManager
-    ) internal onlyInitializing {
-        _setMessageRouter(_messageRouter);
+    function __CrossChainContainer_init(CrossChainContainerInitParams calldata params) internal onlyInitializing {
+        _setMessageRouter(params.messageRouter);
 
-        require(_remoteChainId > 0, Errors.IncorrectChainId(_remoteChainId));
-        remoteChainId = _remoteChainId;
+        require(params.remoteChainId > 0, Errors.IncorrectChainId(params.remoteChainId));
+        remoteChainId = params.remoteChainId;
 
-        require(_messengerManager != address(0), Errors.ZeroAddress());
-        require(_bridgeAdapterManager != address(0), Errors.ZeroAddress());
+        require(params.messengerManager != address(0), Errors.ZeroAddress());
+        require(params.bridgeAdapterManager != address(0), Errors.ZeroAddress());
 
-        _grantRole(MESSENGER_MANAGER_ROLE, _messengerManager);
-        _grantRole(BRIDGE_ADAPTER_MANAGER_ROLE, _bridgeAdapterManager);
+        _grantRole(MESSENGER_MANAGER_ROLE, params.messengerManager);
+        _grantRole(BRIDGE_ADAPTER_MANAGER_ROLE, params.bridgeAdapterManager);
     }
 
     // ---- Messaging logic ----

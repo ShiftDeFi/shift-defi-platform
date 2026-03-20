@@ -31,19 +31,12 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
 
     function initialize(
         ContainerInitParams calldata containerParams,
-        address _messageRouter,
-        uint256 _remoteChainId,
-        RoleAddresses calldata roleAddresses,
-        address _messengerManager,
-        address _bridgeAdapterManager,
-        address _reshufflingGateway,
-        address _treasury,
-        uint256 _feePct,
-        address _priceOracle
+        CrossChainContainerInitParams calldata crossChainContainerParams,
+        StrategyContainerInitParams calldata strategyContainerParams
     ) public initializer {
         __Container_init(containerParams);
-        __CrossChainContainer_init(_messageRouter, _remoteChainId, _messengerManager, _bridgeAdapterManager);
-        __StrategyContainer_init(roleAddresses, _reshufflingGateway, _treasury, _feePct, _priceOracle);
+        __CrossChainContainer_init(crossChainContainerParams);
+        __StrategyContainer_init(strategyContainerParams);
     }
 
     // ---- Strategy management logic ----

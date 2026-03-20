@@ -63,27 +63,21 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         _;
     }
 
-    function __StrategyContainer_init(
-        RoleAddresses calldata roleAddresses,
-        address _reshufflingGateway,
-        address _treasury,
-        uint256 _feePct,
-        address _priceOracle
-    ) internal onlyInitializing {
-        require(roleAddresses.strategyManager != address(0), Errors.ZeroAddress());
-        require(roleAddresses.harvestManager != address(0), Errors.ZeroAddress());
-        require(roleAddresses.reshufflingManager != address(0), Errors.ZeroAddress());
-        require(roleAddresses.emergencyManager != address(0), Errors.ZeroAddress());
+    function __StrategyContainer_init(StrategyContainerInitParams memory params) internal onlyInitializing {
+        require(params.roleAddresses.strategyManager != address(0), Errors.ZeroAddress());
+        require(params.roleAddresses.harvestManager != address(0), Errors.ZeroAddress());
+        require(params.roleAddresses.reshufflingManager != address(0), Errors.ZeroAddress());
+        require(params.roleAddresses.emergencyManager != address(0), Errors.ZeroAddress());
 
-        _grantRole(STRATEGY_MANAGER_ROLE, roleAddresses.strategyManager);
-        _grantRole(RESHUFFLING_MANAGER_ROLE, roleAddresses.reshufflingManager);
-        _grantRole(HARVEST_MANAGER_ROLE, roleAddresses.harvestManager);
-        _grantRole(EMERGENCY_MANAGER_ROLE, roleAddresses.emergencyManager);
+        _grantRole(STRATEGY_MANAGER_ROLE, params.roleAddresses.strategyManager);
+        _grantRole(RESHUFFLING_MANAGER_ROLE, params.roleAddresses.reshufflingManager);
+        _grantRole(HARVEST_MANAGER_ROLE, params.roleAddresses.harvestManager);
+        _grantRole(EMERGENCY_MANAGER_ROLE, params.roleAddresses.emergencyManager);
 
-        _setReshufflingGateway(_reshufflingGateway);
-        _setTreasury(_treasury);
-        _setFeePct(_feePct);
-        _setPriceOracle(_priceOracle);
+        _setReshufflingGateway(params.reshufflingGateway);
+        _setTreasury(params.treasury);
+        _setFeePct(params.feePct);
+        _setPriceOracle(params.priceOracle);
     }
 
     // ---- Configuration ----

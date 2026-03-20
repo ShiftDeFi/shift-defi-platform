@@ -37,11 +37,18 @@ interface ISwapRouter {
     event PredefinedSwapParametersUnset(address indexed tokenIn, address indexed tokenOut);
 
     error AdapterNotWhitelisted(address adapter);
-    error NotWhitelistManager(address sender);
-    error SlippageNotMet(uint256 amountOutBefore, uint256 amountOutAfter, uint256 minAmountOut);
+    error SlippageCheckFailed(uint256 amountOutBefore, uint256 amountOutAfter, uint256 minAmountOut);
     error SwapParametersNotSetForTokenPair(address tokenIn, address tokenOut);
 
     // ---- Functions ----
+
+    /**
+     * @notice Preview the amount of output tokens that would be received for a given input amount.
+     * @dev The adapter must be whitelisted.
+     * @param instruction Swap instruction containing adapter, tokens, amounts, and payload.
+     * @return amountOut The amount of output tokens that would be received.
+     */
+    function previewSwap(SwapInstruction memory instruction) external view returns (uint256 amountOut);
 
     /**
      * @notice Executes a token swap based on the provided instruction.

@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import {IContainer} from "contracts/interfaces/IContainer.sol";
 import {ICrossChainContainer} from "contracts/interfaces/ICrossChainContainer.sol";
 
-import {Common} from "contracts/libraries/helpers/Common.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Common} from "contracts/libraries/Common.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {CrossChainContainerBaseTest} from "test/unit/CrossChainContainer/CrossChainContainerBase.t.sol";
 

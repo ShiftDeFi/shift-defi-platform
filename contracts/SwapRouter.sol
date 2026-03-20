@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {ISwapAdapter} from "./interfaces/ISwapAdapter.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {ISwapAdapter} from "./interfaces/ISwapAdapter.sol";
+import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
+
+import {Errors} from "./libraries/Errors.sol";
 
 contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, ISwapRouter {
     using SafeERC20 for IERC20;
@@ -19,12 +20,6 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
     mapping(address => bool) public whitelistedAdapters;
     mapping(address => mapping(address => PredefinedSwapParameters)) public predefinedSwapParameters;
 
-    modifier onlyWhitelistManager() {
-        // onlyrole
-        require(hasRole(WHITELIST_MANAGER_ROLE, msg.sender), NotWhitelistManager(msg.sender));
-        _;
-    }
-
     constructor() {
         _disableInitializers();
     }
@@ -33,22 +28,28 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
      * @notice Initializes the SwapRouter contract.
      * @dev Sets up access control and grants DEFAULT_ADMIN_ROLE to the default admin.
      * @param defaultAdmin The address to receive DEFAULT_ADMIN_ROLE.
+     * @param whitelistManager The address to receive WHITELIST_MANAGER_ROLE.
      */
-    function initialize(address defaultAdmin) external initializer {
-        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
+    function initialize(address defaultAdmin, address whitelistManager) external initializer {
         __AccessControl_init();
         __ReentrancyGuard_init();
+
+        require(whitelistManager != address(0), Errors.ZeroAddress());
+        require(defaultAdmin != address(0), Errors.ZeroAddress());
+
+        _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
+        _grantRole(WHITELIST_MANAGER_ROLE, whitelistManager);
     }
 
     /// @inheritdoc ISwapRouter
-    function whitelistSwapAdapter(address adapter) external onlyWhitelistManager {
+    function whitelistSwapAdapter(address adapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
         require(!whitelistedAdapters[adapter], Errors.AlreadyWhitelisted());
         whitelistedAdapters[adapter] = true;
         emit SwapAdapterWhitelisted(adapter);
     }
 
     /// @inheritdoc ISwapRouter
-    function blacklistSwapAdapter(address adapter) external onlyWhitelistManager {
+    function blacklistSwapAdapter(address adapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
         require(whitelistedAdapters[adapter], Errors.AlreadyBlacklisted());
         whitelistedAdapters[adapter] = false;
         emit SwapAdapterBlacklisted(adapter);
@@ -60,7 +61,7 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
         address tokenOut,
         address adapter,
         bytes calldata payload
-    ) external onlyWhitelistManager {
+    ) external onlyRole(WHITELIST_MANAGER_ROLE) {
         require(tokenIn != address(0), Errors.ZeroAddress());
         require(tokenOut != address(0), Errors.ZeroAddress());
         require(adapter != address(0), Errors.ZeroAddress());
@@ -70,7 +71,10 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
     }
 
     /// @inheritdoc ISwapRouter
-    function unsetPredefinedSwapParameters(address tokenIn, address tokenOut) external onlyWhitelistManager {
+    function unsetPredefinedSwapParameters(
+        address tokenIn,
+        address tokenOut
+    ) external onlyRole(WHITELIST_MANAGER_ROLE) {
         require(
             predefinedSwapParameters[tokenIn][tokenOut].adapter != address(0),
             SwapParametersNotSetForTokenPair(tokenIn, tokenOut)
@@ -106,13 +110,27 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
         );
     }
 
+    // @inheritrdoc ISwapRouter
+    function previewSwap(SwapInstruction memory instruction) external view returns (uint256) {
+        require(whitelistedAdapters[instruction.adapter], AdapterNotWhitelisted(instruction.adapter));
+        return
+            ISwapAdapter(instruction.adapter).previewSwap(
+                instruction.tokenIn,
+                instruction.tokenOut,
+                instruction.amountIn,
+                instruction.payload
+            );
+    }
+
     /// @inheritdoc ISwapRouter
     function swap(SwapInstruction memory instruction) public payable nonReentrant returns (uint256) {
         require(whitelistedAdapters[instruction.adapter], AdapterNotWhitelisted(instruction.adapter));
 
-        IERC20(instruction.tokenIn).safeTransferFrom(msg.sender, address(this), instruction.amountIn);
-        IERC20(instruction.tokenIn).forceApprove(instruction.adapter, instruction.amountIn);
         uint256 amountOutBefore = IERC20(instruction.tokenOut).balanceOf(address(this));
+
+        IERC20(instruction.tokenIn).safeTransferFrom(msg.sender, address(this), instruction.amountIn);
+        IERC20(instruction.tokenIn).safeIncreaseAllowance(instruction.adapter, instruction.amountIn);
+
         ISwapAdapter(instruction.adapter).swap(
             instruction.tokenIn,
             instruction.tokenOut,
@@ -125,7 +143,7 @@ contract SwapRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardU
         uint256 deltaTokenOut = amountOutAfter - amountOutBefore;
         require(
             deltaTokenOut >= instruction.minAmountOut,
-            SlippageNotMet(amountOutBefore, amountOutAfter, instruction.minAmountOut)
+            SlippageCheckFailed(amountOutBefore, amountOutAfter, instruction.minAmountOut)
         );
 
         IERC20(instruction.tokenOut).safeTransfer(msg.sender, deltaTokenOut);

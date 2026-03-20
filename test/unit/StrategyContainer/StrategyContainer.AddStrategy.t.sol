@@ -4,8 +4,9 @@ pragma solidity ^0.8.0;
 import {StrategyContainerBaseTest} from "test/unit/StrategyContainer/StrategyContainerBase.t.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {IContainer} from "contracts/interfaces/IContainer.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 import {MockStrategyInterfaceBased} from "test/mocks/MockStrategyInterfaceBased.sol";
+import {MockStrategy} from "test/mocks/MockStrategy.sol";
 
 contract StrategyContainerAddStrategyTest is StrategyContainerBaseTest {
     function test_AddStrategies() public {
@@ -102,5 +103,24 @@ contract StrategyContainerAddStrategyTest is StrategyContainerBaseTest {
         address[] memory strategyOutputTokens = _createTokensArray(address(notion));
         vm.expectRevert(Errors.ZeroAddress.selector);
         strategyContainer.addStrategy(address(0), strategyInputTokens, strategyOutputTokens);
+    }
+
+    function test_AddStrategy_AfterStrategyIsRemoved() public {
+        MockStrategy strategy = _deployMockStrategy(address(strategyContainer));
+        address[] memory strategyInputTokens = _createTokensArray(address(notion));
+        address[] memory strategyOutputTokens = _createTokensArray(address(notion));
+        vm.prank(roles.strategyManager);
+        strategyContainer.addStrategy(address(strategy), strategyInputTokens, strategyOutputTokens);
+
+        vm.prank(roles.strategyManager);
+        strategyContainer.removeStrategy(address(strategy));
+        vm.prank(roles.strategyManager);
+        strategyContainer.addStrategy(address(strategy), strategyInputTokens, strategyOutputTokens);
+
+        assertEq(
+            strategyContainer.isStrategy(address(strategy)),
+            true,
+            "test_AddStrategy_AfterStrategyIsRemoved: Strategy not added"
+        );
     }
 }

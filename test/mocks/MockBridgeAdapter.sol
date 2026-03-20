@@ -6,7 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {BridgeAdapter} from "contracts/BridgeAdapter.sol";
 import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
-import {RingCacheLibrary} from "contracts/libraries/helpers/RingCacheLibrary.sol";
+import {RingCacheLibrary} from "contracts/libraries/RingCacheLibrary.sol";
 
 contract MockBridgeAdapter is BridgeAdapter {
     using SafeERC20 for IERC20;
@@ -14,8 +14,12 @@ contract MockBridgeAdapter is BridgeAdapter {
 
     uint256 constant MAX_CACHE_SIZE = 8;
 
-    function initialize(address defaultAdmin, address governance) public initializer {
-        __BridgeAdapter_init(defaultAdmin, governance, MAX_CACHE_SIZE);
+    function initialize(
+        address _defaultAdmin,
+        address _bridgeAdapterManager,
+        uint256 _slippageCapPct
+    ) public initializer {
+        __BridgeAdapter_init(_defaultAdmin, _bridgeAdapterManager, _slippageCapPct, MAX_CACHE_SIZE);
     }
 
     function finalizeBridge(address claimer, address token, uint256 amount) public {

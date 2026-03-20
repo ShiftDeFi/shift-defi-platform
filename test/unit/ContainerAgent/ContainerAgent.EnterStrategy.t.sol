@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {IContainerAgent} from "contracts/interfaces/IContainerAgent.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {ContainerAgentBaseTest} from "./ContainerAgentBase.t.sol";
 
@@ -236,6 +236,25 @@ contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.DepositRequestReceived);
 
         vm.expectRevert(Errors.IncorrectContainerStatus.selector);
+        vm.prank(roles.operator);
+        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+    }
+
+    function test_RevertIf_EnterStrategyMultiple_InvalidArrayLength() public {
+        address[] memory strategies = new address[](0);
+        uint256[][] memory inputAmountsMultiple = new uint256[][](0);
+        uint256[] memory minNavDelta = new uint256[](0);
+
+        vm.expectRevert(Errors.InvalidArrayLength.selector);
+        vm.prank(roles.operator);
+        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+
+        uint256 strategiesNumber = containerAgent.getStrategiesNumber();
+        strategies = new address[](strategiesNumber + 1);
+        inputAmountsMultiple = new uint256[][](strategiesNumber + 1);
+        minNavDelta = new uint256[](strategiesNumber + 1);
+
+        vm.expectRevert(Errors.InvalidArrayLength.selector);
         vm.prank(roles.operator);
         containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
     }

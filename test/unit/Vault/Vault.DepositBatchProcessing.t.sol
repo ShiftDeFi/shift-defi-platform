@@ -19,7 +19,12 @@ contract VaultDepositBatchProcessingTest is L1Base {
         stdstore.target(address(vault)).sig(vault.status.selector).checked_write(
             uint256(IVault.VaultStatus.DepositBatchProcessingStarted)
         );
-        vm.expectRevert(IVault.IncorrectStatus.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVault.IncorrectVaultStatus.selector,
+                IVault.VaultStatus.DepositBatchProcessingStarted
+            )
+        );
         vm.prank(roles.operator);
         vault.startDepositBatchProcessing();
     }
@@ -43,15 +48,15 @@ contract VaultDepositBatchProcessingTest is L1Base {
 
     function test_RevertIf_StartDepositBatch_ContainerWeightIsZero() public {
         IContainerPrincipal container = _deployMockContainerPrincipal();
-        _addContainer(address(container));
+        _addContainer(address(container), REMOTE_CHAIN_ID);
 
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
-        _addContainer(address(container2));
+        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
 
         uint256 depositAmount = MIN_DEPOSIT_BATCH_SIZE * NOTION_PRECISION;
         _deposit(users.alice, depositAmount);
 
-        vm.expectRevert(abi.encodeWithSelector(IVault.ContainerWeightZero.selector, address(container2)));
+        vm.expectRevert(abi.encodeWithSelector(IVault.ZeroContainerWeight.selector, address(container2)));
         vm.prank(roles.operator);
         vault.startDepositBatchProcessing();
     }
@@ -59,7 +64,7 @@ contract VaultDepositBatchProcessingTest is L1Base {
     function test_StartDepositBatch() public {
         uint256 previousDepositBatchId = vault.depositBatchId();
         IContainerPrincipal container = _deployMockContainerPrincipal();
-        _addContainer(address(container));
+        _addContainer(address(container), REMOTE_CHAIN_ID);
 
         uint256 depositAmount = MIN_DEPOSIT_BATCH_SIZE * NOTION_PRECISION;
         _deposit(users.alice, depositAmount);
@@ -93,9 +98,9 @@ contract VaultDepositBatchProcessingTest is L1Base {
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
         IContainerPrincipal container3 = _deployMockContainerPrincipal();
 
-        _addContainer(address(container1));
-        _addContainer(address(container2));
-        _addContainer(address(container3));
+        _addContainer(address(container1), REMOTE_CHAIN_ID);
+        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
+        _addContainer(address(container3), REMOTE_CHAIN_ID + 2);
 
         uint256 containersCount = 3;
 
@@ -180,7 +185,12 @@ contract VaultDepositBatchProcessingTest is L1Base {
         stdstore.target(address(vault)).sig(vault.status.selector).checked_write(
             uint256(IVault.VaultStatus.DepositBatchProcessingStarted)
         );
-        vm.expectRevert(IVault.IncorrectBatchStatus.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVault.IncorrectVaultStatus.selector,
+                IVault.VaultStatus.DepositBatchProcessingStarted
+            )
+        );
         vm.prank(roles.operator);
         vault.skipDepositBatch();
     }

@@ -6,14 +6,14 @@ interface ICustomOracleWrapper {
 
     /**
      * @notice Grants FEEDER_ROLE to an address, allowing it to submit prices.
-     * @dev Can only be called by accounts with GOVERNANCE_ROLE.
+     * @dev Can only be called by accounts with ORACLE_MANAGER_ROLE.
      * @param feeder The address to grant FEEDER_ROLE to.
      */
     function whitelistFeeder(address feeder) external;
 
     /**
      * @notice Revokes FEEDER_ROLE from an address, preventing it from submitting prices.
-     * @dev Can only be called by accounts with GOVERNANCE_ROLE.
+     * @dev Can only be called by accounts with ORACLE_MANAGER_ROLE.
      * @param feeder The address to revoke FEEDER_ROLE from.
      */
     function blacklistFeeder(address feeder) external;

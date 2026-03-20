@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 import {StrategyStateLib} from "contracts/libraries/StrategyStateLib.sol";
 
 import {StrategyTemplateBaseTest} from "./StrategyTemplateBase.t.sol";
@@ -95,7 +95,7 @@ contract StrategyTemplateStatesTest is StrategyTemplateBaseTest {
         bool isProtocolState = false;
         bool isTokenState = false;
 
-        vm.expectRevert(Errors.IncorrectInput.selector);
+        vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.IncorrectStateId.selector, NO_ALLOCATION_STATE_ID));
         strategy.setState(NO_ALLOCATION_STATE_ID, isTargetState, isProtocolState, isTokenState, STARTING_HEIGHT);
     }
 

@@ -1,21 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
-import {StrategyStateLib} from "./libraries/StrategyStateLib.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
-import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
-import {IStrategyTemplate} from "./interfaces/IStrategyTemplate.sol";
 import {IContainer} from "./interfaces/IContainer.sol";
 import {IPriceOracleAggregator} from "./interfaces/IPriceOracleAggregator.sol";
+import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
+import {IStrategyTemplate} from "./interfaces/IStrategyTemplate.sol";
+import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
+
+import {Errors} from "./libraries/Errors.sol";
+import {StrategyStateLib} from "./libraries/StrategyStateLib.sol";
 
 abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable, IStrategyTemplate {
     using SafeERC20 for IERC20;
@@ -117,19 +118,22 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
      * @param strategyContainer Address of the strategy container.
      */
     function __StrategyTemplate_init(address strategyContainer) internal onlyInitializing {
+        __ReentrancyGuard_init();
+
         require(strategyContainer != address(0), Errors.ZeroAddress());
         address notion = IContainer(strategyContainer).notion();
         require(notion != address(0), Errors.ZeroAddress());
 
         _strategyContainer = strategyContainer;
         _notion = notion;
-
-        __ReentrancyGuard_init();
     }
 
     /// @inheritdoc IStrategyTemplate
     function setInputTokens(address[] calldata inputTokens) external onlyStrategyContainer {
         require(inputTokens.length > 0, Errors.ZeroArrayLength());
+        while (_inputTokens.length() > 0) {
+            _inputTokens.remove(_inputTokens.at(0));
+        }
         for (uint256 i = 0; i < inputTokens.length; ++i) {
             require(inputTokens[i] != address(0), Errors.ZeroAddress());
             require(_inputTokens.add(inputTokens[i]), Errors.TokenAlreadySet(inputTokens[i]));
@@ -140,6 +144,9 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     /// @inheritdoc IStrategyTemplate
     function setOutputTokens(address[] calldata outputTokens) external onlyStrategyContainer {
         require(outputTokens.length > 0, Errors.ZeroArrayLength());
+        while (_outputTokens.length() > 0) {
+            _outputTokens.remove(_outputTokens.at(0));
+        }
         for (uint256 i = 0; i < outputTokens.length; ++i) {
             require(outputTokens[i] != address(0), Errors.ZeroAddress());
             require(_outputTokens.add(outputTokens[i]), Errors.TokenAlreadySet(outputTokens[i]));
@@ -154,7 +161,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         bool isTokenState,
         uint8 height
     ) internal {
-        require(stateId != NO_ALLOCATION_STATE_ID, Errors.IncorrectInput());
+        require(stateId != NO_ALLOCATION_STATE_ID, IncorrectStateId(stateId));
         _stateBitmasks[stateId] = StrategyStateLib.createState(isTargetState, isProtocolState, isTokenState, height);
         if (isTargetState) {
             require(_targetStateId == bytes32(0), TargetStateAlreadySet());
@@ -168,7 +175,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         uint256[] calldata amounts,
         uint256 minNavDelta
     ) external payable onlyStrategyContainer nonReentrant returns (uint256, bool, uint256[] memory) {
-        EnterLocalVars memory vars = _enter(amounts, minNavDelta, true);
+        EnterLocalVars memory vars = _enter(amounts, minNavDelta);
         return (vars.stateToNavAfterEnter, vars.hasRemainder, vars.remainingAmounts);
     }
 
@@ -176,11 +183,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         _enterToState(stateId, minNavDelta);
     }
 
-    function _enter(
-        uint256[] memory amounts,
-        uint256 minNavDelta,
-        bool needPrepareForAgent
-    ) private returns (EnterLocalVars memory) {
+    function _enter(uint256[] memory amounts, uint256 minNavDelta) private returns (EnterLocalVars memory) {
         EnterLocalVars memory vars;
 
         vars.currentStateId = _currentStateId;
@@ -217,9 +220,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
             emit StateUpdated(vars.currentStateId, vars.enterStateId, vars.enterStateBitmask);
         }
 
-        if (needPrepareForAgent) {
-            (vars.remainingAmounts, vars.hasRemainder) = _prepareFundsAfterEnter();
-        }
+        (vars.remainingAmounts, vars.hasRemainder) = _prepareFundsAfterEnter();
 
         emit Entered(vars.stateToNavBeforeEnter, vars.stateToNavAfterEnter, vars.hasRemainder);
 
@@ -229,15 +230,19 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     function _enterToState(bytes32 toStateId, uint256 minNavDelta) private {
         EnterToStateLocalVars memory vars;
 
-        require(toStateId != NO_ALLOCATION_STATE_ID, Errors.IncorrectInput());
+        vars.currentStateId = _currentStateId;
+
+        require(toStateId != NO_ALLOCATION_STATE_ID, IncorrectStateId(vars.currentStateId));
         require(_stateIds.contains(toStateId), StateNotFound(toStateId));
 
-        vars.currentStateId = _currentStateId;
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.toStateBitmask = _stateBitmasks[toStateId];
 
-        require(vars.toStateBitmask != 0, Errors.ZeroAmount());
-        require(vars.toStateBitmask.height() >= vars.currentStateBitmask.height(), Errors.IncorrectInput());
+        require(vars.toStateBitmask != 0, StateHasZeroBitmask(toStateId));
+        require(
+            vars.toStateBitmask.height() >= vars.currentStateBitmask.height(),
+            CannotEnterStateWithLowerHeight(toStateId, vars.currentStateId)
+        );
 
         if (vars.currentStateId != toStateId) {
             _currentStateId = toStateId;
@@ -302,7 +307,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.outputTokens = _outputTokens.values();
         vars.currentStateNavBeforeExit = stateNav(vars.currentStateId);
         vars.amountsBeforeExit = _tokensAmountsDump(vars.outputTokens, MAX_BPS);
-        require(vars.currentStateId != NO_ALLOCATION_STATE_ID, ExitUnavailable());
+        require(vars.currentStateId != NO_ALLOCATION_STATE_ID, CannotExitFromNoAllocationState());
 
         if (share == MAX_BPS) {
             _currentStateId = NO_ALLOCATION_STATE_ID;
@@ -341,7 +346,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.treasury = IStrategyContainer(_strategyContainer).treasury();
         vars.feePct = IStrategyContainer(_strategyContainer).feePct();
 
-        require(vars.treasury != address(0), Errors.ZeroAddress());
+        require(vars.treasury != address(0), TreasuryNotSet());
 
         _harvest(vars.currentStateId, vars.treasury, vars.feePct);
         vars.currentStateNav = stateNav(vars.currentStateId);
@@ -352,18 +357,25 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     /// @inheritdoc IStrategyTemplate
     function emergencyExit(
         bytes32 toStateId,
-        uint256 share
+        uint256 share,
+        uint256 minNavDelta
     ) public payable onlyStrategyContainerOrEmergencyManager nonReentrant {
         require(share > 0 && share <= MAX_BPS, Errors.IncorrectAmount());
         require(_stateIds.contains(toStateId), StateNotFound(toStateId));
 
         EmergencyExitLocalVars memory vars;
         vars.currentStateId = _currentStateId;
+        require(vars.currentStateId != toStateId, AlreadyInState(toStateId));
+
+        vars.toStateNavBeforeExit = stateNav(toStateId);
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.toStateBitmask = _stateBitmasks[toStateId];
 
-        require(vars.toStateBitmask != 0, Errors.ZeroAmount());
-        require(vars.toStateBitmask.height() <= vars.currentStateBitmask.height(), Errors.IncorrectInput());
+        require(vars.toStateBitmask != 0, StateHasZeroBitmask(toStateId));
+        require(
+            vars.toStateBitmask.height() <= vars.currentStateBitmask.height(),
+            CannotExitToStateWithHigherHeight(toStateId, vars.currentStateId)
+        );
 
         IStrategyContainer(_strategyContainer).startEmergencyResolution();
 
@@ -374,22 +386,18 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         (vars.isExitSuccess, returnData) = address(this).call(
             abi.encodeWithSelector(this.tryEmergencyExit.selector, toStateId, share)
         );
+
+        vars.toStateNavAfterExit = stateNav(toStateId);
+        require(
+            vars.toStateNavAfterExit >= vars.toStateNavBeforeExit + minNavDelta,
+            SlippageCheckFailed(vars.toStateNavBeforeExit, vars.toStateNavAfterExit, minNavDelta)
+        );
+
         // Silently ignore return data - emergency exit failure is handled by isExitSuccess flag
         if (vars.isExitSuccess) {
             emit EmergencyExitSucceeded(toStateId);
         } else {
             emit EmergencyExitFailed(toStateId);
-        }
-    }
-
-    /// @inheritdoc IStrategyTemplate
-    function emergencyExitMultiple(
-        bytes32[] calldata toStateIds,
-        uint256[] calldata shares
-    ) external payable onlyStrategyContainerOrEmergencyManager {
-        require(toStateIds.length == shares.length, Errors.ArrayLengthMismatch());
-        for (uint256 i = 0; i < toStateIds.length; ++i) {
-            emergencyExit(toStateIds[i], shares[i]);
         }
     }
 
@@ -492,7 +500,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         uint256 minAmountOut,
         bool mustSucceed
     ) internal virtual {
-        require(_inputTokens.contains(tokenOut), Errors.Unauthorized());
+        require(_inputTokens.contains(tokenOut), TokenNotFound(tokenOut));
         uint256 amountIn = IERC20(tokenIn).balanceOf(address(this));
         if (amountIn == 0) {
             return;

@@ -4,22 +4,19 @@ pragma solidity ^0.8.0;
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 import {IPriceOracleAggregator} from "contracts/interfaces/IPriceOracleAggregator.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {L1Base} from "test/L1Base.t.sol";
 import {MockPriceOracle} from "test/mocks/MockPriceOracle.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 
 contract PriceOracleAggregatorTest is L1Base {
-    IPriceOracleAggregator internal priceOracleAggregator;
-
     MockPriceOracle internal mockPriceOracle;
     MockERC20 internal token0;
     MockERC20 internal token1;
 
     function setUp() public override {
         super.setUp();
-        priceOracleAggregator = _deployPriceOracleAggregator();
         mockPriceOracle = new MockPriceOracle(8);
         token0 = new MockERC20("Token0", "TKN0", 18);
         token1 = new MockERC20("Token1", "TKN1", 6);

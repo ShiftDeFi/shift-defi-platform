@@ -6,7 +6,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IContainerAgent} from "contracts/interfaces/IContainerAgent.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {ContainerAgentBaseTest} from "./ContainerAgentBase.t.sol";
 
@@ -277,6 +277,23 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
         _toggleReshufflingMode(true);
 
         vm.expectRevert(IStrategyContainer.ActionUnavailableInReshufflingMode.selector);
+        vm.prank(roles.operator);
+        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+    }
+
+    function test_RevertIf_ExitStrategyMultiple_InvalidArrayLength() public {
+        address[] memory strategies = new address[](0);
+        uint256[] memory maxNavDeltas = new uint256[](0);
+
+        vm.expectRevert(Errors.InvalidArrayLength.selector);
+        vm.prank(roles.operator);
+        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+
+        uint256 strategiesNumber = containerAgent.getStrategiesNumber();
+        strategies = new address[](strategiesNumber + 1);
+        maxNavDeltas = new uint256[](strategiesNumber + 1);
+
+        vm.expectRevert(Errors.InvalidArrayLength.selector);
         vm.prank(roles.operator);
         containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
     }

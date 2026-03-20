@@ -9,6 +9,8 @@ interface ICrossChainContainer is IContainer {
     struct CrossChainContainerInitParams {
         address messageRouter;
         uint256 remoteChainId;
+        address messengerManager;
+        address bridgeAdapterManager;
     }
 
     struct MessageInstruction {
@@ -30,7 +32,6 @@ interface ICrossChainContainer is IContainer {
     event TokenClaimed(address token, uint256 amount);
     event BridgeAdapterUpdated(address bridgeAdapter, bool isSupported);
     event PeerContainerUpdated(address previousPeerContainer, address newPeerContainer);
-    event RemoteChainIdUpdated(uint256 previousRemoteChainId, uint256 newRemoteChainId);
     event BridgeSent(address token, uint256 amount, address bridgeAdapter, address bridgeTo);
 
     // ---- Errors ----
@@ -42,8 +43,7 @@ interface ICrossChainContainer is IContainer {
     error BridgeAdapterNotSupported();
     error SameBridgeAdapterStatus();
     error PeerContainerAlreadySet();
-    error RemoteChainIdAlreadySet();
-    error InvalidDecimals();
+    error InvalidBridgeInstructionSlippage(uint256 minTokenAmount, uint256 minAllowedAmount);
     error BridgeSlippageExceeded(uint256 expected, uint256 received);
     error RemoteChainIdNotSet();
     error PeerContainerNotSet();

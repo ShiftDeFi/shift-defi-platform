@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {CrossChainContainer} from "./CrossChainContainer.sol";
-import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
-import {IContainerPrincipal} from "./interfaces/IContainerPrincipal.sol";
-import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
+
 import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
+import {IContainerPrincipal} from "./interfaces/IContainerPrincipal.sol";
+import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
 import {IMessageRouter} from "./interfaces/IMessageRouter.sol";
+import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 import {IVault} from "./interfaces/IVault.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
+
 import {Codec} from "./libraries/Codec.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     using SafeERC20 for IERC20;
@@ -29,9 +31,10 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
 
     function initialize(
         ContainerInitParams memory containerParams,
-        CrossChainContainerInitParams memory crossChainParams
+        CrossChainContainerInitParams calldata crossChainContainerParams
     ) public initializer {
-        __CrossChainContainer_init(containerParams, crossChainParams);
+        __Container_init(containerParams);
+        __CrossChainContainer_init(crossChainContainerParams);
         IERC20(notion).forceApprove(vault, type(uint256).max);
     }
 
@@ -70,7 +73,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         require(status == ContainerPrincipalStatus.DepositRequestRegistered, Errors.IncorrectContainerStatus());
 
         uint256 bridgeInstructionsLength = bridgeInstructions.length;
-        require(bridgeInstructionsLength > 0, Errors.ZeroAmount());
+        require(bridgeInstructionsLength > 0, Errors.ZeroArrayLength());
         require(bridgeAdapters.length == bridgeInstructionsLength, Errors.ArrayLengthMismatch());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
         require(remoteChainId > 0, RemoteChainIdNotSet());
@@ -142,7 +145,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
                 status == ContainerPrincipalStatus.DepositResponseReceived,
             Errors.IncorrectContainerStatus()
         );
-        require(registeredWithdrawShareAmount == 0, Errors.NonZeroAmount());
+
         require(claimCounter == 0, UnclaimedTokens());
         require(_validateWhitelistedTokensBeforeReport(true, true), WhitelistedTokensOnBalance());
 
@@ -168,23 +171,26 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         status = ContainerPrincipalStatus.Idle;
         registeredWithdrawShareAmount = 0;
 
-        IVault(vault).reportWithdraw(IERC20(notion).balanceOf(address(this)));
+        uint256 notionAmount = IERC20(notion).balanceOf(address(this));
+        IVault(vault).reportWithdraw(notionAmount);
 
-        emit WithdrawalReported();
+        emit WithdrawalReported(notionAmount);
     }
 
     // ---- Messaging logic ----
 
     /// @inheritdoc ICrossChainContainer
     function receiveMessage(bytes memory rawMessage) external nonReentrant onlyMessageRouter {
+        ContainerPrincipalStatus statusCached = status;
         require(
-            status == ContainerPrincipalStatus.DepositRequestSent ||
-                status == ContainerPrincipalStatus.WithdrawalRequestSent,
-            Errors.IncorrectContainerStatus()
+            statusCached == ContainerPrincipalStatus.DepositRequestSent ||
+                statusCached == ContainerPrincipalStatus.WithdrawalRequestSent,
+            NotExpectingAnyResponse()
         );
 
         uint8 messageType = Codec.fetchMessageType(rawMessage);
         if (messageType == Codec.DEPOSIT_RESPONSE_TYPE) {
+            require(statusCached == ContainerPrincipalStatus.DepositRequestSent, NotExpectingDepositResponse());
             Codec.DepositResponse memory response = Codec.decodeDepositResponse(rawMessage);
             nav0 = response.navAH;
             nav1 = response.navAE;
@@ -197,6 +203,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         }
 
         if (messageType == Codec.WITHDRAWAL_RESPONSE_TYPE) {
+            require(statusCached == ContainerPrincipalStatus.WithdrawalRequestSent, NotExpectingWithdrawalResponse());
             Codec.WithdrawalResponse memory response = Codec.decodeWithdrawalResponse(rawMessage);
             status = ContainerPrincipalStatus.WithdrawalResponseReceived;
             if (response.tokens.length > 0) {

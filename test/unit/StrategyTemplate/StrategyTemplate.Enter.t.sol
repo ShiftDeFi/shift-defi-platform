@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {StrategyTemplateBaseTest} from "./StrategyTemplateBase.t.sol";
 
@@ -14,21 +14,21 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
         bool stateOneIsTarget = false;
         bool stateOneIsProtocol = false;
         bool stateOneIsToken = true;
-        uint8 stateOneHeight = 0;
+        uint8 stateOneHeight = 1;
 
         strategy.setState(ONE_STATE_ID, stateOneIsTarget, stateOneIsProtocol, stateOneIsToken, stateOneHeight);
 
         bool stateTwoIsTarget = false;
         bool stateTwoIsProtocol = true;
         bool stateTwoIsToken = false;
-        uint8 stateTwoHeight = 1;
+        uint8 stateTwoHeight = 2;
 
         strategy.setState(TWO_STATE_ID, stateTwoIsTarget, stateTwoIsProtocol, stateTwoIsToken, stateTwoHeight);
 
         bool stateThreeIsTarget = true;
         bool stateThreeIsProtocol = true;
         bool stateThreeIsToken = false;
-        uint8 stateThreeHeight = 2;
+        uint8 stateThreeHeight = 3;
 
         strategy.setState(
             THREE_STATE_ID,
@@ -79,7 +79,7 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
             "test_EnterToState_ProtocolState: strategy notion balance should be 0 after enter to protocol state"
         );
         assertEq(
-            notion.balanceOf(address(strategy.mockBuildingBlock())),
+            notion.balanceOf(address(strategy.stateToBuildingBlock(toStateId))),
             DEPOSIT_AMOUNT,
             "test_EnterToState_ProtocolState: mockBuildingBlock notion balance should equal deposit after enter"
         );
@@ -98,16 +98,16 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
             "test_EnterToState_TargetState: strategy notion balance should be 0 after enter to target state"
         );
         assertEq(
-            notion.balanceOf(address(strategy.mockBuildingBlock())),
+            notion.balanceOf(address(strategy.stateToBuildingBlock(toStateId))),
             DEPOSIT_AMOUNT,
-            "test_EnterToState_TargetState: mockBuildingBlock notion balance should equal deposit after enter"
+            "test_EnterToState_TargetState: stateToBuildingBlock notion balance should equal deposit after enter"
         );
     }
 
     function test_RevertIf_EnterToState_NoAllocationStateId() public {
         bytes32 toStateId = NO_ALLOCATION_STATE_ID;
 
-        vm.expectRevert(Errors.IncorrectInput.selector);
+        vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.IncorrectStateId.selector, toStateId));
         _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
     }
 
@@ -125,7 +125,9 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
         _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
 
         toStateId = ONE_STATE_ID;
-        vm.expectRevert(Errors.IncorrectInput.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(IStrategyTemplate.CannotEnterStateWithLowerHeight.selector, toStateId, TWO_STATE_ID)
+        );
         _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
     }
 
@@ -169,7 +171,7 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
             "test_Enter_FromNoAllocationState: strategy notion balance should be 0 after enter to target"
         );
         assertEq(
-            notion.balanceOf(address(strategy.mockBuildingBlock())),
+            notion.balanceOf(address(strategy.stateToBuildingBlock(THREE_STATE_ID))),
             DEPOSIT_AMOUNT,
             "test_Enter_FromNoAllocationState: mockBuildingBlock should hold deposit after enter"
         );
@@ -199,7 +201,7 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
             "test_Enter_FromTargetState: strategyContainer notion balance should be 0 after second enter"
         );
         assertEq(
-            notion.balanceOf(address(strategy.mockBuildingBlock())),
+            notion.balanceOf(address(strategy.stateToBuildingBlock(THREE_STATE_ID))),
             DEPOSIT_AMOUNT * 2,
             "test_Enter_FromTargetState: mockBuildingBlock should hold both deposits after two enters"
         );
@@ -230,7 +232,7 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
             "test_Enter_FromInterimState: strategy notion balance should be 0 after enter"
         );
         assertEq(
-            notion.balanceOf(address(strategy.mockBuildingBlock())),
+            notion.balanceOf(address(strategy.stateToBuildingBlock(toStateId))),
             DEPOSIT_AMOUNT * 2,
             "test_Enter_FromInterimState: mockBuildingBlock should hold both deposits"
         );
@@ -299,7 +301,7 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
             "test_Enter_WithRemainder: strategy should hold remainder amount after enter"
         );
         assertEq(
-            notion.balanceOf(address(strategy.mockBuildingBlock())),
+            notion.balanceOf(address(strategy.stateToBuildingBlock(strategy.MOCK_REMAINDER_STATE_ID()))),
             DEPOSIT_AMOUNT - remainderAmount,
             "test_Enter_WithRemainder: mockBuildingBlock should hold deposit minus remainder"
         );

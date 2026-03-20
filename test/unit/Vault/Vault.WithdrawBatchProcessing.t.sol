@@ -62,7 +62,7 @@ contract VaultWithdrawBatchProcessingTest is VaultBaseTest {
         assertEq(vault.pendingBatchWithdrawals(previousWithdrawBatchId, users.bob), expectedShares / 2);
     }
 
-    function test_RevertIf_StartWithdrawBatchProcessing_IncorrectBatchStatus() public {
+    function test_RevertIf_StartWithdrawBatchProcessing_IncorrectVaultStates() public {
         uint256 withdrawSharesPercent = MAX_BPS / 2;
 
         _giveUserShares(users.alice, WITHDRAW_SHARES_AMOUNT);
@@ -72,8 +72,8 @@ contract VaultWithdrawBatchProcessingTest is VaultBaseTest {
 
         _setVaultStatus(IVault.VaultStatus.Idle);
 
+        vm.expectRevert(abi.encodeWithSelector(IVault.IncorrectVaultStatus.selector, IVault.VaultStatus.Idle));
         vm.prank(roles.operator);
-        vm.expectRevert(IVault.IncorrectBatchStatus.selector);
         vault.startWithdrawBatchProcessing();
     }
 
@@ -91,8 +91,11 @@ contract VaultWithdrawBatchProcessingTest is VaultBaseTest {
         vm.prank(users.alice);
         vault.withdraw(MIN_WITHDRAW_BATCH_RATIO - 1);
 
+        uint256 expectedBatchSharesPercent = (vault.bufferedSharesToWithdraw() * MAX_BPS) /
+            IERC20(address(vault)).totalSupply();
+
         vm.prank(roles.operator);
-        vm.expectRevert(IVault.NotEnoughSharesWithdrawn.selector);
+        vm.expectRevert(abi.encodeWithSelector(IVault.NotEnoughSharesWithdrawn.selector, expectedBatchSharesPercent));
         vault.startWithdrawBatchProcessing();
     }
 
@@ -125,8 +128,13 @@ contract VaultWithdrawBatchProcessingTest is VaultBaseTest {
     function test_RevertIf_SkipWithdrawBatch_BatchNotInIdleStatus() public {
         _setVaultStatus(IVault.VaultStatus.WithdrawBatchProcessingStarted);
 
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVault.IncorrectVaultStatus.selector,
+                IVault.VaultStatus.WithdrawBatchProcessingStarted
+            )
+        );
         vm.prank(roles.operator);
-        vm.expectRevert(IVault.IncorrectBatchStatus.selector);
         vault.skipWithdrawBatch();
     }
 

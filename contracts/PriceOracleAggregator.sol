@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
-import {Common} from "./libraries/helpers/Common.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import {IPriceOracleAggregator} from "./interfaces/IPriceOracleAggregator.sol";
 import {IPriceOracle} from "./interfaces/IPriceOracle.sol";
+import {IPriceOracleAggregator} from "./interfaces/IPriceOracleAggregator.sol";
+
+import {Common} from "./libraries/Common.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 contract PriceOracleAggregator is Initializable, AccessControlUpgradeable, IPriceOracleAggregator {
     using Math for uint256;
@@ -26,6 +27,9 @@ contract PriceOracleAggregator is Initializable, AccessControlUpgradeable, IPric
 
     function initialize(address defaultAdmin, address oracleManager) external initializer {
         __AccessControl_init();
+
+        require(defaultAdmin != address(0), Errors.ZeroAddress());
+        require(oracleManager != address(0), Errors.ZeroAddress());
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(ORACLE_MANAGER_ROLE, oracleManager);

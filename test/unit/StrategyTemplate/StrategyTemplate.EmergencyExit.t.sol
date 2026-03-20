@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 import {MockStrategy} from "test/mocks/MockStrategy.sol";
 
 import {StrategyTemplateBaseTest} from "./StrategyTemplateBase.t.sol";
 
 contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
+    using Math for uint256;
+
     MockStrategy secondStrategy;
     uint256[] inputAmounts;
+    uint256 constant EMERGENCY_EXIT_SLIPPAGE_TOLERANCE = 0.98e18; // 2%
 
     function setUp() public override {
         super.setUp();
@@ -71,14 +75,17 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
 
     function test_EmergencyExit_FullExit() public {
         bytes32 toStateId = TWO_STATE_ID;
+        uint256 exitShare = MAX_BPS;
+
         vm.prank(address(strategyContainer));
         strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
 
         vm.expectEmit();
         emit IStrategyTemplate.EmergencyExitSucceeded(toStateId);
 
+        uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
         vm.prank(address(strategyContainer));
-        strategy.emergencyExit(toStateId, MAX_BPS);
+        strategy.emergencyExit(toStateId, exitShare, minNavDelta);
 
         assertTrue(
             strategyContainer.isResolvingEmergency(),
@@ -96,14 +103,17 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
 
     function test_EmergencyExit_PartialExit() public {
         bytes32 toStateId = TWO_STATE_ID;
+        uint256 exitShare = MAX_BPS / 2;
+
         vm.prank(address(strategyContainer));
         strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
 
         vm.expectEmit();
         emit IStrategyTemplate.EmergencyExitSucceeded(toStateId);
 
+        uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
         vm.prank(address(strategyContainer));
-        strategy.emergencyExit(toStateId, MAX_BPS / 2);
+        strategy.emergencyExit(toStateId, exitShare, minNavDelta);
 
         assertTrue(
             strategyContainer.isResolvingEmergency(),
@@ -121,24 +131,28 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
 
     function test_EmergencyExit_FullExit_Twice() public {
         bytes32 toStateId = TWO_STATE_ID;
+        uint256 exitShare = MAX_BPS;
+
         vm.prank(address(strategyContainer));
         strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
 
         vm.expectEmit();
         emit IStrategyTemplate.EmergencyExitSucceeded(toStateId);
 
+        uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
         vm.prank(address(strategyContainer));
-        strategy.emergencyExit(toStateId, MAX_BPS);
+        strategy.emergencyExit(toStateId, exitShare, minNavDelta);
 
         vm.expectEmit();
         emit IStrategyTemplate.EmergencyExitFailed(toStateId);
 
         vm.prank(address(strategyContainer));
-        strategy.emergencyExit(toStateId, MAX_BPS);
+        strategy.emergencyExit(toStateId, exitShare, 0);
     }
 
     function test_EmergencyExit_MultipleStrategies() public {
         bytes32 toStateId = TWO_STATE_ID;
+        uint256 exitShare = MAX_BPS;
         uint256 bitmaskAfterFirstExit = 1 << 0;
         uint256 bitmaskAfterSecondExit = bitmaskAfterFirstExit | (1 << 1);
 
@@ -147,8 +161,9 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         secondStrategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
         vm.stopPrank();
 
+        uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
         vm.prank(address(strategyContainer));
-        strategy.emergencyExit(toStateId, MAX_BPS);
+        strategy.emergencyExit(toStateId, exitShare, minNavDelta);
 
         uint256 unresolvedNavBitmask = _getStrategyUnresolvedNavBitmask();
         assertEq(
@@ -158,7 +173,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         );
 
         vm.prank(address(strategyContainer));
-        secondStrategy.emergencyExit(toStateId, MAX_BPS);
+        secondStrategy.emergencyExit(toStateId, exitShare, minNavDelta);
 
         unresolvedNavBitmask = _getStrategyUnresolvedNavBitmask();
         assertEq(
@@ -169,28 +184,79 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
     }
 
     function test_RevertIf_EmergencyExit_ShareOutOfBounds() public {
-        vm.prank(address(strategyContainer));
-        vm.expectRevert(Errors.IncorrectAmount.selector);
-        strategy.emergencyExit(TWO_STATE_ID, 0);
+        uint256 exitShare = 0;
 
         vm.prank(address(strategyContainer));
         vm.expectRevert(Errors.IncorrectAmount.selector);
-        strategy.emergencyExit(TWO_STATE_ID, MAX_BPS + 1);
+        strategy.emergencyExit(TWO_STATE_ID, exitShare, 0);
+
+        exitShare = MAX_BPS + 1;
+
+        vm.prank(address(strategyContainer));
+        vm.expectRevert(Errors.IncorrectAmount.selector);
+        strategy.emergencyExit(TWO_STATE_ID, exitShare, 0);
     }
 
     function test_RevertIf_EmergencyExit_StateNotFound() public {
         bytes32 toStateId = bytes32(uint256(100));
+        uint256 exitShare = MAX_BPS;
+
         vm.prank(address(strategyContainer));
         vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.StateNotFound.selector, toStateId));
-        strategy.emergencyExit(toStateId, MAX_BPS);
+        strategy.emergencyExit(toStateId, exitShare, 0);
+    }
+
+    function test_RevertIf_EmergencyExit_AlreadyInState() public {
+        uint256 exitShare = MAX_BPS;
+
+        vm.prank(address(strategyContainer));
+        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+
+        bytes32 toStateId = strategy.currentStateId();
+        vm.prank(address(strategyContainer));
+        vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.AlreadyInState.selector, toStateId));
+        strategy.emergencyExit(toStateId, exitShare, 0);
+    }
+
+    function test_RevertIf_EmergencyExit_SlippageCheckFailed() public {
+        bytes32 toStateId = TWO_STATE_ID;
+        uint256 exitShare = MAX_BPS / 2;
+
+        vm.prank(address(strategyContainer));
+        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+
+        uint256 toStateNavBefore = strategy.stateNav(toStateId);
+        uint256 expectedNavExit = strategy.currentStateNav().mulDiv(exitShare, MAX_BPS);
+        uint256 slippageNavDelta = expectedNavExit + 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IStrategyTemplate.SlippageCheckFailed.selector,
+                toStateNavBefore,
+                expectedNavExit,
+                slippageNavDelta
+            )
+        );
+
+        vm.prank(address(roles.emergencyManager));
+        strategy.emergencyExit(toStateId, exitShare, slippageNavDelta);
     }
 
     function test_RevertIf_EmergencyExit_ToHigherState() public {
-        bytes32 higherStateId = bytes32(uint256(111));
-        strategy.setState(higherStateId, false, true, false, 111);
+        bytes32 toStateId = bytes32(uint256(111));
+        uint256 exitShare = MAX_BPS;
+
+        strategy.setState(toStateId, false, true, false, 111);
+
         vm.prank(address(strategyContainer));
-        vm.expectRevert(Errors.IncorrectInput.selector);
-        strategy.emergencyExit(higherStateId, MAX_BPS);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IStrategyTemplate.CannotExitToStateWithHigherHeight.selector,
+                toStateId,
+                NO_ALLOCATION_STATE_ID
+            )
+        );
+        strategy.emergencyExit(toStateId, exitShare, 0);
     }
 
     function test_RevertIf_TryEmergencyExit_NotCalledBySelf() public {
@@ -199,51 +265,17 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         strategy.tryEmergencyExit(TWO_STATE_ID, MAX_BPS);
     }
 
-    function test_EmergencyExitMultiple() public {
-        vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
-
-        bytes32[] memory toStateIds = new bytes32[](2);
-        toStateIds[0] = TWO_STATE_ID;
-        toStateIds[1] = ONE_STATE_ID;
-        uint256[] memory shares = new uint256[](2);
-        shares[0] = MAX_BPS;
-        shares[1] = MAX_BPS;
-        vm.prank(address(strategyContainer));
-        strategy.emergencyExitMultiple(toStateIds, shares);
-
-        assertTrue(
-            strategyContainer.isResolvingEmergency(),
-            "test_EmergencyExitMultiple: Emergency resolution not started on StrategyContainer"
-        );
-        assertTrue(
-            strategyContainer.isStrategyNavUnresolved(address(strategy)),
-            "test_EmergencyExitMultiple: Strategy NAV not unresolved on StrategyContainer"
-        );
-        assertTrue(
-            strategy.isNavResolutionMode(),
-            "test_EmergencyExitMultiple: Nav resolution mode not activated on Strategy"
-        );
-    }
-
-    function test_RevertIf_EmergencyExitMultiple_ArrayLengthMismatch() public {
-        bytes32[] memory toStateIds = new bytes32[](2);
-        toStateIds[0] = TWO_STATE_ID;
-        toStateIds[1] = ONE_STATE_ID;
-        uint256[] memory shares = new uint256[](1);
-        shares[0] = MAX_BPS;
-        vm.prank(address(strategyContainer));
-        vm.expectRevert(Errors.ArrayLengthMismatch.selector);
-        strategy.emergencyExitMultiple(toStateIds, shares);
-    }
-
     function test_AcceptNav_FullExit() public {
         bytes32 toStateId = TWO_STATE_ID;
+        uint256 exitShare = MAX_BPS;
+
         vm.prank(address(strategyContainer));
         strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
 
+        uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
+
         vm.prank(address(strategyContainer));
-        strategy.emergencyExit(toStateId, MAX_BPS);
+        strategy.emergencyExit(toStateId, exitShare, minNavDelta);
 
         vm.prank(address(roles.emergencyManager));
         strategy.acceptNav(toStateId);
@@ -267,11 +299,14 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
 
     function test_AcceptNav_PartialExit() public {
         bytes32 toStateId = TWO_STATE_ID;
+        uint256 exitShare = MAX_BPS / 2;
+
         vm.prank(address(strategyContainer));
         strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
 
+        uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
         vm.prank(address(strategyContainer));
-        strategy.emergencyExit(toStateId, MAX_BPS / 2);
+        strategy.emergencyExit(toStateId, exitShare, minNavDelta);
 
         vm.prank(address(roles.emergencyManager));
         strategy.acceptNav(toStateId);
@@ -302,15 +337,23 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
 
     function test_RevertIf_AcceptNav_StateNotFound() public {
         bytes32 toStateId = TWO_STATE_ID;
+        uint256 exitShare = MAX_BPS / 2;
+
         vm.prank(address(strategyContainer));
         strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
 
+        uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
         vm.prank(address(strategyContainer));
-        strategy.emergencyExit(toStateId, MAX_BPS / 2);
+        strategy.emergencyExit(toStateId, exitShare, minNavDelta);
 
         bytes32 notFoundStateId = bytes32(uint256(100));
         vm.prank(address(roles.emergencyManager));
         vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.StateNotFound.selector, notFoundStateId));
         strategy.acceptNav(notFoundStateId);
+    }
+
+    function _calculateEmergencyExitMinNavDelta(uint256 share) internal view returns (uint256) {
+        uint256 expectedExitAmount = strategy.currentStateNav().mulDiv(share, MAX_BPS);
+        return expectedExitAmount.mulDiv(EMERGENCY_EXIT_SLIPPAGE_TOLERANCE, MAX_BPS);
     }
 }

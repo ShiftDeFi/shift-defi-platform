@@ -1,28 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {Container} from "./Container.sol";
 
-import {EnumerableAddressSetExtended} from "./libraries/helpers/EnumerableAddressSetExtended.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
-import {IStrategyTemplate} from "./interfaces/IStrategyTemplate.sol";
 import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
+import {IStrategyTemplate} from "./interfaces/IStrategyTemplate.sol";
+
+import {EnumerableAddressSetExtended} from "./libraries/EnumerableAddressSetExtended.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable, Container, IStrategyContainer {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableAddressSetExtended for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
 
-    bytes32 internal constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
     bytes32 internal constant STRATEGY_MANAGER_ROLE = keccak256("STRATEGY_MANAGER_ROLE");
-    bytes32 internal constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
     bytes32 internal constant HARVEST_MANAGER_ROLE = keccak256("HARVEST_MANAGER_ROLE");
+    bytes32 internal constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
+    bytes32 internal constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
 
     EnumerableSet.AddressSet internal _strategies;
 
@@ -35,12 +36,11 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     //      0: resolved, 1: unresolved
     uint256 internal _strategyUnresolvedNavBitmask;
 
-    address internal _bridgeCollector; // address where funds stores after cross-chain migration
+    address public reshufflingGateway;
 
     address public treasury;
-    address public priceOracle;
-
     uint256 public feePct;
+    address public priceOracle;
 
     uint256 private constant MAX_BPS = 1e18;
     uint256 private constant MAX_STRATEGIES = 255;
@@ -63,14 +63,28 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         _;
     }
 
+    function __StrategyContainer_init(StrategyContainerInitParams memory params) internal onlyInitializing {
+        require(params.roleAddresses.strategyManager != address(0), Errors.ZeroAddress());
+        require(params.roleAddresses.harvestManager != address(0), Errors.ZeroAddress());
+        require(params.roleAddresses.reshufflingManager != address(0), Errors.ZeroAddress());
+        require(params.roleAddresses.emergencyManager != address(0), Errors.ZeroAddress());
+
+        _grantRole(STRATEGY_MANAGER_ROLE, params.roleAddresses.strategyManager);
+        _grantRole(RESHUFFLING_MANAGER_ROLE, params.roleAddresses.reshufflingManager);
+        _grantRole(HARVEST_MANAGER_ROLE, params.roleAddresses.harvestManager);
+        _grantRole(EMERGENCY_MANAGER_ROLE, params.roleAddresses.emergencyManager);
+
+        _setReshufflingGateway(params.reshufflingGateway);
+        _setTreasury(params.treasury);
+        _setFeePct(params.feePct);
+        _setPriceOracle(params.priceOracle);
+    }
+
     // ---- Configuration ----
 
     /// @inheritdoc IStrategyContainer
-    function setBridgeCollector(address newBridgeCollector) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        require(newBridgeCollector != address(0), Errors.ZeroAddress());
-        address oldBridgeCollector = _bridgeCollector;
-        _bridgeCollector = newBridgeCollector;
-        emit BridgeCollectorUpdated(oldBridgeCollector, newBridgeCollector);
+    function setReshufflingGateway(address newReshufflingGateway) external onlyRole(RESHUFFLING_MANAGER_ROLE) {
+        _setReshufflingGateway(newReshufflingGateway);
     }
 
     /// @inheritdoc IStrategyContainer
@@ -79,20 +93,20 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     }
 
     /// @inheritdoc IStrategyContainer
-    function setPriceOracle(address newPriceOracle) external onlyRole(STRATEGY_MANAGER_ROLE) {
-        _setPriceOracle(newPriceOracle);
-    }
-
-    /// @inheritdoc IStrategyContainer
     function setFeePct(uint256 newFeePct) external onlyRole(STRATEGY_MANAGER_ROLE) {
         _setFeePct(newFeePct);
     }
 
-    function _setPriceOracle(address newPriceOracle) internal {
-        require(newPriceOracle != address(0), Errors.ZeroAddress());
-        address oldPriceOracle = priceOracle;
-        priceOracle = newPriceOracle;
-        emit PriceOracleUpdated(oldPriceOracle, priceOracle);
+    /// @inheritdoc IStrategyContainer
+    function setPriceOracle(address newPriceOracle) external onlyRole(STRATEGY_MANAGER_ROLE) {
+        _setPriceOracle(newPriceOracle);
+    }
+
+    function _setReshufflingGateway(address newReshufflingGateway) internal {
+        require(newReshufflingGateway != address(0), Errors.ZeroAddress());
+        address oldReshufflingGateway = reshufflingGateway;
+        reshufflingGateway = newReshufflingGateway;
+        emit ReshufflingGatewayUpdated(oldReshufflingGateway, newReshufflingGateway);
     }
 
     function _setTreasury(address newTreasury) internal {
@@ -107,6 +121,13 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         uint256 previousFeePct = feePct;
         feePct = newFeePct;
         emit FeePctUpdated(previousFeePct, newFeePct);
+    }
+
+    function _setPriceOracle(address newPriceOracle) internal {
+        require(newPriceOracle != address(0), Errors.ZeroAddress());
+        address oldPriceOracle = priceOracle;
+        priceOracle = newPriceOracle;
+        emit PriceOracleUpdated(oldPriceOracle, priceOracle);
     }
 
     // ---- Reshuffling mode management logic ----
@@ -140,6 +161,11 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     /// @inheritdoc IStrategyContainer
     function getStrategies() external view returns (address[] memory) {
         return _strategies.values();
+    }
+
+    /// @inheritdoc IStrategyContainer
+    function getStrategiesNumber() public view returns (uint256) {
+        return _strategies.length();
     }
 
     /// @inheritdoc IStrategyContainer
@@ -249,7 +275,12 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
         address[] memory inputTokens = IStrategyTemplate(strategy).getInputTokens();
         vars.tokenNumber = inputTokens.length;
+        require(vars.tokenNumber > 0, Errors.ZeroArrayLength());
         require(inputAmounts.length == vars.tokenNumber, Errors.ArrayLengthMismatch());
+
+        for (uint256 i = 0; i < vars.tokenNumber; ++i) {
+            require(_isTokenWhitelisted(inputTokens[i]), NotWhitelistedToken(inputTokens[i]));
+        }
 
         (, vars.strategyIndex) = _strategies.indexOf(strategy);
 
@@ -295,7 +326,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
         address[] memory inputTokens = IStrategyTemplate(strategy).getInputTokens();
         uint256 tokenNumber = inputTokens.length;
-
+        require(tokenNumber > 0, Errors.ZeroArrayLength());
         require(tokenNumber == inputAmounts.length, Errors.ArrayLengthMismatch());
 
         uint256 nav0 = IStrategyTemplate(strategy).harvest();
@@ -391,6 +422,11 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
             _isResolvingEmergency = true;
             emit EmergencyResolutionStarted(msg.sender);
         }
+    }
+
+    /// @inheritdoc IStrategyContainer
+    function isReshufflingMode() external view returns (bool) {
+        return _reshufflingMode;
     }
 
     /// @inheritdoc IStrategyContainer

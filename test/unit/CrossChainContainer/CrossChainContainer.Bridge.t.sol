@@ -8,8 +8,8 @@ import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
 import {IContainer} from "contracts/interfaces/IContainer.sol";
 import {ICrossChainContainer} from "contracts/interfaces/ICrossChainContainer.sol";
 
-import {Common} from "contracts/libraries/helpers/Common.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Common} from "contracts/libraries/Common.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {CrossChainContainerBaseTest} from "test/unit/CrossChainContainer/CrossChainContainerBase.t.sol";
@@ -251,7 +251,7 @@ contract CrossChainContainerBridgeTest is CrossChainContainerBaseTest {
         crossChainContainer.setBridgeAdapter(address(bridgeAdapter), true);
 
         IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
-        vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughTokens.selector, address(notion), BRIDGE_AMOUNT));
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughTokens.selector, address(notion), BRIDGE_AMOUNT, 0));
         crossChainContainer.bridgeToken(address(bridgeAdapter), bridgeReceiver, instruction);
     }
 
@@ -261,10 +261,17 @@ contract CrossChainContainerBridgeTest is CrossChainContainerBaseTest {
 
         IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
         instruction.minTokenAmount = BRIDGE_AMOUNT.mulDiv(crossChainContainer.MAX_BRIDGE_SLIPPAGE() - 1, MAX_BPS);
+        uint256 minAllowedAmount = BRIDGE_AMOUNT.mulDiv(crossChainContainer.MAX_BRIDGE_SLIPPAGE(), MAX_BPS);
 
         notion.mint(address(crossChainContainer), BRIDGE_AMOUNT);
 
-        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ICrossChainContainer.InvalidBridgeInstructionSlippage.selector,
+                instruction.minTokenAmount,
+                minAllowedAmount
+            )
+        );
         crossChainContainer.bridgeToken(address(bridgeAdapter), bridgeReceiver, instruction);
     }
 

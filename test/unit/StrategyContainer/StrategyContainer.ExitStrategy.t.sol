@@ -6,7 +6,7 @@ import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {MockStrategyInterfaceBased} from "test/mocks/MockStrategyInterfaceBased.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 contract StrategyContainerExitStrategyTest is StrategyContainerBaseTest {
     MockStrategyInterfaceBased internal strategy;

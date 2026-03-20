@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {Vault} from "contracts/Vault.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
 import {IVault} from "contracts/interfaces/IVault.sol";
 
 import {VaultBaseTest} from "test/unit/Vault/VaultBase.t.sol";
@@ -34,12 +33,12 @@ contract VaultForcedBatchTest is VaultBaseTest {
 
     function test_RevertIf_SetForcedDepositThreshold_OutOfBounds() public {
         vm.prank(roles.configurator);
-        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vm.expectRevert(IVault.IncorrectForcedDepositThreshold.selector);
         vault.setForcedDepositThreshold(0);
 
         uint256 maxDepositBatchSize = vault.maxDepositBatchSize();
         vm.prank(roles.configurator);
-        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vm.expectRevert(IVault.IncorrectForcedDepositThreshold.selector);
         vault.setForcedDepositThreshold(maxDepositBatchSize + 1);
     }
 
@@ -56,7 +55,7 @@ contract VaultForcedBatchTest is VaultBaseTest {
 
     function test_RevertIf_SetForcedWithdrawThreshold_OutOfBounds() public {
         vm.prank(roles.configurator);
-        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vm.expectRevert(IVault.IncorrectForcedWithdrawThreshold.selector);
         vault.setForcedWithdrawThreshold(0);
     }
 
@@ -73,7 +72,7 @@ contract VaultForcedBatchTest is VaultBaseTest {
 
     function test_RevertIf_SetForcedBatchBlockLimit_OutOfBounds() public {
         vm.prank(roles.configurator);
-        vm.expectRevert(Errors.IncorrectAmount.selector);
+        vm.expectRevert(IVault.IncorrectForcedBatchBlockLimit.selector);
         vault.setForcedBatchBlockLimit(0);
     }
 

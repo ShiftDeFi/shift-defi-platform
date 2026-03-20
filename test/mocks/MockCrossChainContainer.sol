@@ -15,9 +15,10 @@ contract MockCrossChainContainer is CrossChainContainer {
 
     function initialize(
         IContainer.ContainerInitParams memory containerParams,
-        ICrossChainContainer.CrossChainContainerInitParams memory crossChainParams
+        CrossChainContainerInitParams calldata crossChainContainerParams
     ) public initializer {
-        super.__CrossChainContainer_init(containerParams, crossChainParams);
+        __Container_init(containerParams);
+        __CrossChainContainer_init(crossChainContainerParams);
     }
 
     function containerType() external pure override returns (ContainerType) {

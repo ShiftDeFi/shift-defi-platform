@@ -5,6 +5,10 @@ import {ISwapRouter} from "contracts/interfaces/ISwapRouter.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 contract MockSwapRouter is ISwapRouter {
+    function previewSwap(SwapInstruction memory) external view override returns (uint256) {
+        return 0;
+    }
+
     function swap(SwapInstruction calldata instruction) external payable override returns (uint256) {
         IERC20(instruction.tokenIn).transferFrom(msg.sender, address(this), instruction.amountIn);
         IERC20(instruction.tokenOut).transfer(msg.sender, instruction.minAmountOut + 1);

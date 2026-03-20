@@ -1,8 +1,8 @@
-// SPDX: License Identifier: UNLICENSED
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
 import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {StrategyTemplateBaseTest} from "./StrategyTemplateBase.t.sol";
 
@@ -65,7 +65,7 @@ contract StrategyTemplateHarvestTest is StrategyTemplateBaseTest {
         vm.store(address(strategyContainer), TREASURY_STORAGE_SLOT, bytes32(uint256(0)));
 
         vm.prank(address(strategyContainer));
-        vm.expectRevert(Errors.ZeroAddress.selector);
+        vm.expectRevert(IStrategyTemplate.TreasuryNotSet.selector);
         strategy.harvest();
     }
 }

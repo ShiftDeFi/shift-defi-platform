@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {IMessageRouter} from "contracts/interfaces/IMessageRouter.sol";
-import {RingCacheLibrary} from "contracts/libraries/helpers/RingCacheLibrary.sol";
+import {RingCacheLibrary} from "contracts/libraries/RingCacheLibrary.sol";
 
 contract MockMessageRouter is IMessageRouter {
     using RingCacheLibrary for RingCacheLibrary.RingCache;

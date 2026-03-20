@@ -32,7 +32,7 @@ contract VaultBaseTest is L1Base {
     function _setupNContainers(uint256 nContainers) internal {
         for (uint i = 0; i < nContainers; i++) {
             address container = address(_deployMockContainerPrincipal());
-            _addContainer(container);
+            _addContainer(container, REMOTE_CHAIN_ID + i);
             vm.prank(container);
             notion.approve(address(vault), type(uint256).max);
         }

@@ -3,20 +3,21 @@
 pragma solidity ^0.8.28;
 
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
-import {IMessageRouter} from "./interfaces/IMessageRouter.sol";
-import {IMessageReceiver} from "./interfaces/IMessageReceiver.sol";
 import {IMessageAdapter} from "./interfaces/IMessageAdapter.sol";
-import {RingCacheLibrary} from "./libraries/helpers/RingCacheLibrary.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {IMessageReceiver} from "./interfaces/IMessageReceiver.sol";
+import {IMessageRouter} from "./interfaces/IMessageRouter.sol";
+
+import {Errors} from "./libraries/Errors.sol";
+import {RingCacheLibrary} from "./libraries/RingCacheLibrary.sol";
 
 contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IMessageRouter {
     using RingCacheLibrary for RingCacheLibrary.RingCache;
 
-    bytes32 private constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
-    bytes32 private constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 private constant WHITELIST_MANAGER_ROLE = keccak256("WHITELIST_MANAGER_ROLE");
+    bytes32 private constant CACHE_MANAGER_ROLE = keccak256("CACHE_MANAGER_ROLE");
 
     uint256 private _nonce;
 
@@ -27,16 +28,20 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
 
     function initialize(
         address defaultAdmin,
-        address governance,
-        address manager,
+        address whitelistManager,
+        address cacheManager,
         uint256 maxCacheSize
     ) public initializer {
         __AccessControl_init();
         __ReentrancyGuard_init();
 
+        require(defaultAdmin != address(0), Errors.ZeroAddress());
+        require(whitelistManager != address(0), Errors.ZeroAddress());
+        require(cacheManager != address(0), Errors.ZeroAddress());
+
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
-        _grantRole(GOVERNANCE_ROLE, governance);
-        _grantRole(MANAGER_ROLE, manager);
+        _grantRole(WHITELIST_MANAGER_ROLE, whitelistManager);
+        _grantRole(CACHE_MANAGER_ROLE, cacheManager);
 
         _sendMessagesCache.initialize(keccak256("SEND_CACHE"), maxCacheSize);
     }
@@ -73,9 +78,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
 
         // Extract remaining message bytes
         uint256 messageLength = message.length - 64; // Total length minus nonce and path
-        if (messageLength == 0) {
-            return (nonce, pathOnRemoteChain, new bytes(0));
-        }
+        require(messageLength > 0, MessageTooShort(message.length));
         bytes memory messageData = new bytes(messageLength);
         assembly {
             let src := add(message, 96)
@@ -89,14 +92,18 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
     }
 
     /// @inheritdoc IMessageRouter
-    function whitelistPath(address sender, address receiver, uint256 chainId) external onlyRole(GOVERNANCE_ROLE) {
+    function whitelistPath(
+        address sender,
+        address receiver,
+        uint256 chainId
+    ) external onlyRole(WHITELIST_MANAGER_ROLE) {
         require(sender != address(0), Errors.ZeroAddress());
         require(receiver != address(0), Errors.ZeroAddress());
-        require(chainId > 0, Errors.ZeroAmount());
+        require(chainId > 0, Errors.IncorrectChainId(chainId));
 
         bytes32 path = calculatePath(sender, receiver, chainId);
         PathData memory pathData = _paths[path];
-        require(!pathData.isWhitelisted, Errors.AlreadyWhitelisted());
+        require(!pathData.isWhitelisted, PathAlreadyWhitelisted(path));
         _paths[path] = PathData({
             lastNonce: pathData.lastNonce,
             chainId: chainId,
@@ -108,24 +115,28 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
     }
 
     /// @inheritdoc IMessageRouter
-    function blacklistPath(address sender, address receiver, uint256 chainId) external onlyRole(GOVERNANCE_ROLE) {
+    function blacklistPath(
+        address sender,
+        address receiver,
+        uint256 chainId
+    ) external onlyRole(WHITELIST_MANAGER_ROLE) {
         bytes32 path = calculatePath(sender, receiver, chainId);
         PathData memory pathData = _paths[path];
-        require(pathData.isWhitelisted, InvalidPath(path));
+        require(pathData.isWhitelisted, PathNotWhitelisted(path));
         _paths[path].isWhitelisted = false;
         emit PathBlacklisted(pathData.sender, pathData.receiver, pathData.chainId, path);
     }
 
     /// @inheritdoc IMessageRouter
-    function whitelistMessageAdapter(address adapter) external onlyRole(GOVERNANCE_ROLE) {
-        require(!_whitelistedMessageAdapters[adapter], Errors.AlreadyWhitelisted());
+    function whitelistMessageAdapter(address adapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
+        require(!_whitelistedMessageAdapters[adapter], AdapterAlreadyWhitelisted(adapter));
         _whitelistedMessageAdapters[adapter] = true;
         emit AdapterWhitelisted(adapter);
     }
 
     /// @inheritdoc IMessageRouter
-    function blacklistMessageAdapter(address adapter) external onlyRole(GOVERNANCE_ROLE) {
-        require(_whitelistedMessageAdapters[adapter], Errors.AlreadyBlacklisted());
+    function blacklistMessageAdapter(address adapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
+        require(_whitelistedMessageAdapters[adapter], AdapterNotWhitelisted(adapter));
         _whitelistedMessageAdapters[adapter] = false;
         emit AdapterBlacklisted(adapter);
     }
@@ -144,7 +155,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
 
     /// @inheritdoc IMessageRouter
     function send(address receiver, SendParams calldata sendParams) external payable nonReentrant {
-        require(_whitelistedMessageAdapters[sendParams.adapter], UnsupportedAdapter(sendParams.adapter));
+        require(_whitelistedMessageAdapters[sendParams.adapter], AdapterNotWhitelisted(sendParams.adapter));
 
         SendLocalVars memory sendLocalVars;
         sendLocalVars.localPath = calculatePath(msg.sender, receiver, sendParams.chainTo);
@@ -153,8 +164,11 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         sendLocalVars.remotePathData = _paths[sendLocalVars.remotePath];
         sendLocalVars.nonce = ++_nonce;
 
-        require(sendLocalVars.localPathData.isWhitelisted, InvalidPath(sendLocalVars.localPath));
-        require(sendLocalVars.localPathData.receiver == receiver, InvalidPath(sendLocalVars.localPath));
+        require(sendLocalVars.localPathData.isWhitelisted, PathNotWhitelisted(sendLocalVars.localPath));
+        require(
+            sendLocalVars.localPathData.receiver == receiver,
+            ReceiverMismatch(sendLocalVars.localPathData.receiver, receiver)
+        );
 
         sendLocalVars.rawMessageWithPathAndNonce = encodeMessage(
             sendLocalVars.nonce,
@@ -186,8 +200,8 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         PathData memory pathData = _paths[path];
 
         require(nonce > pathData.lastNonce, ReplayCheckFailed(nonce));
-        require(_whitelistedMessageAdapters[msg.sender], UnsupportedAdapter(msg.sender));
-        require(pathData.isWhitelisted, InvalidPath(path));
+        require(_whitelistedMessageAdapters[msg.sender], AdapterNotWhitelisted(msg.sender));
+        require(pathData.isWhitelisted, PathNotWhitelisted(path));
 
         _paths[path].lastNonce = nonce;
         IMessageReceiver(pathData.receiver).receiveMessage(rawMessage);
@@ -200,8 +214,8 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         uint256 nonce,
         bytes32 path,
         SendParams calldata sendParams
-    ) external payable nonReentrant onlyRole(MANAGER_ROLE) {
-        require(_whitelistedMessageAdapters[sendParams.adapter], UnsupportedAdapter(sendParams.adapter));
+    ) external payable nonReentrant onlyRole(CACHE_MANAGER_ROLE) {
+        require(_whitelistedMessageAdapters[sendParams.adapter], AdapterNotWhitelisted(sendParams.adapter));
 
         bytes memory messageWithPathAndNonce = encodeMessage(nonce, path, sendParams.message);
         bytes32 cachedKey = calculateCacheKey(sendParams.chainTo, messageWithPathAndNonce);
@@ -223,7 +237,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         uint256 chainTo,
         bytes32 path,
         bytes memory message
-    ) external onlyRole(MANAGER_ROLE) {
+    ) external onlyRole(CACHE_MANAGER_ROLE) {
         bytes memory messageWithPathAndNonce = encodeMessage(nonce, path, message);
         _removeFromCache(chainTo, messageWithPathAndNonce);
         emit MessageRemovedFromCache(_sendMessagesCache.id, nonce, chainTo, path);

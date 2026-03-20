@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import {StrategyTemplateBaseTest} from "./StrategyTemplateBase.t.sol";
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 contract StrategyTemplateTokensTest is StrategyTemplateBaseTest {
     function setUp() public override {
@@ -21,6 +21,49 @@ contract StrategyTemplateTokensTest is StrategyTemplateBaseTest {
         assertEq(retrievedInputTokens.length, tokenNumber, "test_SetInputTokens: input tokens length mismatch");
         for (uint256 i = 0; i < tokenNumber; ++i) {
             assertEq(retrievedInputTokens[i], inputTokens[i], "test_SetInputTokens: input token mismatch");
+        }
+    }
+
+    function test_SetStrategyInputTokens_OverwritingExistingTokens() public {
+        uint256 initialTokenNumber = 2;
+        address[] memory initialInputTokens = _createRandomTokensArray(initialTokenNumber);
+
+        vm.prank(address(strategyContainer));
+        strategy.setInputTokens(initialInputTokens);
+
+        address[] memory retrievedInputTokens = strategy.getInputTokens();
+        assertEq(
+            retrievedInputTokens.length,
+            initialTokenNumber,
+            "test_SetStrategyInputTokens_OverwritingExistingTokens: initial token number mismatch"
+        );
+
+        for (uint256 i = 0; i < initialTokenNumber; ++i) {
+            assertEq(
+                retrievedInputTokens[i],
+                initialInputTokens[i],
+                "test_SetStrategyInputTokens_OverwritingExistingTokens: initial input token mismatch"
+            );
+        }
+
+        uint256 newTokenNumber = 4;
+        address[] memory newInputTokens = _createRandomTokensArray(newTokenNumber);
+
+        vm.prank(address(strategyContainer));
+        strategy.setInputTokens(newInputTokens);
+
+        retrievedInputTokens = strategy.getInputTokens();
+        assertEq(
+            retrievedInputTokens.length,
+            newTokenNumber,
+            "test_SetStrategyInputTokens_OverwritingExistingTokens: new token number mismatch"
+        );
+        for (uint256 i = 0; i < newTokenNumber; ++i) {
+            assertEq(
+                retrievedInputTokens[i],
+                newInputTokens[i],
+                "test_SetStrategyInputTokens_OverwritingExistingTokens: new input token mismatch"
+            );
         }
     }
 
@@ -61,6 +104,49 @@ contract StrategyTemplateTokensTest is StrategyTemplateBaseTest {
         assertEq(retrievedOutputTokens.length, tokenNumber, "test_SetOutputTokens: output tokens length mismatch");
         for (uint256 i = 0; i < tokenNumber; ++i) {
             assertEq(retrievedOutputTokens[i], outputTokens[i], "test_SetOutputTokens: output token mismatch");
+        }
+    }
+
+    function test_SetStrategyOutputTokens_OverwritingExistingTokens() public {
+        uint256 initialTokenNumber = 2;
+        address[] memory initialOutputTokens = _createRandomTokensArray(initialTokenNumber);
+
+        vm.prank(address(strategyContainer));
+        strategy.setOutputTokens(initialOutputTokens);
+
+        address[] memory retrievedOutputTokens = strategy.getOutputTokens();
+        assertEq(
+            retrievedOutputTokens.length,
+            initialTokenNumber,
+            "test_SetStrategyOutputTokens_OverwritingExistingTokens: initial token number mismatch"
+        );
+
+        for (uint256 i = 0; i < initialTokenNumber; ++i) {
+            assertEq(
+                retrievedOutputTokens[i],
+                initialOutputTokens[i],
+                "test_SetStrategyOutputTokens_OverwritingExistingTokens: initial output token mismatch"
+            );
+        }
+
+        uint256 newTokenNumber = 4;
+        address[] memory newOutputTokens = _createRandomTokensArray(newTokenNumber);
+
+        vm.prank(address(strategyContainer));
+        strategy.setOutputTokens(newOutputTokens);
+
+        retrievedOutputTokens = strategy.getOutputTokens();
+        assertEq(
+            retrievedOutputTokens.length,
+            newTokenNumber,
+            "test_SetStrategyOutputTokens_OverwritingExistingTokens: new token number mismatch"
+        );
+        for (uint256 i = 0; i < newTokenNumber; ++i) {
+            assertEq(
+                retrievedOutputTokens[i],
+                newOutputTokens[i],
+                "test_SetStrategyOutputTokens_OverwritingExistingTokens: new output token mismatch"
+            );
         }
     }
 

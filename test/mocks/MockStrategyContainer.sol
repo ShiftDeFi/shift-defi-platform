@@ -6,7 +6,7 @@ import {StrategyContainer} from "contracts/StrategyContainer.sol";
 import {IContainer} from "contracts/interfaces/IContainer.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {EnumerableAddressSetExtended} from "contracts/libraries/helpers/EnumerableAddressSetExtended.sol";
+import {EnumerableAddressSetExtended} from "contracts/libraries/EnumerableAddressSetExtended.sol";
 
 contract MockStrategyContainer is StrategyContainer {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -14,8 +14,12 @@ contract MockStrategyContainer is StrategyContainer {
 
     IStrategyContainer.CurrentBatchType public currentBatchType;
 
-    function initialize(IContainer.ContainerInitParams memory containerParams) public initializer {
+    function initialize(
+        IContainer.ContainerInitParams memory containerParams,
+        StrategyContainerInitParams calldata strategyContainerParams
+    ) public initializer {
         __Container_init(containerParams);
+        __StrategyContainer_init(strategyContainerParams);
     }
 
     function craftCurrentBatchType(IStrategyContainer.CurrentBatchType _currentBatchType) external {
@@ -52,14 +56,6 @@ contract MockStrategyContainer is StrategyContainer {
 
     function _getCurrentBatchType() internal view override returns (CurrentBatchType) {
         return currentBatchType;
-    }
-
-    function bridgeCollector() external view returns (address) {
-        return _bridgeCollector;
-    }
-
-    function isReshufflingMode() external view returns (bool) {
-        return _reshufflingMode;
     }
 
     function getStrategyUnresolvedNavBitmask() external view returns (uint256) {

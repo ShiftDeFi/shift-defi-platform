@@ -2,8 +2,9 @@
 pragma solidity ^0.8.0;
 
 import {IContainerPrincipal} from "contracts/interfaces/IContainerPrincipal.sol";
+import {IContainerLocal} from "contracts/interfaces/IContainerLocal.sol";
 import {IVault} from "contracts/interfaces/IVault.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {L1Base} from "test/L1Base.t.sol";
 
@@ -12,7 +13,7 @@ contract VaultContainerManagementTest is L1Base {
 
     function test_AddContainer() public {
         IContainerPrincipal container = _deployMockContainerPrincipal();
-        _addContainer(address(container));
+        _addContainer(address(container), REMOTE_CHAIN_ID);
 
         (address[] memory containers, uint256[] memory weights) = vault.getContainers();
         assertEq(containers.length, 1, "test_AddContainer: containers length mismatch");
@@ -21,7 +22,7 @@ contract VaultContainerManagementTest is L1Base {
         assertEq(vault.isContainer(address(container)), true, "test_AddContainer: isContainer mismatch");
 
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
-        _addContainer(address(container2));
+        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
 
         (containers, weights) = vault.getContainers();
         assertEq(containers.length, 2, "test_AddContainer: containers length mismatch");
@@ -34,26 +35,67 @@ contract VaultContainerManagementTest is L1Base {
 
     function test_RevertIf_AddContainer_ZeroAddress() public {
         vm.expectRevert(Errors.ZeroAddress.selector);
-        _addContainer(address(0));
+        _addContainer(address(0), REMOTE_CHAIN_ID);
+    }
+
+    function test_RevertIf_AddContainer_ZeroChainId() public {
+        IContainerPrincipal container = _deployMockContainerPrincipal();
+        vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectChainId.selector, 0));
+        _addContainer(address(container), 0);
     }
 
     function test_RevertIf_AddContainer_ContainerAlreadyExists() public {
         IContainerPrincipal container = _deployMockContainerPrincipal();
-        _addContainer(address(container));
+        _addContainer(address(container), REMOTE_CHAIN_ID);
 
         vm.expectRevert(IVault.ContainerAlreadyExists.selector);
-        _addContainer(address(container));
+        _addContainer(address(container), REMOTE_CHAIN_ID + 1);
+    }
+
+    function test_RevertIf_AddContainer_ContainerForChainIdAlreadyExists() public {
+        IContainerPrincipal container1 = _deployMockContainerPrincipal();
+        _addContainer(address(container1), REMOTE_CHAIN_ID);
+
+        IContainerPrincipal container2 = _deployMockContainerPrincipal();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVault.ContainerForChainIdAlreadyExists.selector,
+                REMOTE_CHAIN_ID,
+                address(container1)
+            )
+        );
+        _addContainer(address(container2), REMOTE_CHAIN_ID);
+    }
+
+    function test_RevertIf_AddContainer_LocalContainerWithRemoteChainId() public {
+        IContainerLocal containerLocal = _deployContainerLocal();
+
+        vm.expectRevert(IVault.IncorrectContainerType.selector);
+        _addContainer(address(containerLocal), REMOTE_CHAIN_ID);
+    }
+
+    function test_RevertIf_AddContainer_IncorrectContainerType() public {
+        IContainerPrincipal container = _deployMockContainerPrincipal();
+        _addContainer(address(container), REMOTE_CHAIN_ID);
+
+        vm.expectRevert(IVault.IncorrectContainerType.selector);
+        _addContainer(address(container), block.chainid);
+
+        IContainerLocal containerLocal = _deployContainerLocal();
+        vm.expectRevert(IVault.IncorrectContainerType.selector);
+        _addContainer(address(containerLocal), block.chainid + 1);
     }
 
     function test_RevertIf_AddContainer_MaxContainersReached() public {
         for (uint256 i = 0; i < MAX_CONTAINERS; ++i) {
             IContainerPrincipal container = _deployMockContainerPrincipal();
-            _addContainer(address(container));
+            _addContainer(address(container), REMOTE_CHAIN_ID + i);
         }
 
         IContainerPrincipal exceedingContainer = _deployMockContainerPrincipal();
         vm.expectRevert(IVault.MaxContainersReached.selector);
-        _addContainer(address(exceedingContainer));
+        _addContainer(address(exceedingContainer), REMOTE_CHAIN_ID + MAX_CONTAINERS);
     }
 
     function test_RevertIf_AddContainer_NotInIdleStatus() public {
@@ -61,23 +103,34 @@ contract VaultContainerManagementTest is L1Base {
 
         _setVaultStatus(IVault.VaultStatus.DepositBatchProcessingStarted);
 
-        vm.expectRevert(IVault.IncorrectStatus.selector);
-        _addContainer(address(container));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVault.IncorrectVaultStatus.selector,
+                IVault.VaultStatus.DepositBatchProcessingStarted
+            )
+        );
+        _addContainer(address(container), REMOTE_CHAIN_ID);
     }
 
     function test_SetContainerWeights_RemoveContainer() public {
+        uint256 containerNumber = 3;
         IContainerPrincipal container1 = _deployMockContainerPrincipal();
-        _addContainer(address(container1));
+        _addContainer(address(container1), REMOTE_CHAIN_ID);
 
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
-        _addContainer(address(container2));
+        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
 
-        address[] memory containers = new address[](2);
+        IContainerLocal containerLocal = _deployContainerLocal();
+        _addContainer(address(containerLocal), block.chainid);
+
+        address[] memory containers = new address[](containerNumber);
         containers[0] = address(container1);
         containers[1] = address(container2);
-        uint256[] memory weights = new uint256[](2);
+        containers[2] = address(containerLocal);
+        uint256[] memory weights = new uint256[](containerNumber);
         weights[0] = TOTAL_CONTAINER_WEIGHT;
         weights[1] = 0;
+        weights[2] = 0;
 
         _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
@@ -92,11 +145,21 @@ contract VaultContainerManagementTest is L1Base {
             false,
             "test_SetContainerWeights_RemoveContainer: isContainer2 mismatch"
         );
+        assertEq(
+            vault.containerByChainId(REMOTE_CHAIN_ID),
+            address(0),
+            "test_SetContainerWeights_RemoveContainer: containerPrincipal1 for chain ID is not unset after removal"
+        );
+        assertEq(
+            vault.containerByChainId(block.chainid),
+            address(0),
+            "test_SetContainerWeights_RemoveContainer: containerLocal for chain ID is not unset after removal"
+        );
     }
 
     function test_SetContainerWeights_RemoveLastContainer() public {
         IContainerPrincipal container = _deployMockContainerPrincipal();
-        _addContainer(address(container));
+        _addContainer(address(container), REMOTE_CHAIN_ID);
 
         address[] memory containers = new address[](1);
         containers[0] = address(container);
@@ -117,16 +180,16 @@ contract VaultContainerManagementTest is L1Base {
 
     function test_SetContainerWeights_RemoveMultipleContainers() public {
         IContainerPrincipal container1 = _deployMockContainerPrincipal();
-        _addContainer(address(container1));
+        _addContainer(address(container1), REMOTE_CHAIN_ID);
 
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
-        _addContainer(address(container2));
+        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
 
         IContainerPrincipal container3 = _deployMockContainerPrincipal();
-        _addContainer(address(container3));
+        _addContainer(address(container3), REMOTE_CHAIN_ID + 2);
 
         IContainerPrincipal container4 = _deployMockContainerPrincipal();
-        _addContainer(address(container4));
+        _addContainer(address(container4), REMOTE_CHAIN_ID + 3);
 
         address[] memory containers = new address[](4);
         containers[0] = address(container1);
@@ -167,10 +230,10 @@ contract VaultContainerManagementTest is L1Base {
 
     function test_SetContainerWeights_UpdateContainerWeights() public {
         IContainerPrincipal container1 = _deployMockContainerPrincipal();
-        _addContainer(address(container1));
+        _addContainer(address(container1), REMOTE_CHAIN_ID);
 
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
-        _addContainer(address(container2));
+        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
 
         address[] memory containers = new address[](2);
         containers[0] = address(container1);
@@ -209,16 +272,16 @@ contract VaultContainerManagementTest is L1Base {
 
     function test_SetContainerWeights_UpdateContainerWeights_DifferentWeights() public {
         IContainerPrincipal container1 = _deployMockContainerPrincipal();
-        _addContainer(address(container1));
+        _addContainer(address(container1), REMOTE_CHAIN_ID);
 
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
-        _addContainer(address(container2));
+        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
 
         IContainerPrincipal container3 = _deployMockContainerPrincipal();
-        _addContainer(address(container3));
+        _addContainer(address(container3), REMOTE_CHAIN_ID + 2);
 
         IContainerPrincipal container4 = _deployMockContainerPrincipal();
-        _addContainer(address(container4));
+        _addContainer(address(container4), REMOTE_CHAIN_ID + 3);
 
         address[] memory containers = new address[](4);
         containers[0] = address(container1);
@@ -302,7 +365,7 @@ contract VaultContainerManagementTest is L1Base {
 
     function test_RevertIf_SetContainerWeights_NotInIdleStatus() public {
         IContainerPrincipal container = _deployMockContainerPrincipal();
-        _addContainer(address(container));
+        _addContainer(address(container), REMOTE_CHAIN_ID);
 
         address[] memory containers = new address[](1);
         containers[0] = address(container);
@@ -310,14 +373,19 @@ contract VaultContainerManagementTest is L1Base {
         weights[0] = TOTAL_CONTAINER_WEIGHT;
 
         _setVaultStatus(IVault.VaultStatus.DepositBatchProcessingStarted);
-        vm.expectRevert(IVault.IncorrectStatus.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVault.IncorrectVaultStatus.selector,
+                IVault.VaultStatus.DepositBatchProcessingStarted
+            )
+        );
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
     }
 
     function test_RevertIf_SetContainerWeights_ArrayLengthMismatch() public {
         IContainerPrincipal container = _deployMockContainerPrincipal();
-        _addContainer(address(container));
+        _addContainer(address(container), REMOTE_CHAIN_ID);
 
         address[] memory containers = new address[](1);
         containers[0] = address(container);
@@ -332,10 +400,10 @@ contract VaultContainerManagementTest is L1Base {
 
     function test_RevertIf_SetContainerWeights_DuplicateContainer() public {
         IContainerPrincipal container1 = _deployMockContainerPrincipal();
-        _addContainer(address(container1));
+        _addContainer(address(container1), REMOTE_CHAIN_ID);
 
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
-        _addContainer(address(container2));
+        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
 
         (address smaller, address larger) = address(container1) < address(container2)
             ? (address(container1), address(container2))
@@ -356,10 +424,10 @@ contract VaultContainerManagementTest is L1Base {
 
     function test_RevertIf_SetContainerWeights_WeightRoundsToZero() public {
         IContainerPrincipal container1 = _deployMockContainerPrincipal();
-        _addContainer(address(container1));
+        _addContainer(address(container1), REMOTE_CHAIN_ID);
 
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
-        _addContainer(address(container2));
+        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
 
         vm.prank(roles.configurator);
         vault.setMinDepositBatchSize(TOTAL_CONTAINER_WEIGHT - 1);
@@ -381,7 +449,7 @@ contract VaultContainerManagementTest is L1Base {
 
     function test_RevertIf_SetContainerWeights_ContainerNotFound() public {
         IContainerPrincipal container = _deployMockContainerPrincipal();
-        _addContainer(address(container));
+        _addContainer(address(container), REMOTE_CHAIN_ID);
 
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
 
@@ -400,10 +468,10 @@ contract VaultContainerManagementTest is L1Base {
 
     function test_RevertIf_SetContainerWeights_WeightInvariantViolated() public {
         IContainerPrincipal container1 = _deployMockContainerPrincipal();
-        _addContainer(address(container1));
+        _addContainer(address(container1), REMOTE_CHAIN_ID);
 
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
-        _addContainer(address(container2));
+        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
 
         address[] memory containers = new address[](2);
         containers[0] = address(container1);
@@ -429,10 +497,10 @@ contract VaultContainerManagementTest is L1Base {
 
     function test_RevertIf_SetContainerWeights_ContainerRemovedWithoutWeightUpdate() public {
         IContainerPrincipal container1 = _deployMockContainerPrincipal();
-        _addContainer(address(container1));
+        _addContainer(address(container1), REMOTE_CHAIN_ID);
 
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
-        _addContainer(address(container2));
+        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
 
         address[] memory containers = new address[](2);
         containers[0] = address(container1);

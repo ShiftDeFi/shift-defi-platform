@@ -5,7 +5,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
 import {IVault} from "contracts/interfaces/IVault.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {L1Base} from "test/L1Base.t.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
@@ -43,6 +43,11 @@ contract VaultDepositTest is L1Base {
             "test_DepositTwiceInOneBatch: pendingBatchDeposits"
         );
         assertEq(notion.balanceOf(users.alice), 0, "test_DepositTwiceInOneBatch: notionBalanceOfUser");
+    }
+
+    function test_RevertIf_Deposit_OnBehalfOfZeroAddress() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        vault.deposit(DEPOSIT_AMOUNT, address(0));
     }
 
     function test_RevertIf_Deposit_AmountExceedsMaxDepositAmount() public {
@@ -108,9 +113,8 @@ contract VaultDepositTest is L1Base {
 
         notion.mint(users.alice, DEPOSIT_AMOUNT);
 
-        vm.startPrank(users.alice);
+        vm.prank(users.alice);
         vault.depositWithPermit(DEPOSIT_AMOUNT, users.alice, block.timestamp + 1, v, r, s);
-        vm.stopPrank();
 
         assertEq(vault.bufferedDeposits(), DEPOSIT_AMOUNT, "test_DepositWithPermit: bufferedDeposits");
         assertEq(notion.balanceOf(address(vault)), DEPOSIT_AMOUNT, "test_DepositWithPermit: notionBalanceOfVault");
@@ -120,6 +124,29 @@ contract VaultDepositTest is L1Base {
             "test_DepositWithPermit: pendingBatchDeposits"
         );
         assertEq(notion.balanceOf(users.alice), 0, "test_DepositWithPermit: notionBalanceOfUser");
+    }
+
+    function test_RevertIf_DepositWithPermit_OnBehalfOfZeroAddress() public {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                notion.PERMIT_TYPEHASH(),
+                users.alice,
+                vault,
+                DEPOSIT_AMOUNT,
+                notion.nonces(users.alice),
+                block.timestamp + 1
+            )
+        );
+
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", notion.DOMAIN_SEPARATOR(), structHash));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(users.alicePrivateKey, digest);
+
+        notion.mint(users.alice, DEPOSIT_AMOUNT);
+
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        vm.prank(users.alice);
+        vault.depositWithPermit(DEPOSIT_AMOUNT, address(0), block.timestamp + 1, v, r, s);
     }
 
     function test_DepositWithPermit_FrontRunnedByNonceIncrement() public {

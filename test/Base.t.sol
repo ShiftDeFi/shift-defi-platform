@@ -1,28 +1,30 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {Test} from "forge-std/Test.sol";
-
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-
-import {MockERC20} from "./mocks/MockERC20.sol";
-import {MockSwapRouter} from "./mocks/MockSwapRouter.sol";
-import {MockMessageRouter} from "./mocks/MockMessageRouter.sol";
-import {MockBridgeAdapter} from "./mocks/MockBridgeAdapter.sol";
-import {MockMessageAdapter} from "./mocks/MockMessageAdapter.sol";
-import {MockSwapAdapter} from "./mocks/MockSwapAdapter.sol";
-import {MockStrategyContainer} from "test/mocks/MockStrategyContainer.sol";
-import {MockStrategy} from "test/mocks/MockStrategy.sol";
-
-import {ISwapRouter} from "contracts/interfaces/ISwapRouter.sol";
-import {IMessageRouter} from "contracts/interfaces/IMessageRouter.sol";
-import {IMessageAdapter} from "contracts/interfaces/IMessageAdapter.sol";
-import {ISwapAdapter} from "contracts/interfaces/ISwapAdapter.sol";
-import {Codec} from "contracts/libraries/Codec.sol";
+import {PriceOracleAggregator} from "contracts/PriceOracleAggregator.sol";
 
 import {IContainer} from "contracts/interfaces/IContainer.sol";
+import {IMessageAdapter} from "contracts/interfaces/IMessageAdapter.sol";
+import {IMessageRouter} from "contracts/interfaces/IMessageRouter.sol";
+import {IPriceOracleAggregator} from "contracts/interfaces/IPriceOracleAggregator.sol";
+import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
+import {ISwapAdapter} from "contracts/interfaces/ISwapAdapter.sol";
+import {ISwapRouter} from "contracts/interfaces/ISwapRouter.sol";
+
+import {Codec} from "contracts/libraries/Codec.sol";
+
+import {Test} from "forge-std/Test.sol";
+import {MockBridgeAdapter} from "./mocks/MockBridgeAdapter.sol";
+import {MockERC20} from "./mocks/MockERC20.sol";
+import {MockMessageAdapter} from "./mocks/MockMessageAdapter.sol";
+import {MockMessageRouter} from "./mocks/MockMessageRouter.sol";
+import {MockStrategy} from "test/mocks/MockStrategy.sol";
+import {MockStrategyContainer} from "test/mocks/MockStrategyContainer.sol";
+import {MockSwapAdapter} from "./mocks/MockSwapAdapter.sol";
+import {MockSwapRouter} from "./mocks/MockSwapRouter.sol";
 
 abstract contract Base is Test {
     using Math for uint256;
@@ -33,8 +35,7 @@ abstract contract Base is Test {
         address containerManager;
         address operator;
         address configurator;
-        address manager;
-        address governance;
+        address cacheManager;
         address emergencyManager;
         address tokenManager;
         address messengerManager;
@@ -44,6 +45,8 @@ abstract contract Base is Test {
         address oracleManager;
         address strategyManager;
         address reshufflingManager;
+        address feederRole;
+        address harvestManager;
     }
 
     struct Users {
@@ -57,6 +60,7 @@ abstract contract Base is Test {
 
     MockERC20 internal notion;
     MockERC20 internal dai;
+    IPriceOracleAggregator internal priceOracleAggregator;
     Roles internal roles;
     Users internal users;
     address internal treasury;
@@ -72,6 +76,8 @@ abstract contract Base is Test {
     uint256 internal constant DAI_PRECISION = 10 ** DAI_DECIMALS;
     uint256 internal constant MAX_NOTION_AMOUNT = type(uint256).max / NOTION_PRECISION;
     uint256 internal constant MAX_CACHE_SIZE = 8;
+    uint256 internal constant DEFAULT_SLIPPAGE_CAP_PCT = 0.95e18;
+    uint256 internal constant DEFAULT_FEE_PCT = 0.01e18;
 
     bytes32 internal constant DEFAULT_ADMIN_ROLE = "0x00";
     bytes32 internal constant CONTAINER_MANAGER_ROLE = keccak256("CONTAINER_MANAGER_ROLE");
@@ -84,7 +90,7 @@ abstract contract Base is Test {
     bytes32 internal constant WHITELIST_MANAGER_ROLE = keccak256("WHITELIST_MANAGER_ROLE");
     bytes32 internal constant STRATEGY_MANAGER_ROLE = keccak256("STRATEGY_MANAGER_ROLE");
     bytes32 internal constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
-    bytes32 internal constant GOVERNANCE_ROLE = keccak256("GOVERNANCE_ROLE");
+    bytes32 internal constant CACHE_MANAGER_ROLE = keccak256("CACHE_MANAGER_ROLE");
     bytes32 internal constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
     function setUp() public virtual {
@@ -93,8 +99,7 @@ abstract contract Base is Test {
         roles.containerManager = makeAddr("CONTAINER_MANAGER");
         roles.operator = makeAddr("OPERATOR");
         roles.configurator = makeAddr("CONFIGURATOR");
-        roles.manager = makeAddr("MANAGER");
-        roles.governance = makeAddr("GOVERNANCE");
+        roles.cacheManager = makeAddr("CACHE_MANAGER");
         roles.emergencyManager = makeAddr("EMERGENCY_MANAGER");
         roles.tokenManager = makeAddr("TOKEN_MANAGER");
         roles.messengerManager = makeAddr("MESSENGER_MANAGER");
@@ -103,6 +108,8 @@ abstract contract Base is Test {
         roles.oracleManager = makeAddr("ORACLE_MANAGER");
         roles.strategyManager = makeAddr("STRATEGY_MANAGER");
         roles.reshufflingManager = makeAddr("RESHUFFLING_MANAGER");
+        roles.feederRole = makeAddr("FEEDER_ROLE");
+        roles.harvestManager = makeAddr("HARVEST_MANAGER");
 
         (address alice, uint256 alicePrivateKey) = makeAddrAndKey("ALICE");
         users.alice = alice;
@@ -117,6 +124,7 @@ abstract contract Base is Test {
         dai = _deployMockERC20("Dai", "DAI", DAI_DECIMALS);
         vm.label(address(dai), "DAI");
         treasury = makeAddr("TREASURY");
+        priceOracleAggregator = _deployPriceOracleAggregator();
     }
 
     function _proxify(
@@ -134,7 +142,7 @@ abstract contract Base is Test {
         return new MockERC20(name, symbol, decimals);
     }
 
-    function _deploySwapRouter() internal virtual returns (ISwapRouter) {
+    function _deployMockSwapRouter() internal returns (ISwapRouter) {
         return new MockSwapRouter();
     }
 
@@ -148,7 +156,12 @@ abstract contract Base is Test {
             roles.deployer,
             implementation,
             roles.defaultAdmin,
-            abi.encodeWithSelector(MockBridgeAdapter.initialize.selector, roles.defaultAdmin, roles.governance)
+            abi.encodeWithSelector(
+                MockBridgeAdapter.initialize.selector,
+                roles.defaultAdmin,
+                roles.bridgeAdapterManager,
+                DEFAULT_SLIPPAGE_CAP_PCT
+            )
         );
         return MockBridgeAdapter(proxy);
     }
@@ -167,6 +180,7 @@ abstract contract Base is Test {
             notion: address(notion),
             defaultAdmin: roles.defaultAdmin,
             operator: roles.operator,
+            tokenManager: roles.tokenManager,
             swapRouter: makeAddr("SWAP_ROUTER")
         });
 
@@ -175,7 +189,20 @@ abstract contract Base is Test {
             roles.deployer,
             implementation,
             roles.defaultAdmin,
-            abi.encodeWithSelector(MockStrategyContainer.initialize.selector, containerInitParams)
+            abi.encodeWithSelector(
+                MockStrategyContainer.initialize.selector,
+                containerInitParams,
+                IStrategyContainer.RoleAddresses({
+                    strategyManager: roles.strategyManager,
+                    harvestManager: roles.harvestManager,
+                    reshufflingManager: roles.reshufflingManager,
+                    emergencyManager: roles.emergencyManager
+                }),
+                makeAddr("RESHUFFLING_GATEWAY"),
+                treasury,
+                DEFAULT_FEE_PCT,
+                address(priceOracleAggregator)
+            )
         );
 
         vm.label(proxy, "MOCK_STRATEGY_CONTAINER");
@@ -193,6 +220,18 @@ abstract contract Base is Test {
         );
         vm.label(proxy, "MOCK_STRATEGY");
         return MockStrategy(proxy);
+    }
+
+    function _deployPriceOracleAggregator() internal returns (IPriceOracleAggregator) {
+        address implementation = address(new PriceOracleAggregator());
+        address proxy = _proxify(
+            roles.deployer,
+            implementation,
+            roles.defaultAdmin,
+            abi.encodeWithSelector(PriceOracleAggregator.initialize.selector, roles.defaultAdmin, roles.oracleManager)
+        );
+        vm.label(address(proxy), "PRICE_ORACLE_AGGREGATOR");
+        return IPriceOracleAggregator(proxy);
     }
 
     function _getAddressUintMappingValue(

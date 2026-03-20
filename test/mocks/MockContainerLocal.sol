@@ -65,6 +65,10 @@ contract MockContainerLocal is IContainerLocal {
         return new address[](0);
     }
 
+    function getStrategiesNumber() external pure returns (uint256) {
+        return 0;
+    }
+
     function isStrategy(address) external pure returns (bool) {
         return false;
     }
@@ -97,13 +101,13 @@ contract MockContainerLocal is IContainerLocal {
         return 0;
     }
 
-    function setTreasury(address) external pure {}
+    function setReshufflingGateway(address) external pure {}
 
-    function setPriceOracle(address) external pure {}
+    function setTreasury(address) external pure {}
 
     function setFeePct(uint256) external pure {}
 
-    function setBridgeCollector(address) external pure {}
+    function setPriceOracle(address) external pure {}
 
     function setStrategyOutputTokens(address, address[] calldata) external pure {}
 
@@ -117,11 +121,11 @@ contract MockContainerLocal is IContainerLocal {
         return false;
     }
 
-    function isResolvingEmergency() external pure returns (bool) {
+    function isReshufflingMode() external pure returns (bool) {
         return false;
     }
 
-    function isInReshufflingMode() external pure returns (bool) {
+    function isResolvingEmergency() external pure returns (bool) {
         return false;
     }
 

@@ -6,8 +6,8 @@ import {IContainerPrincipal} from "contracts/interfaces/IContainerPrincipal.sol"
 
 import {Codec} from "contracts/libraries/Codec.sol";
 import {FaultyCodec} from "test/mocks/FaultyCodec.sol";
-import {Common} from "contracts/libraries/helpers/Common.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Common} from "contracts/libraries/Common.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 import {ContainerPrincipalBaseTest} from "test/unit/ContainerPrincipal/ContainerPrincipalBase.t.sol";
 
 contract ContainerPrincipalReceiveMessageTest is ContainerPrincipalBaseTest {
@@ -17,7 +17,7 @@ contract ContainerPrincipalReceiveMessageTest is ContainerPrincipalBaseTest {
 
     function test_RevertIf_ReceivedMessageInWrongStatus() public {
         _setContainerStatus(IContainerPrincipal.ContainerPrincipalStatus.Idle);
-        vm.expectRevert(Errors.IncorrectContainerStatus.selector);
+        vm.expectRevert(IContainerPrincipal.NotExpectingAnyResponse.selector);
         vm.prank(address(messageRouter));
         containerPrincipal.receiveMessage("test");
     }
@@ -386,8 +386,7 @@ contract ContainerPrincipalReceiveMessageTest is ContainerPrincipalBaseTest {
         );
 
         vm.prank(address(messageRouter));
-        // TODO: Must revert
-        // vm.expectRevert(Errors.IncorrectContainerStatus.selector);
+        vm.expectRevert(IContainerPrincipal.NotExpectingWithdrawalResponse.selector);
         containerPrincipal.receiveMessage(withdrawalResponseMessage);
 
         _setContainerStatus(IContainerPrincipal.ContainerPrincipalStatus.WithdrawalRequestSent);
@@ -399,8 +398,7 @@ contract ContainerPrincipalReceiveMessageTest is ContainerPrincipalBaseTest {
             Common.toUnifiedDecimalsUint8(address(notion), vault.minDepositAmount())
         );
         vm.prank(address(messageRouter));
-        // TODO: Must revert
-        // vm.expectRevert(Errors.IncorrectContainerStatus.selector);
+        vm.expectRevert(IContainerPrincipal.NotExpectingDepositResponse.selector);
         containerPrincipal.receiveMessage(depositResponseMessage);
     }
 }

@@ -6,11 +6,13 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {Container} from "./Container.sol";
 import {StrategyContainer} from "./StrategyContainer.sol";
+
 import {IContainer} from "./interfaces/IContainer.sol";
-import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
 import {IContainerLocal} from "./interfaces/IContainerLocal.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
+import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
 import {IVault} from "./interfaces/IVault.sol";
+
+import {Errors} from "./libraries/Errors.sol";
 
 contract ContainerLocal is StrategyContainer, IContainerLocal {
     using SafeERC20 for IERC20;
@@ -22,8 +24,12 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         _disableInitializers();
     }
 
-    function initialize(ContainerInitParams memory containerParams) public initializer {
+    function initialize(
+        ContainerInitParams memory containerParams,
+        StrategyContainerInitParams calldata strategyContainerParams
+    ) public initializer {
         __Container_init(containerParams);
+        __StrategyContainer_init(strategyContainerParams);
         IERC20(notion).forceApprove(vault, type(uint256).max);
     }
 
@@ -44,6 +50,8 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         require(amount > 0, Errors.ZeroAmount());
         status = ContainerLocalStatus.DepositRequestRegistered;
         IERC20(notion).safeTransferFrom(vault, address(this), amount);
+
+        emit DepositRequestRegistered(amount);
     }
 
     /// @inheritdoc IContainerLocal
@@ -54,6 +62,8 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         require(amount > 0, Errors.ZeroAmount());
         status = ContainerLocalStatus.WithdrawalRequestRegistered;
         registeredWithdrawShareAmount = amount;
+
+        emit WithdrawalRequestRegistered(amount);
     }
 
     /// @inheritdoc IContainerLocal
@@ -67,10 +77,11 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         status = ContainerLocalStatus.Idle;
         _strategyEnterBitmask = 0;
 
-        IVault(vault).reportDeposit(
-            IVault.ContainerReport({nav0: nav0, nav1: nav1}),
-            IERC20(notion).balanceOf(address(this))
-        );
+        uint256 remainder = IERC20(notion).balanceOf(address(this));
+
+        IVault(vault).reportDeposit(IVault.ContainerReport({nav0: nav0, nav1: nav1}), remainder);
+
+        emit DepositReported(nav0, nav1, remainder);
     }
 
     /// @inheritdoc IContainerLocal
@@ -81,7 +92,11 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         registeredWithdrawShareAmount = 0;
         _strategyExitBitmask = 0;
         require(_hasOnlyNotionToken(), WhitelistedTokensOnBalance());
-        IVault(vault).reportWithdraw(IERC20(notion).balanceOf(address(this)));
+
+        uint256 notionAmount = IERC20(notion).balanceOf(address(this));
+        IVault(vault).reportWithdraw(notionAmount);
+
+        emit WithdrawalReported(notionAmount);
     }
 
     // ---- Strategy management logic ----
@@ -129,6 +144,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     ) external nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.DepositRequestRegistered, Errors.IncorrectContainerStatus());
         uint256 length = strategies.length;
+        require(length > 0 && length <= getStrategiesNumber(), Errors.InvalidArrayLength());
         require(length == inputAmounts.length, Errors.ArrayLengthMismatch());
         require(length == minNavDelta.length, Errors.ArrayLengthMismatch());
 
@@ -167,6 +183,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     ) external nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.WithdrawalRequestRegistered, Errors.IncorrectContainerStatus());
         uint256 length = strategies.length;
+        require(length > 0 && length <= getStrategiesNumber(), Errors.InvalidArrayLength());
         require(length == maxNavDeltas.length, Errors.ArrayLengthMismatch());
 
         uint256 registeredShareAmountCached = registeredWithdrawShareAmount;
@@ -211,11 +228,11 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         uint256[] memory amounts
     ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
         uint256 length = tokens.length;
-        require(tokens.length == amounts.length, Errors.ArrayLengthMismatch());
-        require(tokens.length > 0, Errors.ZeroArrayLength());
+        require(length > 0, Errors.ZeroArrayLength());
+        require(length == amounts.length, Errors.ArrayLengthMismatch());
 
-        address bridgeCollectorCached = _bridgeCollector;
-        require(bridgeCollectorCached != address(0), Errors.ZeroAddress());
+        address reshufflingGatewayCached = reshufflingGateway;
+        require(reshufflingGatewayCached != address(0), Errors.ZeroAddress());
 
         for (uint256 i = 0; i < length; ++i) {
             address token = tokens[i];
@@ -223,7 +240,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
 
             require(_isTokenWhitelisted(token), NotWhitelistedToken(token));
             if (amount > 0) {
-                IERC20(token).safeTransfer(bridgeCollectorCached, amount);
+                IERC20(token).safeTransfer(reshufflingGatewayCached, amount);
             }
         }
     }

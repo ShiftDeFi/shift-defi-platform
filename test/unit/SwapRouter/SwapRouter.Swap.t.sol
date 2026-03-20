@@ -17,9 +17,6 @@ contract SwapRouterSwapTest is L1Base {
 
         tokenIn = address(dai);
         tokenOut = address(notion);
-
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(swapRouter)).grantRole(WHITELIST_MANAGER_ROLE, roles.whitelistManager);
     }
 
     function _swapDaiToNotion(uint256 amountIn, uint256 minAmountOut) internal returns (uint256 amountOut) {
@@ -82,7 +79,7 @@ contract SwapRouterSwapTest is L1Base {
 
         IERC20(tokenIn).approve(address(swapRouter), amountIn);
 
-        vm.expectRevert(abi.encodeWithSelector(ISwapRouter.SlippageNotMet.selector, 0, 1, minAmountOut));
+        vm.expectRevert(abi.encodeWithSelector(ISwapRouter.SlippageCheckFailed.selector, 0, 1, minAmountOut));
         _swapDaiToNotion(amountIn, minAmountOut);
     }
 

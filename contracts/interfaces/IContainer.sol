@@ -19,6 +19,7 @@ interface IContainer {
         address notion;
         address defaultAdmin;
         address operator;
+        address tokenManager;
         address swapRouter;
     }
 

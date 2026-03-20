@@ -12,14 +12,19 @@ interface IReshufflingGateway {
     event TokenBlacklisted(address indexed token);
     event BridgeAdapterWhitelisted(address indexed bridgeAdapter);
     event BridgeAdapterBlacklisted(address indexed bridgeAdapter);
+    event SwapRouterUpdated(address indexed previousSwapRouter, address indexed newSwapRouter);
 
     error NotContainer(address container);
-    error NotVault(address vault);
     error VaultNotInReshufflingMode();
+    error AlreadyWhitelistedToken();
     error NotWhitelistedToken(address token);
+    error AlreadyWhitelistedBridgeAdapter();
     error NotWhitelistedBridgeAdapter(address bridgeAdapter);
     error WrongRemoteChainId(uint256 expected, uint256 received);
     error TokenNotWhitelistedOnContainer(address token);
+    error NothingClaimed(address bridgeAdapter, address token);
+    error IncorrectPeerContainer(address container);
+    error NotEnoughTokensBridged(address token, uint256 minAmount, uint256 actualAmount);
 
     /**
      * @notice Address of the vault.
@@ -27,14 +32,15 @@ interface IReshufflingGateway {
     function vault() external view returns (address);
 
     /**
-     * @notice Address of the notion token.
-     */
-    function notion() external view returns (address);
-
-    /**
      * @notice Address of the swap router.
      */
     function swapRouter() external view returns (address);
+
+    /**
+     * @notice Returns the whitelisted tokens.
+     * @return Array of whitelisted tokens.
+     */
+    function getWhitelistedTokens() external view returns (address[] memory);
 
     /**
      * @notice Whitelists a token for reshuffling.
@@ -59,6 +65,12 @@ interface IReshufflingGateway {
      * @param bridgeAdapter Bridge adapter address.
      */
     function blacklistBridgeAdapter(address bridgeAdapter) external;
+
+    /**
+     * @notice Sets the swap router address.
+     * @param newSwapRouter The address of the new swap router contract.
+     */
+    function setSwapRouter(address newSwapRouter) external;
 
     /**
      * @notice Claims bridged tokens from a bridge adapter.

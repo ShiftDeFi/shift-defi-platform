@@ -14,6 +14,21 @@ interface IStrategyContainer is IContainer {
 
     // ---- Structs ----
 
+    struct RoleAddresses {
+        address strategyManager;
+        address harvestManager;
+        address reshufflingManager;
+        address emergencyManager;
+    }
+
+    struct StrategyContainerInitParams {
+        RoleAddresses roleAddresses;
+        address reshufflingGateway;
+        address treasury;
+        uint256 feePct;
+        address priceOracle;
+    }
+
     struct NAVReport {
         uint256 nav0;
         uint256 nav1;
@@ -38,7 +53,7 @@ interface IStrategyContainer is IContainer {
     event StrategyInputTokensUpdated(address indexed strategy);
     event TreasuryUpdated(address oldTreasury, address newTreasury);
     event FeePctUpdated(uint256 oldFeePct, uint256 newFeePct);
-    event BridgeCollectorUpdated(address oldBridgeCollector, address newBridgeCollector);
+    event ReshufflingGatewayUpdated(address oldReshufflingGateway, address newReshufflingGateway);
     event PriceOracleUpdated(address oldPriceOracle, address newPriceOracle);
     event ReshufflingModeUpdated(bool reshufflingMode);
     event EmergencyResolutionStarted(address strategy);
@@ -87,11 +102,11 @@ interface IStrategyContainer is IContainer {
     function feePct() external view returns (uint256);
 
     /**
-     * @notice Sets the bridge collector address.
+     * @notice Sets the reshuffling gateway address.
      * @dev Can only be called by accounts with appropriate role.
-     * @param newBridgeCollector The address of the new bridge collector
+     * @param newReshufflingGateway The address of the new reshuffling gateway contract
      */
-    function setBridgeCollector(address newBridgeCollector) external;
+    function setReshufflingGateway(address newReshufflingGateway) external;
 
     /**
      * @notice Sets the treasury address.
@@ -101,18 +116,18 @@ interface IStrategyContainer is IContainer {
     function setTreasury(address newTreasury) external;
 
     /**
-     * @notice Sets the price oracle address.
-     * @dev Can only be called by accounts with appropriate role.
-     * @param newPriceOracle The address of the new price oracle contract
-     */
-    function setPriceOracle(address newPriceOracle) external;
-
-    /**
      * @notice Sets the fee percentage.
      * @dev Can only be called by accounts with appropriate role.
      * @param newFeePct The new fee percentage in basis points
      */
     function setFeePct(uint256 newFeePct) external;
+
+    /**
+     * @notice Sets the price oracle address.
+     * @dev Can only be called by accounts with appropriate role.
+     * @param newPriceOracle The address of the new price oracle contract
+     */
+    function setPriceOracle(address newPriceOracle) external;
 
     /**
      * @notice Enables reshuffling mode.
@@ -131,6 +146,12 @@ interface IStrategyContainer is IContainer {
      * @return Array of strategy addresses
      */
     function getStrategies() external view returns (address[] memory);
+
+    /**
+     * @notice Returns the number of registered strategies.
+     * @return The number of registered strategies
+     */
+    function getStrategiesNumber() external view returns (uint256);
 
     /**
      * @notice Checks if an address is a registered strategy.
@@ -201,6 +222,12 @@ interface IStrategyContainer is IContainer {
      * @dev Can only be called by accounts with appropriate role.
      */
     function startEmergencyResolution() external;
+
+    /**
+     * @notice Checks if reshuffling mode is enabled.
+     * @return True if reshuffling mode is enabled, false otherwise
+     */
+    function isReshufflingMode() external view returns (bool);
 
     /**
      * @notice Checks if emergency resolution is in progress.

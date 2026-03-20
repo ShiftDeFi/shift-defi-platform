@@ -2,15 +2,16 @@
 pragma solidity ^0.8.28;
 
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {Errors} from "./libraries/helpers/Errors.sol";
 import {IContainer} from "./interfaces/IContainer.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
+
+import {Errors} from "./libraries/Errors.sol";
 
 abstract contract Container is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IContainer {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -34,19 +35,22 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
     }
 
     function __Container_init(ContainerInitParams memory params) internal onlyInitializing {
+        __AccessControl_init();
+        __ReentrancyGuard_init();
+
         require(params.vault != address(0), Errors.ZeroAddress());
-        vault = params.vault;
         require(params.notion != address(0), Errors.ZeroAddress());
+        require(params.tokenManager != address(0), Errors.ZeroAddress());
+
+        vault = params.vault;
         notion = params.notion;
 
         _whitelistedTokens.add(notion);
         _setSwapRouter(params.swapRouter);
 
-        __AccessControl_init();
-        __ReentrancyGuard_init();
-
-        _grantRole(OPERATOR_ROLE, params.operator);
         _grantRole(DEFAULT_ADMIN_ROLE, params.defaultAdmin);
+        _grantRole(OPERATOR_ROLE, params.operator);
+        _grantRole(TOKEN_MANAGER_ROLE, params.tokenManager);
     }
 
     // ---- Token management logic ----
@@ -87,11 +91,6 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
         return _whitelistedTokens.contains(token);
     }
 
-    function _validateToken(address token) internal view {
-        require(_isTokenWhitelisted(token), IContainer.NotWhitelistedToken(token));
-        require(token != address(0), Errors.ZeroAddress());
-    }
-
     function _validateWhitelistedTokensBeforeReport(bool ignoreNotion, bool ignoreDust) internal view returns (bool) {
         uint256 length = _whitelistedTokens.length();
         for (uint256 i = 0; i < length; i++) {
@@ -113,11 +112,11 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
 
     /// @inheritdoc IContainer
     function setSwapRouter(address newSwapRouter) external onlyRole(TOKEN_MANAGER_ROLE) {
-        require(newSwapRouter != address(0), Errors.ZeroAddress());
         _setSwapRouter(newSwapRouter);
     }
 
     function _setSwapRouter(address newSwapRouter) internal {
+        require(newSwapRouter != address(0), Errors.ZeroAddress());
         address previousSwapRouter = swapRouter;
         swapRouter = newSwapRouter;
         if (previousSwapRouter != address(0)) {

@@ -2,15 +2,17 @@
 pragma solidity ^0.8.28;
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {Container} from "./Container.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
-import {Common} from "./libraries/helpers/Common.sol";
+
 import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
-import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
 import {IContainer} from "./interfaces/IContainer.sol";
+import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
+
+import {Common} from "./libraries/Common.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 abstract contract CrossChainContainer is Container, ICrossChainContainer {
     using SafeERC20 for IERC20;
@@ -35,16 +37,17 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
         _;
     }
 
-    function __CrossChainContainer_init(
-        ContainerInitParams memory containerParams,
-        CrossChainContainerInitParams memory crossChainParams
-    ) internal onlyInitializing {
-        __Container_init(containerParams);
-        _setMessageRouter(crossChainParams.messageRouter);
+    function __CrossChainContainer_init(CrossChainContainerInitParams calldata params) internal onlyInitializing {
+        _setMessageRouter(params.messageRouter);
 
-        require(crossChainParams.remoteChainId > 0, Errors.ZeroAmount());
-        remoteChainId = crossChainParams.remoteChainId;
-        emit RemoteChainIdUpdated(0, crossChainParams.remoteChainId);
+        require(params.remoteChainId > 0, Errors.IncorrectChainId(params.remoteChainId));
+        remoteChainId = params.remoteChainId;
+
+        require(params.messengerManager != address(0), Errors.ZeroAddress());
+        require(params.bridgeAdapterManager != address(0), Errors.ZeroAddress());
+
+        _grantRole(MESSENGER_MANAGER_ROLE, params.messengerManager);
+        _grantRole(BRIDGE_ADAPTER_MANAGER_ROLE, params.bridgeAdapterManager);
     }
 
     // ---- Messaging logic ----
@@ -135,7 +138,7 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
         address bridgeTo,
         IBridgeAdapter.BridgeInstruction calldata instruction
     ) internal returns (address, uint256) {
-        _validateToken(instruction.token);
+        require(_isTokenWhitelisted(instruction.token), IContainer.NotWhitelistedToken(instruction.token));
         _validateBridgeAdapter(bridgeAdapter);
 
         BridgeTokenLocalVars memory vars;
@@ -143,11 +146,14 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
         vars.tokenBalanceBefore = IERC20(instruction.token).balanceOf(address(this));
         require(
             vars.tokenBalanceBefore >= instruction.amount,
-            Errors.NotEnoughTokens(instruction.token, instruction.amount)
+            Errors.NotEnoughTokens(instruction.token, instruction.amount, vars.tokenBalanceBefore)
         );
         vars.tokenOnDestinationChain = _getTokenOnDestinationChain(bridgeAdapter, instruction.token);
         vars.minAllowedAmount = instruction.amount.mulDiv(MAX_BRIDGE_SLIPPAGE, MAX_BPS);
-        require(instruction.minTokenAmount >= vars.minAllowedAmount, Errors.IncorrectAmount());
+        require(
+            instruction.minTokenAmount >= vars.minAllowedAmount,
+            InvalidBridgeInstructionSlippage(instruction.minTokenAmount, vars.minAllowedAmount)
+        );
 
         _approveTokenToBridgeAdapter(instruction.token, bridgeAdapter, instruction.amount);
 

@@ -5,15 +5,15 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
-import {RingCacheLibrary} from "contracts/libraries/helpers/RingCacheLibrary.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
+import {RingCacheLibrary} from "contracts/libraries/RingCacheLibrary.sol";
 import {BridgeAdapterBase} from "test/unit/BridgeAdapter/BridgeAdapterBase.t.sol";
 
 contract BridgeAdapterBridgeTest is BridgeAdapterBase {
     function setUp() public override {
         super.setUp();
 
-        vm.startPrank(roles.governance);
+        vm.startPrank(roles.bridgeAdapterManager);
         bridgeAdapter.whitelistBridger(users.alice);
         bridgeAdapter.setBridgePath(address(notion), REMOTE_CHAIN_ID, address(notion));
         bridgeAdapter.setPeer(REMOTE_CHAIN_ID, address(this));
@@ -111,7 +111,7 @@ contract BridgeAdapterBridgeTest is BridgeAdapterBase {
 
         instruction.chainTo = 0;
 
-        vm.expectRevert(Errors.ZeroAmount.selector);
+        vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectChainId.selector, 0));
         vm.prank(users.alice);
         bridgeAdapter.bridge(instruction, makeAddr("Receiver"));
     }
@@ -142,7 +142,7 @@ contract BridgeAdapterBridgeTest is BridgeAdapterBase {
     function test_RevertIf_ValidateBridgeInstruction_PeerNotSet() public {
         uint256 unknownChainId = 999999;
 
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setBridgePath(address(notion), unknownChainId, address(notion));
 
         IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
@@ -165,7 +165,7 @@ contract BridgeAdapterBridgeTest is BridgeAdapterBase {
     }
 
     function test_RevertIf_ValidateBridgeInstruction_SlippageCapExceeded() public {
-        vm.prank(roles.governance);
+        vm.prank(roles.bridgeAdapterManager);
         bridgeAdapter.setSlippageCapPct(100);
 
         IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);

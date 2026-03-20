@@ -2,19 +2,21 @@
 pragma solidity ^0.8.28;
 
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import {IContainer} from "./interfaces/IContainer.sol";
 import {IContainerPrincipal} from "./interfaces/IContainerPrincipal.sol";
 import {IVault} from "./interfaces/IVault.sol";
-import {EnumerableAddressSetExtended} from "./libraries/helpers/EnumerableAddressSetExtended.sol";
-import {Errors} from "./libraries/helpers/Errors.sol";
+
+import {EnumerableAddressSetExtended} from "./libraries/EnumerableAddressSetExtended.sol";
+import {Errors} from "./libraries/Errors.sol";
 
 contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradeable, ReentrancyGuardUpgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -65,6 +67,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     EnumerableSet.AddressSet private _containers;
     mapping(address => uint256) public containerWeights;
+    mapping(uint256 => address) public containerByChainId;
 
     address public reshufflingGateway;
     bool public isReshuffling;
@@ -157,7 +160,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     /// @inheritdoc IVault
     function setReshufflingMode(bool _isReshuffling) external onlyRole(EMERGENCY_MANAGER_ROLE) {
         require(reshufflingGateway != address(0), ReshufflingGatewayNotSet());
-        require(isReshuffling != _isReshuffling, Errors.IncorrectInput());
+        require(isReshuffling != _isReshuffling, Errors.SettingSameBooleanValue());
         isReshuffling = _isReshuffling;
         emit ReshufflingModeUpdated(_isReshuffling);
     }
@@ -205,14 +208,14 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     function _setMaxDepositAmount(uint256 _maxDepositAmount) internal {
         require(
             _maxDepositAmount >= minDepositAmount && _maxDepositAmount <= maxDepositBatchSize,
-            Errors.IncorrectAmount()
+            IncorrectMaxDepositAmount()
         );
         maxDepositAmount = _maxDepositAmount;
         emit MaxDepositAmountUpdated(_maxDepositAmount);
     }
 
     function _setMinDepositAmount(uint256 _minDepositAmount) internal {
-        require(_minDepositAmount > 0 && _minDepositAmount <= maxDepositAmount, Errors.IncorrectAmount());
+        require(_minDepositAmount > 0 && _minDepositAmount <= maxDepositAmount, IncorrectMinDepositAmount());
         minDepositAmount = _minDepositAmount;
         emit MinDepositAmountUpdated(_minDepositAmount);
     }
@@ -220,40 +223,43 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     function _setMaxDepositBatchSize(uint256 _maxDepositBatchSize) internal {
         require(
             _maxDepositBatchSize > minDepositBatchSize && _maxDepositBatchSize >= maxDepositAmount,
-            Errors.IncorrectAmount()
+            IncorrectMaxDepositBatchSize()
         );
         maxDepositBatchSize = _maxDepositBatchSize;
         emit MaxDepositBatchSizeUpdated(_maxDepositBatchSize);
     }
 
     function _setMinDepositBatchSize(uint256 _minDepositBatchSize) internal {
-        require(_minDepositBatchSize > 0 && _minDepositBatchSize < maxDepositBatchSize, Errors.IncorrectAmount());
+        require(_minDepositBatchSize > 0 && _minDepositBatchSize < maxDepositBatchSize, IncorrectMinDepositBatchSize());
         minDepositBatchSize = _minDepositBatchSize;
         emit MinDepositBatchSizeUpdated(_minDepositBatchSize);
     }
 
     function _setMinWithdrawBatchRatio(uint256 _minWithdrawBatchRatio) internal {
-        require(_minWithdrawBatchRatio > 0 && _minWithdrawBatchRatio <= MAX_BPS, Errors.IncorrectAmount());
+        require(_minWithdrawBatchRatio > 0 && _minWithdrawBatchRatio <= MAX_BPS, IncorrectMinWithdrawBatchRatio());
         minWithdrawBatchRatio = _minWithdrawBatchRatio;
         emit MinWithdrawBatchRatioUpdated(_minWithdrawBatchRatio);
     }
 
     function _setForcedDepositThreshold(uint256 _forcedDepositThreshold) internal {
-        require(_forcedDepositThreshold > 0 && _forcedDepositThreshold < maxDepositBatchSize, Errors.IncorrectAmount());
+        require(
+            _forcedDepositThreshold > 0 && _forcedDepositThreshold < maxDepositBatchSize,
+            IncorrectForcedDepositThreshold()
+        );
         uint256 previousForcedDepositThreshold = forcedDepositThreshold;
         forcedDepositThreshold = _forcedDepositThreshold;
         emit ForcedDepositThresholdUpdated(previousForcedDepositThreshold, _forcedDepositThreshold);
     }
 
     function _setForcedWithdrawThreshold(uint256 _forcedWithdrawThreshold) internal {
-        require(_forcedWithdrawThreshold > 0, Errors.IncorrectAmount());
+        require(_forcedWithdrawThreshold > 0, IncorrectForcedWithdrawThreshold());
         uint256 previousForcedWithdrawThreshold = forcedWithdrawThreshold;
         forcedWithdrawThreshold = _forcedWithdrawThreshold;
         emit ForcedWithdrawThresholdUpdated(previousForcedWithdrawThreshold, _forcedWithdrawThreshold);
     }
 
     function _setForcedBatchBlockLimit(uint256 _forcedBatchBlockLimit) internal {
-        require(_forcedBatchBlockLimit > 0, Errors.IncorrectAmount());
+        require(_forcedBatchBlockLimit > 0, IncorrectForcedBatchBlockLimit());
         uint256 previousForcedBatchBlockLimit = forcedBatchBlockLimit;
         forcedBatchBlockLimit = _forcedBatchBlockLimit;
         emit ForcedBatchBlockLimitUpdated(previousForcedBatchBlockLimit, _forcedBatchBlockLimit);
@@ -276,12 +282,26 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     }
 
     /// @inheritdoc IVault
-    function addContainer(address container) external nonReentrant onlyRole(CONTAINER_MANAGER_ROLE) {
-        require(status == VaultStatus.Idle, IncorrectStatus());
+    function addContainer(address container, uint256 chainId) external nonReentrant onlyRole(CONTAINER_MANAGER_ROLE) {
+        require(status == VaultStatus.Idle, IncorrectVaultStatus(status));
         require(container != address(0), Errors.ZeroAddress());
+        require(chainId > 0, Errors.IncorrectChainId(chainId));
 
         uint256 length = _containers.length();
         require(length < MAX_CONTAINERS, MaxContainersReached());
+
+        address containerForChainId = containerByChainId[chainId];
+        require(containerForChainId == address(0), ContainerForChainIdAlreadyExists(chainId, containerForChainId));
+        containerByChainId[chainId] = container;
+
+        if (chainId == block.chainid) {
+            require(IContainer(container).containerType() == IContainer.ContainerType.Local, IncorrectContainerType());
+        } else {
+            require(
+                IContainer(container).containerType() == IContainer.ContainerType.Principal,
+                IncorrectContainerType()
+            );
+        }
 
         if (length == 0) {
             containerWeights[container] = TOTAL_CONTAINER_WEIGHT;
@@ -298,7 +318,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         address[] calldata containers,
         uint256[] calldata weights
     ) external onlyRole(CONTAINER_MANAGER_ROLE) {
-        require(status == VaultStatus.Idle, IncorrectStatus());
+        require(status == VaultStatus.Idle, IncorrectVaultStatus(status));
         uint256 length = containers.length;
         require(length == weights.length, Errors.ArrayLengthMismatch());
 
@@ -326,6 +346,11 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
             if (weights[i] == 0) {
                 notion.forceApprove(containers[i], 0);
                 _containers.remove(containers[i]);
+                if (IContainer(containers[i]).containerType() == IContainer.ContainerType.Local) {
+                    delete containerByChainId[block.chainid];
+                } else {
+                    delete containerByChainId[IContainerPrincipal(containers[i]).remoteChainId()];
+                }
                 emit ContainerRemoved(containers[i]);
             }
         }
@@ -367,6 +392,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     }
 
     function _deposit(uint256 amount, address onBehalfOf) internal notInReshufflingMode {
+        require(onBehalfOf != address(0), Errors.ZeroAddress());
         require(amount >= minDepositAmount && amount <= maxDepositAmount, Errors.IncorrectAmount());
 
         uint256 batchId = depositBatchId;
@@ -483,7 +509,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function startDepositBatchProcessing() external onlyRole(OPERATOR_ROLE) notInReshufflingMode {
-        require(status == VaultStatus.Idle, IncorrectStatus());
+        require(status == VaultStatus.Idle, IncorrectVaultStatus(status));
 
         DepositBatchProcessingLocalVars memory vars;
         vars.totalBatchDepositAmount = bufferedDeposits;
@@ -503,7 +529,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
         for (uint256 i = 0; i < vars.containersNumber; ++i) {
             address container = _containers.at(i);
             uint256 containerWeight = containerWeights[container];
-            require(containerWeight > 0, ContainerWeightZero(container));
+            require(containerWeight > 0, ZeroContainerWeight(container));
 
             vars.containerAmount = vars.undistributedNotionAmount.mulDiv(containerWeight, vars.undistributedWeight);
             require(vars.containerAmount > 0, IncorrectContainerAmount(container));
@@ -522,7 +548,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function skipDepositBatch() external onlyRole(OPERATOR_ROLE) {
-        require(status == VaultStatus.Idle, IncorrectBatchStatus());
+        require(status == VaultStatus.Idle, IncorrectVaultStatus(status));
         require(totalSupply() > 0, CannotSkipBatchInEmptyVault());
         uint256 bufferedDepositsCached = bufferedDeposits;
         require(bufferedDepositsCached < minDepositBatchSize, CannotSkipBatch());
@@ -538,14 +564,14 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function reportDeposit(ContainerReport calldata report, uint256 notionRemainder) external onlyContainer {
-        require(status == VaultStatus.DepositBatchProcessingStarted, IncorrectStatus());
+        require(status == VaultStatus.DepositBatchProcessingStarted, IncorrectVaultStatus(status));
         require(report.nav1 >= report.nav0, IncorrectReport());
 
         (, uint256 containerIndex) = _containers.indexOf(msg.sender);
         uint256 mask = 1 << containerIndex;
         uint256 reportBitmask = _depositReportBitmask;
 
-        require(reportBitmask & mask == 0, ContainerAlreadyReported());
+        require(reportBitmask & mask == 0, ContainerAlreadyReported(msg.sender));
 
         uint256 previousBatchId = depositBatchId - 1;
 
@@ -563,7 +589,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function resolveDepositBatch() external onlyRole(OPERATOR_ROLE) {
-        require(status == VaultStatus.DepositBatchProcessingStarted, IncorrectBatchStatus());
+        require(status == VaultStatus.DepositBatchProcessingStarted, IncorrectVaultStatus(status));
         require(isDepositReportComplete(), MissingContainerReport());
 
         ResolveDepositBatchLocalVars memory vars;
@@ -610,12 +636,12 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function startWithdrawBatchProcessing() external onlyRole(OPERATOR_ROLE) notInReshufflingMode {
-        require(status == VaultStatus.DepositBatchProcessingFinished, IncorrectBatchStatus());
+        require(status == VaultStatus.DepositBatchProcessingFinished, IncorrectVaultStatus(status));
         WithdrawBatchProcessingLocalVars memory vars;
 
         vars.bufferedSharesToWithdrawCached = bufferedSharesToWithdraw;
         vars.batchSharesPercent = _calculateSharesPercent(vars.bufferedSharesToWithdrawCached);
-        require(vars.batchSharesPercent >= minWithdrawBatchRatio, NotEnoughSharesWithdrawn());
+        require(vars.batchSharesPercent >= minWithdrawBatchRatio, NotEnoughSharesWithdrawn(vars.batchSharesPercent));
 
         status = VaultStatus.WithdrawBatchProcessingStarted;
         vars.batchId = withdrawBatchId++;
@@ -631,7 +657,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function skipWithdrawBatch() external onlyRole(OPERATOR_ROLE) {
-        require(status == VaultStatus.DepositBatchProcessingFinished, IncorrectBatchStatus());
+        require(status == VaultStatus.DepositBatchProcessingFinished, IncorrectVaultStatus(status));
         uint256 bufferedSharesToWithdrawCached = bufferedSharesToWithdraw;
         uint256 batchSharesPercent = _calculateSharesPercent(bufferedSharesToWithdrawCached);
         require(batchSharesPercent < minWithdrawBatchRatio, CannotSkipBatch());
@@ -647,14 +673,14 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function reportWithdraw(uint256 notionAmount) external onlyContainer {
-        require(status == VaultStatus.WithdrawBatchProcessingStarted, IncorrectBatchStatus());
+        require(status == VaultStatus.WithdrawBatchProcessingStarted, IncorrectVaultStatus(status));
         require(notionAmount > 0, IncorrectReport());
 
         (, uint256 containerIndex) = _containers.indexOf(msg.sender);
 
         uint256 mask = 1 << containerIndex;
         uint256 reportBitmask = _withdrawReportBitmask;
-        require(reportBitmask & mask == 0, ContainerAlreadyReported());
+        require(reportBitmask & mask == 0, ContainerAlreadyReported(msg.sender));
 
         _withdrawReportBitmask = reportBitmask | mask;
         uint256 previousBatchId = withdrawBatchId - 1;
@@ -668,7 +694,7 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
 
     /// @inheritdoc IVault
     function resolveWithdrawBatch() external onlyRole(OPERATOR_ROLE) {
-        require(status == VaultStatus.WithdrawBatchProcessingStarted, IncorrectBatchStatus());
+        require(status == VaultStatus.WithdrawBatchProcessingStarted, IncorrectVaultStatus(status));
         require(isWithdrawReportComplete(), MissingContainerReport());
 
         status = VaultStatus.Idle;
@@ -680,6 +706,8 @@ contract Vault is IVault, Initializable, AccessControlUpgradeable, ERC20Upgradea
     }
 
     function _calculateSharesPercent(uint256 shares) internal view returns (uint256) {
-        return shares.mulDiv(MAX_BPS, totalSupply());
+        uint256 totalSupplyCached = totalSupply();
+        require(totalSupplyCached > 0, Errors.ZeroAmount());
+        return shares.mulDiv(MAX_BPS, totalSupplyCached);
     }
 }

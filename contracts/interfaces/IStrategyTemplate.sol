@@ -70,6 +70,8 @@ interface IStrategyTemplate {
 
     struct EmergencyExitLocalVars {
         bytes32 currentStateId;
+        uint256 toStateNavBeforeExit;
+        uint256 toStateNavAfterExit;
         uint256 currentStateBitmask;
         uint256 toStateBitmask;
         bool isExitSuccess;
@@ -92,8 +94,12 @@ interface IStrategyTemplate {
 
     // ---- Errors ----
 
+    error IncorrectStateId(bytes32 stateId);
+    error StateHasZeroBitmask(bytes32 stateId);
+    error CannotEnterStateWithLowerHeight(bytes32 toStateId, bytes32 currentStateId);
+    error CannotExitToStateWithHigherHeight(bytes32 toStateId, bytes32 currentStateId);
     error EnterUnavailable();
-    error ExitUnavailable();
+    error CannotExitFromNoAllocationState();
     error EmergencyExitUnavailable();
     error SlippageCheckFailed(uint256 navBefore, uint256 navAfter, uint256 minNavDelta);
     error NavResolutionModeActivated();
@@ -103,6 +109,9 @@ interface IStrategyTemplate {
     error NotInTargetState(bytes32 currentStateId, uint256 currentStateBitmask);
     error StateAlreadyExists(bytes32 stateId);
     error TargetStateAlreadySet();
+    error AlreadyInState(bytes32 stateId);
+    error TreasuryNotSet();
+    error TokenNotFound(address token);
 
     // ---- Functions ----
 
@@ -161,16 +170,9 @@ interface IStrategyTemplate {
      * @dev Callable by the strategy container or EMERGENCY_MANAGER_ROLE.
      * @param toStateId Destination state identifier for the emergency exit.
      * @param share Portion of the position to exit in basis points (10000 = 100%).
+     * @param minNavDelta Minimum required NAV increase (notion units) after exit.
      */
-    function emergencyExit(bytes32 toStateId, uint256 share) external payable;
-
-    /**
-     * @notice Performs multiple emergency exits in a single call.
-     * @dev Callable by the strategy container or EMERGENCY_MANAGER_ROLE.
-     * @param toStateIds Array of destination state identifiers for emergency exits.
-     * @param shares Portions to exit per state in basis points.
-     */
-    function emergencyExitMultiple(bytes32[] calldata toStateIds, uint256[] calldata shares) external payable;
+    function emergencyExit(bytes32 toStateId, uint256 share, uint256 minNavDelta) external payable;
 
     /**
      * @notice Internal function to attempt an emergency exit safely.
@@ -181,15 +183,17 @@ interface IStrategyTemplate {
     function tryEmergencyExit(bytes32 toStateId, uint256 share) external;
 
     /**
-     * @notice Sets the list of allowed input tokens.
-     * @dev Callable only by the strategy container. Tokens cannot be zero addresses or duplicates.
+     * @notice Sets (overwrites) the list of allowed input tokens.
+     * @dev Callable only by the strategy container. This method overwrites the previous input tokens with the new list.
+     *      Tokens cannot be zero addresses or duplicates.
      * @param inputTokens Token addresses allowed for entering the strategy.
      */
     function setInputTokens(address[] memory inputTokens) external;
 
     /**
-     * @notice Sets the list of allowed output tokens.
-     * @dev Callable only by the strategy container. Tokens cannot be zero addresses or duplicates.
+     * @notice Sets (overwrites) the list of allowed output tokens.
+     * @dev Callable only by the strategy container. This method overwrites the previous output tokens with the new list.
+     *      Tokens cannot be zero addresses or duplicates.
      * @param outputTokens Token addresses expected when exiting the strategy.
      */
     function setOutputTokens(address[] memory outputTokens) external;

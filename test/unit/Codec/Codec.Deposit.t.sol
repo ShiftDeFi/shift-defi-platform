@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 import {Codec} from "contracts/libraries/Codec.sol";
-import {Common} from "contracts/libraries/helpers/Common.sol";
+import {Common} from "contracts/libraries/Common.sol";
 
 import {CodecBaseTest} from "test/unit/Codec/CodecBase.t.sol";
 

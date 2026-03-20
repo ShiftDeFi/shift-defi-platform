@@ -17,7 +17,7 @@ interface IBridgeAdapter {
     event PeerUpdated(uint256 indexed chain, address indexed peer);
     event BridgerWhitelisted(address indexed bridger);
     event BridgerBlacklisted(address indexed bridger);
-    event SlippageCapPctUpdated(uint256 slippageCapPct);
+    event SlippageCapPctUpdated(uint256 previousSlippageCapPct, uint256 newSlippageCapPct);
 
     error PeerNotSet(uint256 chainId);
     error BadBridgePath(address srcToken, uint256 chainTo);
@@ -53,18 +53,21 @@ interface IBridgeAdapter {
      * @return The token address on the destination chain.
      */
     function bridgePaths(address token, uint256 chain) external view returns (address);
+
     /*
      * @dev Returns the peer address for a given chain.
      * @param chain The chain to get the peer address for.
      * @return The peer address.
      */
     function peers(uint256 chain) external view returns (address);
+
     /*
      * @dev Returns the whitelist status for a given bridger.
      * @param bridger The address of the bridger.
      * @return The whitelist status.
      */
     function whitelistedBridgers(address bridger) external view returns (bool);
+
     /*
      * @dev Returns the claimable amount for a given claimer and token.
      * @param claimer The address of the claimer.

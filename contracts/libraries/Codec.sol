@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {Errors} from "./helpers/Errors.sol";
+import {Errors} from "./Errors.sol";
 
 /// @title Codec
 /// @notice Library for encoding and decoding cross-chain messages for deposit and withdrawal operations
@@ -401,15 +401,12 @@ library Codec {
 
     /**
      * @notice Fetches the number of tokens from encoded data.
-     * @dev Reverts if data too short or token count >= MAX_TOKENS.
      * @param data The encoded byte array.
-     * @return numTokens The number of tokens (must be < MAX_TOKENS).
+     * @return numTokens The number of tokens
      */
     function fetchNumTokens(bytes memory data) internal pure returns (uint8) {
         require(data.length > NUM_TOKENS_POSITION, InvalidDataLength());
-        uint8 numTokens = uint8(data[1]);
-        require(numTokens < MAX_TOKENS, Errors.IncorrectAmount());
-        return numTokens;
+        return uint8(data[1]);
     }
 
     /**

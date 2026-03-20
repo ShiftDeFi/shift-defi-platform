@@ -6,7 +6,7 @@ import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {ICrossChainContainer} from "contracts/interfaces/ICrossChainContainer.sol";
 import {IContainerAgent} from "contracts/interfaces/IContainerAgent.sol";
 
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {MockBridgeAdapter} from "test/mocks/MockBridgeAdapter.sol";
 import {ContainerAgentBaseTest} from "test/unit/ContainerAgent/ContainerAgentBase.t.sol";

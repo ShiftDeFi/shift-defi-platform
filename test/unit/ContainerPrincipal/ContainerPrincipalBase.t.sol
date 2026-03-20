@@ -10,8 +10,8 @@ import {IContainerPrincipal} from "contracts/interfaces/IContainerPrincipal.sol"
 import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
 
 import {Codec} from "contracts/libraries/Codec.sol";
-import {Common} from "contracts/libraries/helpers/Common.sol";
-import {Errors} from "contracts/libraries/helpers/Errors.sol";
+import {Common} from "contracts/libraries/Common.sol";
+import {Errors} from "contracts/libraries/Errors.sol";
 
 import {L1Base} from "test/L1Base.t.sol";
 import {Utils} from "test/Utils.sol";
@@ -25,24 +25,15 @@ contract ContainerPrincipalBaseTest is L1Base {
         super.setUp();
 
         containerPrincipal = _deployContainerPrincipal();
-        _addContainer(address(containerPrincipal));
-
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(containerPrincipal)).grantRole(TOKEN_MANAGER_ROLE, roles.tokenManager);
-
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(containerPrincipal)).grantRole(MESSENGER_MANAGER_ROLE, roles.messengerManager);
+        _addContainer(address(containerPrincipal), REMOTE_CHAIN_ID);
 
         vm.prank(roles.messengerManager);
         containerPrincipal.setPeerContainer(makeAddr("ContainerAgent"));
 
-        vm.prank(roles.defaultAdmin);
-        AccessControl(address(containerPrincipal)).grantRole(BRIDGE_ADAPTER_MANAGER_ROLE, roles.bridgeAdapterManager);
-
         vm.prank(roles.bridgeAdapterManager);
         containerPrincipal.setBridgeAdapter(address(bridgeAdapter), true);
 
-        vm.startPrank(roles.governance);
+        vm.startPrank(roles.bridgeAdapterManager);
         bridgeAdapter.whitelistBridger(address(containerPrincipal));
         bridgeAdapter.setBridgePath(address(notion), REMOTE_CHAIN_ID, address(dai));
         bridgeAdapter.setPeer(REMOTE_CHAIN_ID, address(containerPrincipal));

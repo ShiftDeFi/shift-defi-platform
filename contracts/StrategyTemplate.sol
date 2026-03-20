@@ -47,28 +47,29 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     /* Modifiers */
 
     modifier onlyStrategyContainer() {
-        require(_strategyContainer != address(0), Errors.ZeroAddress());
         require(msg.sender == _strategyContainer, Errors.Unauthorized());
         _;
     }
 
     modifier onlyStrategyContainerOrHarvestManager() {
         address strategyContainerCached = _strategyContainer;
-        bool isHarvestManager = AccessControlUpgradeable(strategyContainerCached).hasRole(
-            HARVEST_MANAGER_ROLE,
-            msg.sender
-        );
-        require(isHarvestManager || msg.sender == strategyContainerCached, Errors.Unauthorized());
+        if (strategyContainerCached != msg.sender) {
+            require(
+                AccessControlUpgradeable(strategyContainerCached).hasRole(HARVEST_MANAGER_ROLE, msg.sender),
+                Errors.Unauthorized()
+            );
+        }
         _;
     }
 
     modifier onlyStrategyContainerOrEmergencyManager() {
         address strategyContainerCached = _strategyContainer;
-        bool isEmergencyManager = AccessControlUpgradeable(strategyContainerCached).hasRole(
-            EMERGENCY_MANAGER_ROLE,
-            msg.sender
-        );
-        require(isEmergencyManager || msg.sender == strategyContainerCached, Errors.Unauthorized());
+        if (strategyContainerCached != msg.sender) {
+            require(
+                AccessControlUpgradeable(strategyContainerCached).hasRole(EMERGENCY_MANAGER_ROLE, msg.sender),
+                Errors.Unauthorized()
+            );
+        }
         _;
     }
 

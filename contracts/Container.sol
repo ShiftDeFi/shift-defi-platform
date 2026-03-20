@@ -112,11 +112,11 @@ abstract contract Container is Initializable, AccessControlUpgradeable, Reentran
 
     /// @inheritdoc IContainer
     function setSwapRouter(address newSwapRouter) external onlyRole(TOKEN_MANAGER_ROLE) {
-        require(newSwapRouter != address(0), Errors.ZeroAddress());
         _setSwapRouter(newSwapRouter);
     }
 
     function _setSwapRouter(address newSwapRouter) internal {
+        require(newSwapRouter != address(0), Errors.ZeroAddress());
         address previousSwapRouter = swapRouter;
         swapRouter = newSwapRouter;
         if (previousSwapRouter != address(0)) {

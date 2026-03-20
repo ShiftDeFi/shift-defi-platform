@@ -112,8 +112,8 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
 
     function _setSwapRouter(address newSwapRouter) internal {
         require(newSwapRouter != address(0), Errors.ZeroAddress());
-        swapRouter = newSwapRouter;
         address previousSwapRouter = swapRouter;
+        swapRouter = newSwapRouter;
         if (previousSwapRouter != address(0)) {
             _dropApprovesFromWhitelistedTokens(previousSwapRouter);
         }

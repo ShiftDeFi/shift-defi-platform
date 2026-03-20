@@ -94,7 +94,7 @@ interface IStrategyTemplate {
 
     // ---- Errors ----
 
-    error IncorrectStateId();
+    error IncorrectStateId(bytes32 stateId);
     error StateHasZeroBitmask(bytes32 stateId);
     error CannotEnterStateWithLowerHeight(bytes32 toStateId, bytes32 currentStateId);
     error CannotExitToStateWithHigherHeight(bytes32 toStateId, bytes32 currentStateId);

@@ -73,8 +73,8 @@ contract VaultReportDepositTest is VaultBaseTest {
 
     function test_RevertIf_ReportDeposit_NotInDepositBatchProcessingStartedStatus() public {
         (address[] memory containers, ) = vault.getContainers();
+        vm.expectRevert(abi.encodeWithSelector(IVault.IncorrectVaultStatus.selector, IVault.VaultStatus.Idle));
         vm.prank(containers[0]);
-        vm.expectRevert(IVault.IncorrectVaultStatus.selector);
         vault.reportDeposit(IVault.ContainerReport({nav0: 0, nav1: 0}), 0);
     }
 

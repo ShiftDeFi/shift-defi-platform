@@ -19,7 +19,12 @@ contract VaultDepositBatchProcessingTest is L1Base {
         stdstore.target(address(vault)).sig(vault.status.selector).checked_write(
             uint256(IVault.VaultStatus.DepositBatchProcessingStarted)
         );
-        vm.expectRevert(IVault.IncorrectVaultStatus.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVault.IncorrectVaultStatus.selector,
+                IVault.VaultStatus.DepositBatchProcessingStarted
+            )
+        );
         vm.prank(roles.operator);
         vault.startDepositBatchProcessing();
     }
@@ -180,7 +185,12 @@ contract VaultDepositBatchProcessingTest is L1Base {
         stdstore.target(address(vault)).sig(vault.status.selector).checked_write(
             uint256(IVault.VaultStatus.DepositBatchProcessingStarted)
         );
-        vm.expectRevert(IVault.IncorrectVaultStatus.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVault.IncorrectVaultStatus.selector,
+                IVault.VaultStatus.DepositBatchProcessingStarted
+            )
+        );
         vm.prank(roles.operator);
         vault.skipDepositBatch();
     }

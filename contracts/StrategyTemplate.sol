@@ -161,7 +161,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         bool isTokenState,
         uint8 height
     ) internal {
-        require(stateId != NO_ALLOCATION_STATE_ID, IncorrectStateId());
+        require(stateId != NO_ALLOCATION_STATE_ID, IncorrectStateId(stateId));
         _stateBitmasks[stateId] = StrategyStateLib.createState(isTargetState, isProtocolState, isTokenState, height);
         if (isTargetState) {
             require(_targetStateId == bytes32(0), TargetStateAlreadySet());
@@ -230,10 +230,11 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     function _enterToState(bytes32 toStateId, uint256 minNavDelta) private {
         EnterToStateLocalVars memory vars;
 
-        require(toStateId != NO_ALLOCATION_STATE_ID, IncorrectStateId());
+        vars.currentStateId = _currentStateId;
+
+        require(toStateId != NO_ALLOCATION_STATE_ID, IncorrectStateId(vars.currentStateId));
         require(_stateIds.contains(toStateId), StateNotFound(toStateId));
 
-        vars.currentStateId = _currentStateId;
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.toStateBitmask = _stateBitmasks[toStateId];
 

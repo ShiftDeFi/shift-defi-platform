@@ -72,8 +72,8 @@ contract VaultWithdrawBatchProcessingTest is VaultBaseTest {
 
         _setVaultStatus(IVault.VaultStatus.Idle);
 
+        vm.expectRevert(abi.encodeWithSelector(IVault.IncorrectVaultStatus.selector, IVault.VaultStatus.Idle));
         vm.prank(roles.operator);
-        vm.expectRevert(IVault.IncorrectVaultStatus.selector);
         vault.startWithdrawBatchProcessing();
     }
 
@@ -128,8 +128,13 @@ contract VaultWithdrawBatchProcessingTest is VaultBaseTest {
     function test_RevertIf_SkipWithdrawBatch_BatchNotInIdleStatus() public {
         _setVaultStatus(IVault.VaultStatus.WithdrawBatchProcessingStarted);
 
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVault.IncorrectVaultStatus.selector,
+                IVault.VaultStatus.WithdrawBatchProcessingStarted
+            )
+        );
         vm.prank(roles.operator);
-        vm.expectRevert(IVault.IncorrectVaultStatus.selector);
         vault.skipWithdrawBatch();
     }
 

@@ -150,7 +150,7 @@ interface IVault {
     error NothingToWithdraw();
     error IncorrectBatchId();
     error IncorrectReport();
-    error IncorrectVaultStatus();
+    error IncorrectVaultStatus(VaultStatus status);
     error IncorrectWeights(uint256 weightsSum);
     error WeightRoundsToZero(address container, uint256 weight);
     error ContainerForChainIdAlreadyExists(uint256 chainId, address container);

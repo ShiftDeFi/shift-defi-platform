@@ -15,11 +15,11 @@ contract MockBridgeAdapter is BridgeAdapter {
     uint256 constant MAX_CACHE_SIZE = 8;
 
     function initialize(
-        address defaultAdmin,
-        address bridgeAdapterManager,
+        address _defaultAdmin,
+        address _bridgeAdapterManager,
         uint256 _slippageCapPct
     ) public initializer {
-        __BridgeAdapter_init(defaultAdmin, bridgeAdapterManager, _slippageCapPct, MAX_CACHE_SIZE);
+        __BridgeAdapter_init(_defaultAdmin, _bridgeAdapterManager, _slippageCapPct, MAX_CACHE_SIZE);
     }
 
     function finalizeBridge(address claimer, address token, uint256 amount) public {

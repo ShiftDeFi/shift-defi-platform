@@ -96,9 +96,11 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         registeredWithdrawShareAmount = 0;
         _strategyExitBitmask = 0;
         require(_hasOnlyNotionToken(), WhitelistedTokensOnBalance());
-        IVault(vault).reportWithdraw(IERC20(notion).balanceOf(address(this)));
 
-        emit WithdrawalReported();
+        uint256 notionAmount = IERC20(notion).balanceOf(address(this));
+        IVault(vault).reportWithdraw(notionAmount);
+
+        emit WithdrawalReported(notionAmount);
     }
 
     // ---- Strategy management logic ----

@@ -174,9 +174,10 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         status = ContainerPrincipalStatus.Idle;
         registeredWithdrawShareAmount = 0;
 
-        IVault(vault).reportWithdraw(IERC20(notion).balanceOf(address(this)));
+        uint256 notionAmount = IERC20(notion).balanceOf(address(this));
+        IVault(vault).reportWithdraw(notionAmount);
 
-        emit WithdrawalReported();
+        emit WithdrawalReported(notionAmount);
     }
 
     // ---- Messaging logic ----

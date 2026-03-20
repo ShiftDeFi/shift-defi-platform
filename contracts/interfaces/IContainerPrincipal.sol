@@ -41,7 +41,7 @@ interface IContainerPrincipal is ICrossChainContainer {
     event DepositResponseReceived(uint256 claimCointer, uint256 nav0, uint256 nav1);
     event WithdrawalResponseReceived(uint256 claimCounter);
     event DepositReported(uint256 nav0, uint256 nav1, uint256 remainder);
-    event WithdrawalReported();
+    event WithdrawalReported(uint256 notionAmount);
 
     // ---- Errors ----
 

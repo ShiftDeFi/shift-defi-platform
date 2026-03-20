@@ -442,10 +442,10 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
             if (balance > 0) {
                 IERC20(vars.tokens[i]).forceApprove(vars.container, balance);
                 vars.amounts[i] = balance;
-            }
 
-            if (balance > 0 && !vars.hasRemainder) {
-                vars.hasRemainder = true;
+                if (!vars.hasRemainder) {
+                    vars.hasRemainder = true;
+                }
             }
         }
         return (vars.amounts, vars.hasRemainder);
@@ -470,10 +470,10 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
             if (amount > 0) {
                 IERC20(vars.outputTokens[i]).forceApprove(vars.container, amount);
                 vars.outputAmounts[i] = amount;
-            }
 
-            if (vars.outputAmounts[i] > 0 && !vars.hasRemainder) {
-                vars.hasRemainder = true;
+                if (!vars.hasRemainder) {
+                    vars.hasRemainder = true;
+                }
             }
         }
         return (vars.outputAmounts, vars.hasRemainder);

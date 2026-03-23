@@ -14,6 +14,7 @@ interface ICrossChainContainer is IContainer {
     }
 
     struct MessageInstruction {
+        uint256 value;
         address adapter;
         bytes parameters;
     }

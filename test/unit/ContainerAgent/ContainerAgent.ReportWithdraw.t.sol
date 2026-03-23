@@ -97,7 +97,7 @@ contract ContainerAgentReportWithdrawTest is ContainerAgentBaseTest {
             ICrossChainContainer.MessageInstruction memory messageInstruction,
             address[] memory bridgeAdapters,
             IBridgeAdapter.BridgeInstruction[] memory bridgeInstructions
-        ) = _prepareReportData(new address[](0), new uint256[](0));
+        ) = _prepareReportData(new address[](1), new uint256[](1));
 
         vm.expectRevert(ICrossChainContainer.PeerContainerNotSet.selector);
         vm.prank(roles.operator);

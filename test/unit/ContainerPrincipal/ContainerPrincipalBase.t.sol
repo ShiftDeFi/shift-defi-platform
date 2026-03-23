@@ -60,6 +60,7 @@ contract ContainerPrincipalBaseTest is L1Base {
         )
     {
         ICrossChainContainer.MessageInstruction memory messageInstruction = ICrossChainContainer.MessageInstruction({
+            value: 0,
             adapter: address(messageAdapter),
             parameters: ""
         });

@@ -22,8 +22,16 @@ interface IContainerPrincipal is ICrossChainContainer {
     // ---- Structs ----
 
     struct SendDepositRequestLocalVars {
+        address peerContainerCached;
         address[] tokens;
         uint256[] minAmounts;
+        uint256 nativeBalanceCached;
+    }
+
+    struct SendWithdrawRequestLocalVars {
+        address peerContainerCached;
+        uint256 registeredWithdrawShareAmountCached;
+        uint256 nativeBalanceCached;
     }
 
     struct ReportDepositLocalVars {

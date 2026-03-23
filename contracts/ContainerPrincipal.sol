@@ -77,12 +77,12 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         require(bridgeAdapters.length == bridgeInstructionsLength, Errors.ArrayLengthMismatch());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
         require(remoteChainId > 0, RemoteChainIdNotSet());
-        address peerContainerCached = peerContainer;
-        require(peerContainerCached != address(0), PeerContainerNotSet());
-
-        status = ContainerPrincipalStatus.DepositRequestSent;
 
         SendDepositRequestLocalVars memory vars;
+        vars.peerContainerCached = peerContainer;
+        require(vars.peerContainerCached != address(0), PeerContainerNotSet());
+
+        status = ContainerPrincipalStatus.DepositRequestSent;
 
         vars.tokens = new address[](bridgeInstructionsLength);
         vars.minAmounts = new uint256[](bridgeInstructionsLength);
@@ -90,15 +90,21 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         for (uint256 i = 0; i < bridgeInstructionsLength; ++i) {
             (vars.tokens[i], vars.minAmounts[i]) = _bridgeToken(
                 bridgeAdapters[i],
-                peerContainerCached,
+                vars.peerContainerCached,
                 bridgeInstructions[i]
             );
         }
 
         require(_validateWhitelistedTokensBeforeReport(false, true), WhitelistedTokensOnBalance());
 
-        IMessageRouter(messageRouter).send{value: address(this).balance}(
-            peerContainerCached,
+        vars.nativeBalanceCached = address(this).balance;
+        require(
+            messageInstruction.value <= vars.nativeBalanceCached,
+            Errors.NotEnoughNativeToken(messageInstruction.value, vars.nativeBalanceCached)
+        );
+
+        IMessageRouter(messageRouter).send{value: messageInstruction.value}(
+            vars.peerContainerCached,
             IMessageRouter.SendParams({
                 adapter: messageInstruction.adapter,
                 adapterParameters: messageInstruction.parameters,
@@ -116,26 +122,34 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     ) external payable nonReentrant onlyRole(OPERATOR_ROLE) {
         require(status == ContainerPrincipalStatus.WithdrawalRequestRegistered, Errors.IncorrectContainerStatus());
         require(remoteChainId > 0, RemoteChainIdNotSet());
-        address peerContainerCached = peerContainer;
-        require(peerContainerCached != address(0), PeerContainerNotSet());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
 
-        uint256 registeredWithdrawShareAmountCached = registeredWithdrawShareAmount;
-        require(registeredWithdrawShareAmountCached > 0, Errors.ZeroAmount());
+        SendWithdrawRequestLocalVars memory vars;
+        vars.peerContainerCached = peerContainer;
+        require(vars.peerContainerCached != address(0), PeerContainerNotSet());
+
+        vars.registeredWithdrawShareAmountCached = registeredWithdrawShareAmount;
+        require(vars.registeredWithdrawShareAmountCached > 0, Errors.ZeroAmount());
 
         status = ContainerPrincipalStatus.WithdrawalRequestSent;
 
-        IMessageRouter(messageRouter).send{value: msg.value}(
-            peerContainerCached,
+        vars.nativeBalanceCached = address(this).balance;
+        require(
+            messageInstruction.value <= vars.nativeBalanceCached,
+            Errors.NotEnoughNativeToken(messageInstruction.value, vars.nativeBalanceCached)
+        );
+
+        IMessageRouter(messageRouter).send{value: messageInstruction.value}(
+            vars.peerContainerCached,
             IMessageRouter.SendParams({
                 adapter: messageInstruction.adapter,
                 adapterParameters: messageInstruction.parameters,
                 chainTo: remoteChainId,
-                message: Codec.encode(Codec.WithdrawalRequest({share: registeredWithdrawShareAmountCached}))
+                message: Codec.encode(Codec.WithdrawalRequest({share: vars.registeredWithdrawShareAmountCached}))
             })
         );
 
-        emit WithdrawalRequestSent(registeredWithdrawShareAmountCached);
+        emit WithdrawalRequestSent(vars.registeredWithdrawShareAmountCached);
     }
 
     /// @inheritdoc IContainerPrincipal

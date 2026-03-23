@@ -133,6 +133,7 @@ contract ContainerAgentBaseTest is L2Base {
         uint256 tokenNumber = bridgedTokens.length;
         require(bridgedAmounts.length == tokenNumber, Errors.ArrayLengthMismatch());
         ICrossChainContainer.MessageInstruction memory messageInstruction = ICrossChainContainer.MessageInstruction({
+            value: 0,
             adapter: address(messageAdapter),
             parameters: ""
         });

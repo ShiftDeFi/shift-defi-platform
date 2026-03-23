@@ -27,8 +27,13 @@ library Errors {
     error DuplicatingAddressInArray(address entry);
     error IncorrectChainId(uint256 chainId);
     error SettingSameBooleanValue();
+    error SettingSameValue();
 
     // -- Business Logic Errors --
+
+    error ReshufflingModeEnabled();
+    error ReshufflingModeDisabled();
+    error ReshufflingGatewayNotSet();
 
     error NotEnoughNativeToken(uint256 value, uint256 balance);
     error NotEnoughTokens(address token, uint256 amount, uint256 balance);

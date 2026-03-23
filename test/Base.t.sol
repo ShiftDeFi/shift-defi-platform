@@ -45,6 +45,7 @@ abstract contract Base is Test {
         address oracleManager;
         address strategyManager;
         address reshufflingManager;
+        address reshufflingExecutor;
         address feederRole;
         address harvestManager;
     }
@@ -108,6 +109,7 @@ abstract contract Base is Test {
         roles.oracleManager = makeAddr("ORACLE_MANAGER");
         roles.strategyManager = makeAddr("STRATEGY_MANAGER");
         roles.reshufflingManager = makeAddr("RESHUFFLING_MANAGER");
+        roles.reshufflingExecutor = makeAddr("RESHUFFLING_EXECUTOR");
         roles.feederRole = makeAddr("FEEDER_ROLE");
         roles.harvestManager = makeAddr("HARVEST_MANAGER");
 

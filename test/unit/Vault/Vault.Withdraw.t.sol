@@ -271,14 +271,14 @@ contract VaultWithdrawTest is VaultBaseTest {
         _giveUserShares(users.alice, DEFAULT_SHARES_AMOUNT);
 
         address mockGateway = address(0x1234);
-        vm.prank(roles.emergencyManager);
-        vault.setReshufflingGateway(mockGateway);
 
-        vm.prank(roles.emergencyManager);
-        vault.setReshufflingMode(true);
+        vm.startPrank(roles.reshufflingManager);
+        vault.setReshufflingGateway(mockGateway);
+        vault.enableReshufflingMode();
+        vm.stopPrank();
 
         vm.prank(users.alice);
-        vm.expectRevert(IVault.VaultIsInReshufflingMode.selector);
+        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
         vault.withdraw(DEFAULT_SHARES_PERCENT);
     }
 }

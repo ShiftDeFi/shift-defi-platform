@@ -46,25 +46,17 @@ contract VaultDepositBatchProcessingTest is L1Base {
         vault.startDepositBatchProcessing();
     }
 
-    function test_RevertIf_StartDepositBatch_ContainerWeightIsZero() public {
-        IContainerPrincipal container = _deployMockContainerPrincipal();
-        _addContainer(address(container), REMOTE_CHAIN_ID);
-
-        IContainerPrincipal container2 = _deployMockContainerPrincipal();
-        _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
-
-        uint256 depositAmount = MIN_DEPOSIT_BATCH_SIZE * NOTION_PRECISION;
-        _deposit(users.alice, depositAmount);
-
-        vm.expectRevert(abi.encodeWithSelector(IVault.ZeroContainerWeight.selector, address(container2)));
-        vm.prank(roles.operator);
-        vault.startDepositBatchProcessing();
-    }
-
     function test_StartDepositBatch() public {
         uint256 previousDepositBatchId = vault.depositBatchId();
         IContainerPrincipal container = _deployMockContainerPrincipal();
+
+        vm.prank(roles.reshufflingManager);
+        vault.enableReshufflingMode();
+
         _addContainer(address(container), REMOTE_CHAIN_ID);
+
+        vm.prank(roles.reshufflingExecutor);
+        vault.disableReshufflingMode();
 
         uint256 depositAmount = MIN_DEPOSIT_BATCH_SIZE * NOTION_PRECISION;
         _deposit(users.alice, depositAmount);
@@ -98,25 +90,31 @@ contract VaultDepositBatchProcessingTest is L1Base {
         IContainerPrincipal container2 = _deployMockContainerPrincipal();
         IContainerPrincipal container3 = _deployMockContainerPrincipal();
 
+        vm.prank(roles.reshufflingManager);
+        vault.enableReshufflingMode();
+
         _addContainer(address(container1), REMOTE_CHAIN_ID);
         _addContainer(address(container2), REMOTE_CHAIN_ID + 1);
         _addContainer(address(container3), REMOTE_CHAIN_ID + 2);
 
-        uint256 containersCount = 3;
+        uint256 containerNumber = 3;
 
-        address[] memory containers = new address[](containersCount);
+        address[] memory containers = new address[](containerNumber);
         containers[0] = address(container1);
         containers[1] = address(container2);
         containers[2] = address(container3);
 
-        uint256[] memory weights = new uint256[](containersCount);
-        weights[0] = TOTAL_CONTAINER_WEIGHT / containersCount;
-        weights[1] = TOTAL_CONTAINER_WEIGHT / containersCount;
+        uint256[] memory weights = new uint256[](containerNumber);
+        weights[0] = TOTAL_CONTAINER_WEIGHT / containerNumber;
+        weights[1] = TOTAL_CONTAINER_WEIGHT / containerNumber;
         weights[2] = TOTAL_CONTAINER_WEIGHT - weights[0] - weights[1];
 
         _sortContainersAndWeights(containers, weights);
         vm.prank(roles.containerManager);
         vault.setContainerWeights(containers, weights);
+
+        vm.prank(roles.reshufflingExecutor);
+        vault.disableReshufflingMode();
 
         uint256 depositAmount = vault.minDepositBatchSize();
         _deposit(users.alice, depositAmount);

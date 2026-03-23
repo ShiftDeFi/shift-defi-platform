@@ -28,8 +28,25 @@ contract ReshufflingGatewayTest is L1Base {
         containerPrincipal = _deployMockContainerPrincipal();
         containerLocal = _deployMockContainerLocal();
 
+        vm.prank(roles.reshufflingManager);
+        vault.enableReshufflingMode();
+
         _addContainer(address(containerPrincipal), REMOTE_CHAIN_ID);
         _addContainer(address(containerLocal), block.chainid);
+
+        uint256 containerNumber = 2;
+        address[] memory containers = new address[](containerNumber);
+        uint256[] memory weights = new uint256[](containerNumber);
+        containers[0] = address(containerPrincipal);
+        containers[1] = address(containerLocal);
+        weights[0] = TOTAL_CONTAINER_WEIGHT / containerNumber;
+        weights[1] = TOTAL_CONTAINER_WEIGHT - weights[0];
+
+        vm.prank(roles.containerManager);
+        vault.setContainerWeights(containers, weights);
+
+        vm.prank(roles.reshufflingExecutor);
+        vault.disableReshufflingMode();
 
         containerPrincipal.setPeerContainer(makeAddr("ContainerAgent"));
 
@@ -65,10 +82,8 @@ contract ReshufflingGatewayTest is L1Base {
     }
 
     function _setReshufflingMode() internal {
-        vm.startPrank(roles.emergencyManager);
-        vault.setReshufflingGateway(address(reshufflingGateway));
-        vault.setReshufflingMode(true);
-        vm.stopPrank();
+        vm.prank(roles.reshufflingManager);
+        vault.enableReshufflingMode();
     }
 
     function test_WhitelistToken() public {
@@ -327,9 +342,6 @@ contract ReshufflingGatewayTest is L1Base {
     }
 
     function test_RevertIf_SendToCrossChainContainer_VaultNotInReshufflingMode() public {
-        vm.prank(roles.emergencyManager);
-        vault.setReshufflingGateway(address(reshufflingGateway));
-
         vm.prank(roles.reshufflingManager);
         vm.expectRevert(IReshufflingGateway.VaultNotInReshufflingMode.selector);
         reshufflingGateway.sendToCrossChainContainer(
@@ -647,10 +659,6 @@ contract ReshufflingGatewayTest is L1Base {
     }
 
     function test_RevertIf_SendToLocalContainer_NotReshufflingMode() public {
-        vm.startPrank(roles.emergencyManager);
-        vault.setReshufflingGateway(address(reshufflingGateway));
-        vm.stopPrank();
-
         vm.prank(roles.reshufflingManager);
         vm.expectRevert(IReshufflingGateway.VaultNotInReshufflingMode.selector);
         reshufflingGateway.sendToLocalContainer(address(containerLocal), new address[](1), new uint256[](1));

@@ -72,6 +72,9 @@ abstract contract L1Base is Base {
         vault = _deployVault();
         vm.label(address(vault), "VAULT");
 
+        vm.prank(roles.reshufflingExecutor);
+        vault.disableReshufflingMode();
+
         swapRouter = _deploySwapRouter();
         messageRouter = _deployMockMessageRouter(MAX_CACHE_SIZE);
         bridgeAdapter = _deployBridgeAdapter();
@@ -83,6 +86,9 @@ abstract contract L1Base is Base {
         deal(address(notion), address(this), 100_000_000e18);
         deal(address(notion), address(mockSwapAdapter), 100_000_000e18);
         reshufflingGateway = _deployReshufflingGateway();
+
+        vm.prank(roles.reshufflingManager);
+        vault.setReshufflingGateway(address(reshufflingGateway));
     }
 
     function _deployVault() internal returns (IVault) {
@@ -101,7 +107,8 @@ abstract contract L1Base is Base {
                     containerManager: roles.containerManager,
                     operator: roles.operator,
                     configurator: roles.configurator,
-                    emergencyManager: roles.emergencyManager
+                    reshufflingManager: roles.reshufflingManager,
+                    reshufflingExecutor: roles.reshufflingExecutor
                 }),
                 IVault.Limits({
                     maxDepositAmount: MAX_DEPOSIT_AMOUNT * NOTION_PRECISION,

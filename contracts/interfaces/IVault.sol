@@ -27,7 +27,8 @@ interface IVault {
         address containerManager;
         address operator;
         address configurator;
-        address emergencyManager;
+        address reshufflingManager;
+        address reshufflingExecutor;
     }
 
     struct ContainerReport {
@@ -128,7 +129,8 @@ interface IVault {
     event WithdrawBatchProcessingFinished(uint256 batchId, uint256 withdrawnNotionAmount);
 
     event ReshufflingGatewayUpdated(address indexed previousGateway, address indexed newGateway);
-    event ReshufflingModeUpdated(bool reshufflingMode);
+    event ReshufflingModeEnabled();
+    event ReshufflingModeDisabled();
 
     // ---- Errors ----
 
@@ -143,8 +145,6 @@ interface IVault {
     error NoContainers();
     error NotEnoughNotion();
     error NotEnoughSharesWithdrawn(uint256 batchSharesPercent);
-    error ReshufflingGatewayNotSet();
-    error VaultIsInReshufflingMode();
 
     // Input Validation
     error NothingToWithdraw();
@@ -180,17 +180,23 @@ interface IVault {
 
     /**
      * @notice Sets the reshuffling gateway address.
-     * @dev Can only be called by accounts with EMERGENCY_MANAGER_ROLE.
+     * @dev Can only be called by accounts with RESHUFFLING_MANAGER_ROLE.
      * @param _reshufflingGateway The address of the reshuffling gateway contract
      */
     function setReshufflingGateway(address _reshufflingGateway) external;
 
     /**
-     * @notice Sets the reshuffling mode state.
-     * @dev Can only be called by accounts with EMERGENCY_MANAGER_ROLE. Requires reshuffling gateway to be set.
-     * @param _isReshuffling The new reshuffling mode state
+     * @notice Enables the reshuffling mode.
+     * @dev Can only be called by accounts with RESHUFFLING_MANAGER_ROLE. Requires reshuffling gateway to be set.
      */
-    function setReshufflingMode(bool _isReshuffling) external;
+    function enableReshufflingMode() external;
+
+    /**
+     * @notice Disables the reshuffling mode.
+     * @dev Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE. Requires reshuffling mode to be enabled.
+     * All containers must have a weight greater than 0 to disable reshuffling mode
+     */
+    function disableReshufflingMode() external;
 
     /**
      * @notice Sets the maximum deposit amount per transaction.

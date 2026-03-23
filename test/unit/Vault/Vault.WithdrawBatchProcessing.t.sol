@@ -7,12 +7,12 @@ import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol"
 import {VaultBaseTest} from "test/unit/Vault/VaultBase.t.sol";
 import {IVault} from "contracts/interfaces/IVault.sol";
 
+import {Errors} from "contracts/libraries/Errors.sol";
+
 contract VaultWithdrawBatchProcessingTest is VaultBaseTest {
     function setUp() public override {
         super.setUp();
         _setVaultStatus(IVault.VaultStatus.DepositBatchProcessingFinished);
-        vm.prank(roles.emergencyManager);
-        vault.setReshufflingGateway(address(reshufflingGateway));
     }
 
     function test_StartWithdrawBatchProcessing() public {
@@ -100,11 +100,14 @@ contract VaultWithdrawBatchProcessingTest is VaultBaseTest {
     }
 
     function test_RevertIf_StartWithdrawBatchProcessing_InReshufflingMode() public {
-        vm.prank(roles.emergencyManager);
-        vault.setReshufflingMode(true);
+        _setVaultStatus(IVault.VaultStatus.Idle);
+        vm.prank(roles.reshufflingManager);
+        vault.enableReshufflingMode();
+
+        _setVaultStatus(IVault.VaultStatus.DepositBatchProcessingFinished);
 
         vm.prank(roles.operator);
-        vm.expectRevert(IVault.VaultIsInReshufflingMode.selector);
+        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
         vault.startWithdrawBatchProcessing();
     }
 

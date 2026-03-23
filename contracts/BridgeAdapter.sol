@@ -11,12 +11,12 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
 
 import {Errors} from "./libraries/Errors.sol";
-import {RingCacheLibrary} from "./libraries/RingCacheLibrary.sol";
+import {RingCacheLib} from "./libraries/RingCacheLib.sol";
 
 abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IBridgeAdapter {
     using SafeERC20 for IERC20;
     using Math for uint256;
-    using RingCacheLibrary for RingCacheLibrary.RingCache;
+    using RingCacheLib for RingCacheLib.RingCache;
 
     bytes32 internal constant BRIDGE_ADAPTER_MANAGER_ROLE = keccak256("BRIDGE_ADAPTER_MANAGER_ROLE");
 
@@ -28,7 +28,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     uint256 private _slippageCapPct;
     uint256 private constant MAX_SLIPPAGE_CAP_PCT = 1e18; // 100%
 
-    RingCacheLibrary.RingCache private _cache;
+    RingCacheLib.RingCache private _cache;
 
     uint256 private _nonce;
 
@@ -116,10 +116,13 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
 
         uint256 nonceCached = _nonce++;
 
+        bytes32 key = keccak256(
+            abi.encode(instruction.token, instruction.chainTo, instruction.amount, receiver, nonceCached)
+        );
+        _cache.add(key);
+
         IERC20(instruction.token).safeTransferFrom(msg.sender, address(this), instruction.amount);
         uint256 bridgedAmount = _bridge(instruction, receiver, peers[instruction.chainTo]);
-
-        _cacheInstruction(instruction, receiver, nonceCached);
 
         emit BridgeSent(instruction.token, bridgedAmount, instruction.chainTo, nonceCached);
         return bridgedAmount;
@@ -143,29 +146,12 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
         bytes32 key = keccak256(
             abi.encode(instruction.token, instruction.chainTo, instruction.amount, receiver, nonce)
         );
-        require(_cache.exists(key), RingCacheLibrary.DoesNotExists(_cache.id, key));
+
+        require(_cache.exists(key), BridgeInstructionNotCached(_cache.id, key));
 
         uint256 bridgedAmount = _bridge(instruction, receiver, peers[instruction.chainTo]);
 
         emit BridgeSent(instruction.token, bridgedAmount, instruction.chainTo, nonce);
-    }
-
-    function _isCached(
-        address token,
-        uint256 chainTo,
-        uint256 amount,
-        address receiver,
-        uint256 nonce
-    ) private view returns (bool) {
-        bytes32 key = keccak256(abi.encode(token, chainTo, amount, receiver, nonce));
-        return _cache.exists(key);
-    }
-
-    function _cacheInstruction(BridgeInstruction calldata instruction, address receiver, uint256 nonce) private {
-        bytes32 key = keccak256(
-            abi.encode(instruction.token, instruction.chainTo, instruction.amount, receiver, nonce)
-        );
-        _cache.add(key);
     }
 
     function _finalizeBridge(address claimer, address token, uint256 amount) internal {

@@ -6,11 +6,11 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {BridgeAdapter} from "contracts/BridgeAdapter.sol";
 import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
-import {RingCacheLibrary} from "contracts/libraries/RingCacheLibrary.sol";
+import {RingCacheLib} from "contracts/libraries/RingCacheLib.sol";
 
 contract MockBridgeAdapter is BridgeAdapter {
     using SafeERC20 for IERC20;
-    using RingCacheLibrary for RingCacheLibrary.RingCache;
+    using RingCacheLib for RingCacheLib.RingCache;
 
     uint256 constant MAX_CACHE_SIZE = 8;
 
@@ -45,7 +45,7 @@ contract MockBridgeAdapter is BridgeAdapter {
     ) external view returns (bool) {
         bytes32 key = keccak256(abi.encode(token, chainTo, amount, receiver, nonce));
 
-        RingCacheLibrary.RingCache storage cache;
+        RingCacheLib.RingCache storage cache;
         assembly {
             cache.slot := 5
         }

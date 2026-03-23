@@ -24,6 +24,7 @@ interface IBridgeAdapter {
     error BridgerNotWhitelisted(address bridger);
     error SlippageCapExceeded(uint256 slippageDeltaPct, uint256 slippageCapPct);
     error NotPeer(address peer, address expectedPeer);
+    error BridgeInstructionNotCached(bytes32 id, bytes32 key);
 
     /*
      * @dev Sets slippage cap percentage (basis points).

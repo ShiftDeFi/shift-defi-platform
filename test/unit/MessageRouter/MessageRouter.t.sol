@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {MessageRouter} from "contracts/MessageRouter.sol";
 import {IMessageRouter} from "contracts/interfaces/IMessageRouter.sol";
 
-import {RingCacheLibrary} from "contracts/libraries/RingCacheLibrary.sol";
+import {RingCacheLib} from "contracts/libraries/RingCacheLib.sol";
 
 import {L1Base} from "test/L1Base.t.sol";
 
@@ -475,7 +475,7 @@ contract MessageRouterTest is L1Base {
         bytes memory messageWithNonceAndPath = messageRouter.encodeMessage(nonce, remotePath, message);
         bytes32 cachedKey = messageRouter.calculateCacheKey(chainTo, messageWithNonceAndPath);
 
-        vm.expectRevert(abi.encodeWithSelector(RingCacheLibrary.DoesNotExists.selector, cacheId, cachedKey));
+        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.MessageNotCached.selector, cacheId, cachedKey));
         vm.prank(roles.cacheManager);
         messageRouter.retryCachedMessage(nonce, remotePath, sendParams);
     }
@@ -516,7 +516,7 @@ contract MessageRouterTest is L1Base {
         bytes memory messageWithNonceAndPath = messageRouter.encodeMessage(nonce, remotePath, message);
         bytes32 cachedKey = messageRouter.calculateCacheKey(chainTo, messageWithNonceAndPath);
 
-        vm.expectRevert(abi.encodeWithSelector(RingCacheLibrary.DoesNotExists.selector, cacheId, cachedKey));
+        vm.expectRevert(abi.encodeWithSelector(IMessageRouter.MessageNotCached.selector, cacheId, cachedKey));
         vm.prank(roles.cacheManager);
         messageRouter.retryCachedMessage(nonce, remotePath, sendParams);
     }
@@ -533,7 +533,7 @@ contract MessageRouterTest is L1Base {
         bytes memory messageWithNonceAndPath = messageRouter.encodeMessage(nonce, remotePath, message);
         bytes32 cachedKey = messageRouter.calculateCacheKey(chainTo, messageWithNonceAndPath);
 
-        vm.expectRevert(abi.encodeWithSelector(RingCacheLibrary.DoesNotExists.selector, cacheId, cachedKey));
+        vm.expectRevert(abi.encodeWithSelector(RingCacheLib.DoesNotExists.selector, cacheId, cachedKey));
         vm.prank(roles.cacheManager);
         messageRouter.removeMessageFromCache(nonce, chainTo, remotePath, message);
     }

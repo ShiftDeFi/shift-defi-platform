@@ -6,7 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
 import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
 import {Errors} from "contracts/libraries/Errors.sol";
-import {RingCacheLibrary} from "contracts/libraries/RingCacheLibrary.sol";
+import {RingCacheLib} from "contracts/libraries/RingCacheLib.sol";
 import {BridgeAdapterBase} from "test/unit/BridgeAdapter/BridgeAdapterBase.t.sol";
 
 contract BridgeAdapterBridgeTest is BridgeAdapterBase {
@@ -82,7 +82,7 @@ contract BridgeAdapterBridgeTest is BridgeAdapterBase {
         IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
         vm.expectRevert(
             abi.encodeWithSelector(
-                RingCacheLibrary.DoesNotExists.selector,
+                IBridgeAdapter.BridgeInstructionNotCached.selector,
                 bytes32("BRIDGE_CACHE"),
                 keccak256(abi.encode(instruction.token, instruction.chainTo, instruction.amount, receiver, nonce))
             )

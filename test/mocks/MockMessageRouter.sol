@@ -2,17 +2,17 @@
 pragma solidity ^0.8.0;
 
 import {IMessageRouter} from "contracts/interfaces/IMessageRouter.sol";
-import {RingCacheLibrary} from "contracts/libraries/RingCacheLibrary.sol";
+import {RingCacheLib} from "contracts/libraries/RingCacheLib.sol";
 
 contract MockMessageRouter is IMessageRouter {
-    using RingCacheLibrary for RingCacheLibrary.RingCache;
+    using RingCacheLib for RingCacheLib.RingCache;
 
     uint256 private _nonce;
 
     mapping(bytes32 => PathData) private _paths;
     mapping(address => bool) private _whitelistedMessageAdapters;
 
-    RingCacheLibrary.RingCache private _sendMessagesCache;
+    RingCacheLib.RingCache private _sendMessagesCache;
 
     constructor(uint256 maxCacheSize) {
         _sendMessagesCache.initialize(keccak256("SEND_CACHE"), maxCacheSize);
@@ -54,7 +54,8 @@ contract MockMessageRouter is IMessageRouter {
             sendParams.message
         );
 
-        _cacheMessage(sendParams.chainTo, sendLocalVars.rawMessageWithPathAndNonce);
+        bytes32 cachedData = calculateCacheKey(sendParams.chainTo, sendLocalVars.rawMessageWithPathAndNonce);
+        _sendMessagesCache.add(cachedData);
     }
 
     function receiveMessage(bytes memory) external override {}
@@ -72,12 +73,5 @@ contract MockMessageRouter is IMessageRouter {
         bytes memory messageWithNonceAndPath = encodeMessage(nonce, remotePath, message);
         bytes32 cacheKey = calculateCacheKey(chainTo, messageWithNonceAndPath);
         return _sendMessagesCache.exists(cacheKey);
-    }
-
-    function _cacheMessage(uint256 chainTo, bytes memory rawMessageWithPathAndNonce) private {
-        bytes32 cachedData = calculateCacheKey(chainTo, rawMessageWithPathAndNonce);
-        _sendMessagesCache.add(cachedData);
-
-        emit RingCacheLibrary.CacheStored(_sendMessagesCache.id, cachedData);
     }
 }

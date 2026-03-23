@@ -202,7 +202,17 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
             );
 
             IERC20(instructions[i].token).safeIncreaseAllowance(bridgeAdapters[i], instructions[i].amount);
-            uint256 amount = IBridgeAdapter(bridgeAdapters[i]).bridge(instructions[i], peerContainer);
+
+            uint256 nativeBalanceCached = address(this).balance;
+            require(
+                instructions[i].value <= nativeBalanceCached,
+                Errors.NotEnoughNativeToken(instructions[i].value, nativeBalanceCached)
+            );
+
+            uint256 amount = IBridgeAdapter(bridgeAdapters[i]).bridge{value: instructions[i].value}(
+                instructions[i],
+                peerContainer
+            );
             require(
                 amount >= instructions[i].minTokenAmount,
                 NotEnoughTokensBridged(instructions[i].token, instructions[i].minTokenAmount, amount)

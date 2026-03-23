@@ -147,6 +147,7 @@ contract ContainerAgentBaseTest is L2Base {
         );
         for (uint256 i = 0; i < tokenNumber; ++i) {
             bridgeInstructions[i] = IBridgeAdapter.BridgeInstruction({
+                value: 0,
                 chainTo: REMOTE_CHAIN_ID,
                 amount: bridgedAmounts[i],
                 minTokenAmount: Utils.calculateMinBridgeAmount(address(containerAgent), bridgedAmounts[i]),

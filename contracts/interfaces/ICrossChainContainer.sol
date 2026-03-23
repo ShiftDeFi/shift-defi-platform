@@ -19,6 +19,7 @@ interface ICrossChainContainer is IContainer {
     }
 
     struct BridgeTokenLocalVars {
+        uint256 nativeBalanceCached;
         address tokenOnDestinationChain;
         uint256 minAllowedAmount;
         uint256 tokenBalanceBefore;

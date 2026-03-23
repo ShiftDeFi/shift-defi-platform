@@ -108,7 +108,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     function bridge(
         BridgeInstruction calldata instruction,
         address receiver
-    ) external virtual nonReentrant returns (uint256) {
+    ) external payable virtual nonReentrant returns (uint256) {
         require(receiver != address(0), Errors.ZeroAddress());
         require(whitelistedBridgers[msg.sender], BridgerNotWhitelisted(msg.sender));
 
@@ -138,7 +138,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
         BridgeInstruction calldata instruction,
         address receiver,
         uint256 nonce
-    ) external virtual nonReentrant {
+    ) external payable virtual nonReentrant {
         require(whitelistedBridgers[msg.sender], BridgerNotWhitelisted(msg.sender));
 
         _validateBridgeInstruction(instruction);
@@ -183,6 +183,10 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     }
 
     function _validateBridgeInstruction(BridgeInstruction calldata instruction) internal view {
+        require(
+            instruction.value <= address(this).balance,
+            NotEnoughNativeToken(instruction.value, address(this).balance)
+        );
         require(instruction.token != address(0), Errors.ZeroAddress());
         require(instruction.chainTo > 0, Errors.IncorrectChainId(instruction.chainTo));
         require(instruction.amount > 0, Errors.ZeroAmount());

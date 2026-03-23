@@ -97,7 +97,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
 
         require(_validateWhitelistedTokensBeforeReport(false, true), WhitelistedTokensOnBalance());
 
-        IMessageRouter(messageRouter).send{value: msg.value}(
+        IMessageRouter(messageRouter).send{value: address(this).balance}(
             peerContainerCached,
             IMessageRouter.SendParams({
                 adapter: messageInstruction.adapter,

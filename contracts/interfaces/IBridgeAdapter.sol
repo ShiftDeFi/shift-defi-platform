@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 interface IBridgeAdapter {
     struct BridgeInstruction {
+        uint256 value;
         uint256 chainTo;
         uint256 amount;
         uint256 minTokenAmount;
@@ -25,6 +26,7 @@ interface IBridgeAdapter {
     error SlippageCapExceeded(uint256 slippageDeltaPct, uint256 slippageCapPct);
     error NotPeer(address peer, address expectedPeer);
     error BridgeInstructionNotCached(bytes32 id, bytes32 key);
+    error NotEnoughNativeToken(uint256 value, uint256 msgValue);
 
     /*
      * @dev Sets slippage cap percentage (basis points).
@@ -38,7 +40,7 @@ interface IBridgeAdapter {
      * @param receiver The address to receive the bridged token on the destination chain.
      * @return The amount of the bridged token.
      */
-    function bridge(BridgeInstruction calldata bridgeInstruction, address receiver) external returns (uint256);
+    function bridge(BridgeInstruction calldata bridgeInstruction, address receiver) external payable returns (uint256);
 
     /*
      * @dev Claims the bridged token from the bridge adapter.
@@ -109,5 +111,5 @@ interface IBridgeAdapter {
      * @param instruction The instruction for the bridge.
      * @param receiver The address to receive the bridged token on the destination chain.
      */
-    function retryBridge(BridgeInstruction calldata instruction, address receiver, uint256 nonce) external;
+    function retryBridge(BridgeInstruction calldata instruction, address receiver, uint256 nonce) external payable;
 }

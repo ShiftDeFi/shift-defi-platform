@@ -69,6 +69,7 @@ contract ContainerPrincipalBaseTest is L1Base {
 
         IBridgeAdapter.BridgeInstruction[] memory bridgeInstructions = new IBridgeAdapter.BridgeInstruction[](1);
         bridgeInstructions[0] = IBridgeAdapter.BridgeInstruction({
+            value: 0,
             chainTo: REMOTE_CHAIN_ID,
             amount: depositAmount,
             minTokenAmount: Utils.calculateMinBridgeAmount(address(containerPrincipal), depositAmount),

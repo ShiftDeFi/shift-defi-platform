@@ -174,7 +174,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
 
         (vars.nav0, vars.nav1) = getTotalNavs();
 
-        IMessageRouter(messageRouter).send{value: msg.value}(
+        IMessageRouter(messageRouter).send{value: address(this).balance}(
             vars.peerContainerCached,
             IMessageRouter.SendParams({
                 adapter: messageInstruction.adapter,
@@ -223,7 +223,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
 
         require(_validateWhitelistedTokensBeforeReport(false, true), WhitelistedTokensOnBalance());
 
-        IMessageRouter(messageRouter).send{value: msg.value}(
+        IMessageRouter(messageRouter).send{value: address(this).balance}(
             peerContainerCached,
             IMessageRouter.SendParams({
                 adapter: messageInstruction.adapter,
@@ -316,7 +316,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     function withdrawToReshufflingGateway(
         address[] memory bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata instructions
-    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    ) external payable nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
         require(bridgeAdapters.length == instructions.length, Errors.ArrayLengthMismatch());
         require(bridgeAdapters.length > 0, Errors.ZeroArrayLength());
 

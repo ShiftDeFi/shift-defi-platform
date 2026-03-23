@@ -147,5 +147,5 @@ interface IContainerAgent is ICrossChainContainer, IStrategyContainer {
     function withdrawToReshufflingGateway(
         address[] memory bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata instructions
-    ) external;
+    ) external payable;
 }

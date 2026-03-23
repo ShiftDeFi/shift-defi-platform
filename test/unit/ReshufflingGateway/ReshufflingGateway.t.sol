@@ -568,6 +568,30 @@ contract ReshufflingGatewayTest is L1Base {
         reshufflingGateway.sendToCrossChainContainer(address(containerPrincipal), bridgeAdapters, instructions);
     }
 
+    function test_RevertIf_SendToCrossChainContainer_BridgeInstructionValueExceedsNativeBalance() public {
+        _setReshufflingMode();
+
+        uint256 amount = vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT);
+        notion.mint(address(reshufflingGateway), amount);
+
+        address[] memory bridgeAdapters = new address[](1);
+        bridgeAdapters[0] = address(bridgeAdapter);
+
+        IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](1);
+        instructions[0] = IBridgeAdapter.BridgeInstruction({
+            value: 1,
+            token: address(notion),
+            amount: amount,
+            minTokenAmount: 0,
+            chainTo: REMOTE_CHAIN_ID,
+            payload: "0x"
+        });
+
+        vm.prank(roles.reshufflingManager);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughNativeToken.selector, 1, 0));
+        reshufflingGateway.sendToCrossChainContainer(address(containerPrincipal), bridgeAdapters, instructions);
+    }
+
     function test_SendToLocalContainer() public {
         _setReshufflingMode();
 

@@ -188,4 +188,48 @@ contract ContainerAgentReportWithdrawTest is ContainerAgentBaseTest {
         vm.prank(roles.operator);
         containerAgent.reportWithdrawal(messageInstruction, bridgeAdapters, bridgeInstructions);
     }
+
+    function test_RevertIf_ReportWithdraw_MessageInstructionValueExceedsNativeBalance() public {
+        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.AllStrategiesExited);
+
+        uint256 tokenNumber = 1;
+        address[] memory bridgedTokens = new address[](tokenNumber);
+        bridgedTokens[0] = address(notion);
+        uint256[] memory bridgedAmounts = new uint256[](tokenNumber);
+        bridgedAmounts[0] = WITHDRAWN_AMOUNT;
+
+        (
+            ICrossChainContainer.MessageInstruction memory messageInstruction,
+            address[] memory bridgeAdapters,
+            IBridgeAdapter.BridgeInstruction[] memory bridgeInstructions
+        ) = _prepareReportData(bridgedTokens, bridgedAmounts);
+
+        messageInstruction.value = 1;
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughNativeToken.selector, 1, 0));
+        vm.prank(roles.operator);
+        containerAgent.reportWithdrawal(messageInstruction, bridgeAdapters, bridgeInstructions);
+    }
+
+    function test_RevertIf_ReportWithdraw_BridgeInstructionValueExceedsNativeBalance() public {
+        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.AllStrategiesExited);
+
+        uint256 tokenNumber = 1;
+        address[] memory bridgedTokens = new address[](tokenNumber);
+        bridgedTokens[0] = address(notion);
+        uint256[] memory bridgedAmounts = new uint256[](tokenNumber);
+        bridgedAmounts[0] = WITHDRAWN_AMOUNT;
+
+        (
+            ICrossChainContainer.MessageInstruction memory messageInstruction,
+            address[] memory bridgeAdapters,
+            IBridgeAdapter.BridgeInstruction[] memory bridgeInstructions
+        ) = _prepareReportData(bridgedTokens, bridgedAmounts);
+
+        bridgeInstructions[0].value = 1;
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughNativeToken.selector, 1, 0));
+        vm.prank(roles.operator);
+        containerAgent.reportWithdrawal(messageInstruction, bridgeAdapters, bridgeInstructions);
+    }
 }

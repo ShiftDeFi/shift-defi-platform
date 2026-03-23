@@ -11,10 +11,10 @@ import {IMessageReceiver} from "./interfaces/IMessageReceiver.sol";
 import {IMessageRouter} from "./interfaces/IMessageRouter.sol";
 
 import {Errors} from "./libraries/Errors.sol";
-import {RingCacheLibrary} from "./libraries/RingCacheLibrary.sol";
+import {RingCacheLib} from "./libraries/RingCacheLib.sol";
 
 contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IMessageRouter {
-    using RingCacheLibrary for RingCacheLibrary.RingCache;
+    using RingCacheLib for RingCacheLib.RingCache;
 
     bytes32 private constant WHITELIST_MANAGER_ROLE = keccak256("WHITELIST_MANAGER_ROLE");
     bytes32 private constant CACHE_MANAGER_ROLE = keccak256("CACHE_MANAGER_ROLE");
@@ -24,7 +24,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
     mapping(bytes32 => PathData) private _paths;
     mapping(address => bool) private _whitelistedMessageAdapters;
 
-    RingCacheLibrary.RingCache private _sendMessagesCache;
+    RingCacheLib.RingCache private _sendMessagesCache;
 
     function initialize(
         address defaultAdmin,
@@ -176,12 +176,13 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
             sendParams.message
         );
 
+        _sendMessagesCache.add(calculateCacheKey(sendParams.chainTo, sendLocalVars.rawMessageWithPathAndNonce));
+
         IMessageAdapter(sendParams.adapter).send{value: msg.value}(
             sendParams.chainTo,
             sendParams.adapterParameters,
             sendLocalVars.rawMessageWithPathAndNonce
         );
-        _cacheMessage(sendParams.chainTo, sendLocalVars.rawMessageWithPathAndNonce);
 
         emit MessageSent(
             sendLocalVars.nonce,
@@ -220,7 +221,7 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         bytes memory messageWithPathAndNonce = encodeMessage(nonce, path, sendParams.message);
         bytes32 cachedKey = calculateCacheKey(sendParams.chainTo, messageWithPathAndNonce);
 
-        require(_sendMessagesCache.exists(cachedKey), RingCacheLibrary.DoesNotExists(_sendMessagesCache.id, cachedKey));
+        require(_sendMessagesCache.exists(cachedKey), MessageNotCached(_sendMessagesCache.id, cachedKey));
 
         IMessageAdapter(sendParams.adapter).send{value: msg.value}(
             sendParams.chainTo,
@@ -239,20 +240,10 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
         bytes memory message
     ) external onlyRole(CACHE_MANAGER_ROLE) {
         bytes memory messageWithPathAndNonce = encodeMessage(nonce, path, message);
-        _removeFromCache(chainTo, messageWithPathAndNonce);
-        emit MessageRemovedFromCache(_sendMessagesCache.id, nonce, chainTo, path);
-    }
+        bytes32 cachedKey = calculateCacheKey(chainTo, messageWithPathAndNonce);
 
-    function _cacheMessage(uint256 chainTo, bytes memory rawMessageWithPathAndNonce) private {
-        bytes32 cachedData = calculateCacheKey(chainTo, rawMessageWithPathAndNonce);
-        _sendMessagesCache.add(cachedData);
-        emit RingCacheLibrary.CacheStored(_sendMessagesCache.id, cachedData);
-    }
-
-    function _removeFromCache(uint256 chainTo, bytes memory rawMessageWithPath) private {
-        bytes32 cachedKey = calculateCacheKey(chainTo, rawMessageWithPath);
-        require(_sendMessagesCache.exists(cachedKey), RingCacheLibrary.DoesNotExists(_sendMessagesCache.id, cachedKey));
         _sendMessagesCache.remove(cachedKey);
-        emit RingCacheLibrary.CacheEvicted(_sendMessagesCache.id, cachedKey);
+
+        emit MessageRemovedFromCache(_sendMessagesCache.id, nonce, chainTo, path);
     }
 }

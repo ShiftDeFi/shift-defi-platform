@@ -1,27 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-/// @title RingCacheLibrary
+/// @title RingCacheLib
 /// @notice Minimal ring-buffer cache with O(1) add/remove/exists.
-library RingCacheLibrary {
+library RingCacheLib {
     uint256 internal constant MAX_CACHE_SIZE = 256;
 
     struct RingCache {
         mapping(bytes32 => uint256) indices;
         mapping(uint256 => bytes32) ring;
         uint256 head;
-        uint256 size;
         uint256 maxCacheSize;
         bytes32 id;
     }
 
-    event CacheStored(bytes32 id, bytes32 value);
-    event CacheEvicted(bytes32 id, bytes32 value);
+    event Evicted(bytes32 id, bytes32 value);
+    event Stored(bytes32 id, bytes32 value);
+    event Removed(bytes32 id, bytes32 value);
 
     error AlreadyInitialized(bytes32 id);
-    error AlreadyExists(bytes32 id, bytes32 data);
     error InvalidSize(uint256 proposedSize, uint256 maximumSize);
     error DoesNotExists(bytes32 id, bytes32 data);
+    error NullValue(bytes32 id);
+    error ValueAlreadyExists(bytes32 id, bytes32 value);
+    error ValueMismatch(bytes32 id, bytes32 value, bytes32 storedValue);
 
     /**
      * @notice Initializes the ring cache with an id and max size.
@@ -45,13 +47,19 @@ library RingCacheLibrary {
      * @param value Value to cache.
      */
     function add(RingCache storage _cache, bytes32 value) internal {
-        if (exists(_cache, value)) return;
-        uint256 index = (_cache.head++) % _cache.maxCacheSize;
+        require(value != bytes32(0), NullValue(_cache.id));
+        require(!exists(_cache, value), ValueAlreadyExists(_cache.id, value));
+
+        uint256 index = (_cache.head++ % _cache.maxCacheSize) + 1;
         bytes32 oldValue = _cache.ring[index];
-        if (_cache.indices[oldValue] == index + 1) delete _cache.indices[oldValue];
-        else _cache.size++;
-        _cache.indices[value] = index + 1;
+        if (oldValue != bytes32(0)) {
+            delete _cache.indices[oldValue];
+            emit Evicted(_cache.id, oldValue);
+        }
+        _cache.indices[value] = index;
         _cache.ring[index] = value;
+
+        emit Stored(_cache.id, value);
     }
 
     /**
@@ -61,13 +69,13 @@ library RingCacheLibrary {
      * @param value Value to remove.
      */
     function remove(RingCache storage _cache, bytes32 value) internal {
+        require(exists(_cache, value), DoesNotExists(_cache.id, value));
         uint256 index = _cache.indices[value];
-        require(index != 0, DoesNotExists(_cache.id, value));
-        index = index - 1;
-        require(_cache.ring[index] == value, DoesNotExists(_cache.id, value));
+        bytes32 storedValue = _cache.ring[index];
+        require(storedValue == value, ValueMismatch(_cache.id, value, storedValue));
         delete _cache.indices[value];
         delete _cache.ring[index];
-        _cache.size--;
+        emit Removed(_cache.id, value);
     }
 
     /**
@@ -81,26 +89,14 @@ library RingCacheLibrary {
     }
 
     /**
-     * @notice Returns all cached values in order from head.
+     * @notice Returns all cached values in physical slot order (ring[1]..ring[maxCacheSize]).
      * @param _cache Storage cache struct.
-     * @return out Array of cached values (size length).
+     * @return out Array of length maxCacheSize; removed/empty slots are bytes32(0).
      */
     function all(RingCache storage _cache) internal view returns (bytes32[] memory out) {
-        out = new bytes32[](_cache.size);
-        for (uint256 i = 0; i < _cache.size; ++i) {
-            uint256 index = (_cache.head + i) % _cache.maxCacheSize;
-            if (_cache.ring[index] != bytes32(0)) {
-                out[i] = _cache.ring[index];
-            }
+        out = new bytes32[](_cache.maxCacheSize);
+        for (uint256 i = 0; i < _cache.maxCacheSize; ++i) {
+            out[i] = _cache.ring[i + 1];
         }
-    }
-
-    /**
-     * @notice Returns current number of cached items.
-     * @param _cache Storage cache struct.
-     * @return Cache size.
-     */
-    function currentSize(RingCache storage _cache) internal view returns (uint256) {
-        return _cache.size;
     }
 }

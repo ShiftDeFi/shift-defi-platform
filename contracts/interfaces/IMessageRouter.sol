@@ -57,6 +57,7 @@ interface IMessageRouter {
     error AdapterAlreadyWhitelisted(address adapter);
     error AdapterNotWhitelisted(address adapter);
     error ReceiverMismatch(address expected, address received);
+    error MessageNotCached(bytes32 cacheId, bytes32 key);
 
     /**
      * @notice Calculates the path identifier from sender/receiver/chain.

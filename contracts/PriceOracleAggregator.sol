@@ -74,12 +74,16 @@ contract PriceOracleAggregator is Initializable, AccessControlUpgradeable, IPric
         (uint256 price0, uint8 decimals0) = IPriceOracle(priceOracle0).getPrice(token0);
         (uint256 price1, uint8 decimals1) = IPriceOracle(priceOracle1).getPrice(token1);
 
-        return
-            normalizedAmount.mulDiv(
-                _normalizePrice(price0, decimals0),
-                _normalizePrice(price1, decimals1),
-                Math.Rounding.Floor
-            );
+        if (decimals0 == decimals1) {
+            return normalizedAmount.mulDiv(price0, price1, Math.Rounding.Floor);
+        } else {
+            return
+                normalizedAmount.mulDiv(
+                    _normalizePrice(price0, decimals0),
+                    _normalizePrice(price1, decimals1),
+                    Math.Rounding.Floor
+                );
+        }
     }
 
     function _normalizePrice(uint256 price, uint8 decimals) internal pure returns (uint256) {

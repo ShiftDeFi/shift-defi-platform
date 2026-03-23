@@ -174,7 +174,13 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
 
         (vars.nav0, vars.nav1) = getTotalNavs();
 
-        IMessageRouter(messageRouter).send{value: msg.value}(
+        vars.nativeBalanceCached = address(this).balance;
+        require(
+            messageInstruction.value <= vars.nativeBalanceCached,
+            Errors.NotEnoughNativeToken(messageInstruction.value, vars.nativeBalanceCached)
+        );
+
+        IMessageRouter(messageRouter).send{value: messageInstruction.value}(
             vars.peerContainerCached,
             IMessageRouter.SendParams({
                 adapter: messageInstruction.adapter,
@@ -203,37 +209,50 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         require(status == ContainerAgentStatus.AllStrategiesExited, Errors.IncorrectContainerStatus());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
         require(remoteChainId > 0, RemoteChainIdNotSet());
-        address peerContainerCached = peerContainer;
-        require(peerContainerCached != address(0), PeerContainerNotSet());
         require(bridgeAdapters.length > 0, Errors.ZeroArrayLength());
         require(bridgeAdapters.length == bridgeInstructions.length, Errors.ArrayLengthMismatch());
-        uint256 registeredWithdrawShareAmountCached = registeredWithdrawShareAmount;
+
+        ReportWithdrawalLocalVars memory vars;
+        vars.peerContainerCached = peerContainer;
+        require(vars.peerContainerCached != address(0), PeerContainerNotSet());
+
+        vars.registeredWithdrawShareAmountCached = registeredWithdrawShareAmount;
 
         _strategyExitBitmask = 0;
         registeredWithdrawShareAmount = 0;
 
         status = ContainerAgentStatus.Idle;
 
-        address[] memory tokens = new address[](bridgeInstructions.length);
-        uint256[] memory minAmounts = new uint256[](bridgeInstructions.length);
+        vars.tokens = new address[](bridgeInstructions.length);
+        vars.minAmounts = new uint256[](bridgeInstructions.length);
 
         for (uint256 i = 0; i < bridgeInstructions.length; ++i) {
-            (tokens[i], minAmounts[i]) = _bridgeToken(bridgeAdapters[i], peerContainerCached, bridgeInstructions[i]);
+            (vars.tokens[i], vars.minAmounts[i]) = _bridgeToken(
+                bridgeAdapters[i],
+                vars.peerContainerCached,
+                bridgeInstructions[i]
+            );
         }
 
         require(_validateWhitelistedTokensBeforeReport(false, true), WhitelistedTokensOnBalance());
 
-        IMessageRouter(messageRouter).send{value: msg.value}(
-            peerContainerCached,
+        vars.nativeBalanceCached = address(this).balance;
+        require(
+            messageInstruction.value <= vars.nativeBalanceCached,
+            Errors.NotEnoughNativeToken(messageInstruction.value, vars.nativeBalanceCached)
+        );
+
+        IMessageRouter(messageRouter).send{value: messageInstruction.value}(
+            vars.peerContainerCached,
             IMessageRouter.SendParams({
                 adapter: messageInstruction.adapter,
                 chainTo: remoteChainId,
                 adapterParameters: messageInstruction.parameters,
-                message: Codec.encode(Codec.WithdrawalResponse({tokens: tokens, amounts: minAmounts}))
+                message: Codec.encode(Codec.WithdrawalResponse({tokens: vars.tokens, amounts: vars.minAmounts}))
             })
         );
 
-        emit WithdrawalReported(registeredWithdrawShareAmountCached);
+        emit WithdrawalReported(vars.registeredWithdrawShareAmountCached);
     }
 
     // ---- Messaging logic ----
@@ -316,7 +335,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     function withdrawToReshufflingGateway(
         address[] memory bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata instructions
-    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    ) external payable nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
         require(bridgeAdapters.length == instructions.length, Errors.ArrayLengthMismatch());
         require(bridgeAdapters.length > 0, Errors.ZeroArrayLength());
 

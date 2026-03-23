@@ -133,6 +133,7 @@ contract ContainerAgentBaseTest is L2Base {
         uint256 tokenNumber = bridgedTokens.length;
         require(bridgedAmounts.length == tokenNumber, Errors.ArrayLengthMismatch());
         ICrossChainContainer.MessageInstruction memory messageInstruction = ICrossChainContainer.MessageInstruction({
+            value: 0,
             adapter: address(messageAdapter),
             parameters: ""
         });
@@ -147,6 +148,7 @@ contract ContainerAgentBaseTest is L2Base {
         );
         for (uint256 i = 0; i < tokenNumber; ++i) {
             bridgeInstructions[i] = IBridgeAdapter.BridgeInstruction({
+                value: 0,
                 chainTo: REMOTE_CHAIN_ID,
                 amount: bridgedAmounts[i],
                 minTokenAmount: Utils.calculateMinBridgeAmount(address(containerAgent), bridgedAmounts[i]),

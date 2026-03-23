@@ -137,6 +137,7 @@ abstract contract L2Base is Base {
     ) internal view returns (IBridgeAdapter.BridgeInstruction memory) {
         return
             IBridgeAdapter.BridgeInstruction({
+                value: 0,
                 token: token,
                 amount: amount,
                 chainTo: REMOTE_CHAIN_ID,

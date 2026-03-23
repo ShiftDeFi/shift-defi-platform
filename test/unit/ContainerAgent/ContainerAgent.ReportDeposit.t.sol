@@ -206,6 +206,88 @@ contract ContainerAgentReportDepositTest is ContainerAgentBaseTest {
         containerAgent.reportDeposit(messageInstruction, bridgeAdapters, bridgeInstructions);
     }
 
+    function test_RevertIf_ReportDeposit_MessageInstructionValueExceedsNativeBalance() public {
+        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.AllStrategiesEntered);
+
+        (
+            ICrossChainContainer.MessageInstruction memory messageInstruction,
+            address[] memory bridgeAdapters,
+            IBridgeAdapter.BridgeInstruction[] memory bridgeInstructions
+        ) = _prepareReportData(new address[](0), new uint256[](0));
+
+        messageInstruction.value = 1;
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughNativeToken.selector, 1, 0));
+        vm.prank(roles.operator);
+        containerAgent.reportDeposit(messageInstruction, bridgeAdapters, bridgeInstructions);
+    }
+
+    function test_RevertIf_ReportDeposit_BridgeInstructionValueExceedsNativeBalance() public {
+        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.AllStrategiesEntered);
+
+        uint256 tokenNumber = 1;
+        address[] memory bridgedTokens = new address[](tokenNumber);
+        bridgedTokens[0] = address(notion);
+        uint256[] memory bridgedAmounts = new uint256[](tokenNumber);
+        bridgedAmounts[0] = DEPOSIT_AMOUNT / 2;
+        notion.mint(address(containerAgent), bridgedAmounts[0]);
+
+        (
+            ICrossChainContainer.MessageInstruction memory messageInstruction,
+            address[] memory bridgeAdapters,
+            IBridgeAdapter.BridgeInstruction[] memory bridgeInstructions
+        ) = _prepareReportData(bridgedTokens, bridgedAmounts);
+
+        bridgeInstructions[0].value = 1;
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughNativeToken.selector, 1, 0));
+        vm.prank(roles.operator);
+        containerAgent.reportDeposit(messageInstruction, bridgeAdapters, bridgeInstructions);
+    }
+
+    function test_ReportDeposit_MessageInstructionValue_WithPrefundedNativeBalanceAndZeroMsgValue() public {
+        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.AllStrategiesEntered);
+
+        (
+            ICrossChainContainer.MessageInstruction memory messageInstruction,
+            address[] memory bridgeAdapters,
+            IBridgeAdapter.BridgeInstruction[] memory bridgeInstructions
+        ) = _prepareReportData(new address[](0), new uint256[](0));
+
+        messageInstruction.value = 1;
+
+        (bool success, ) = payable(address(containerAgent)).call{value: 1}("");
+        assertTrue(success, "test_ReportDeposit_MessageInstructionValue: prefund failed");
+
+        vm.prank(roles.operator);
+        containerAgent.reportDeposit(messageInstruction, bridgeAdapters, bridgeInstructions);
+    }
+
+    function test_ReportDeposit_BridgeInstructionValue_WithPrefundedNativeBalanceAndZeroMsgValue() public {
+        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.AllStrategiesEntered);
+
+        uint256 tokenNumber = 1;
+        address[] memory bridgedTokens = new address[](tokenNumber);
+        bridgedTokens[0] = address(notion);
+        uint256[] memory bridgedAmounts = new uint256[](tokenNumber);
+        bridgedAmounts[0] = DEPOSIT_AMOUNT / 2;
+        notion.mint(address(containerAgent), bridgedAmounts[0]);
+
+        (
+            ICrossChainContainer.MessageInstruction memory messageInstruction,
+            address[] memory bridgeAdapters,
+            IBridgeAdapter.BridgeInstruction[] memory bridgeInstructions
+        ) = _prepareReportData(bridgedTokens, bridgedAmounts);
+
+        bridgeInstructions[0].value = 1;
+
+        (bool success, ) = payable(address(containerAgent)).call{value: 1}("");
+        assertTrue(success, "test_ReportDeposit_BridgeInstructionValue: prefund failed");
+
+        vm.prank(roles.operator);
+        containerAgent.reportDeposit(messageInstruction, bridgeAdapters, bridgeInstructions);
+    }
+
     function test_RevertIf_ReportDeposit_InReshufflingMode() public {
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.AllStrategiesEntered);
         _toggleReshufflingMode(true);

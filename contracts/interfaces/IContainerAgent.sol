@@ -19,10 +19,19 @@ interface IContainerAgent is ICrossChainContainer, IStrategyContainer {
 
     struct ReportDepositLocalVars {
         address peerContainerCached;
+        uint256 nativeBalanceCached;
         address[] tokens;
         uint256[] minAmounts;
         uint256 nav0;
         uint256 nav1;
+    }
+
+    struct ReportWithdrawalLocalVars {
+        address peerContainerCached;
+        address[] tokens;
+        uint256[] minAmounts;
+        uint256 nativeBalanceCached;
+        uint256 registeredWithdrawShareAmountCached;
     }
 
     // ---- Events ----
@@ -147,5 +156,5 @@ interface IContainerAgent is ICrossChainContainer, IStrategyContainer {
     function withdrawToReshufflingGateway(
         address[] memory bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata instructions
-    ) external;
+    ) external payable;
 }

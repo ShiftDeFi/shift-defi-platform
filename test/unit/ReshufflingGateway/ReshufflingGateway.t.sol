@@ -291,6 +291,7 @@ contract ReshufflingGatewayTest is L1Base {
 
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](1);
         instructions[0] = IBridgeAdapter.BridgeInstruction({
+            value: 0,
             token: address(notion),
             amount: bridgeAmount,
             minTokenAmount: bridgeAmount.mulDiv(DEFAULT_SLIPPAGE_CAP_PCT, MAX_SLIPPAGE_CAP_PCT),
@@ -429,6 +430,7 @@ contract ReshufflingGatewayTest is L1Base {
         address notWhitelistedToken = makeAddr("NOT_WHITELISTED_TOKEN");
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](1);
         instructions[0] = IBridgeAdapter.BridgeInstruction({
+            value: 0,
             token: notWhitelistedToken,
             amount: vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT),
             minTokenAmount: 0,
@@ -451,6 +453,7 @@ contract ReshufflingGatewayTest is L1Base {
 
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](1);
         instructions[0] = IBridgeAdapter.BridgeInstruction({
+            value: 0,
             token: address(notion),
             amount: vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT),
             minTokenAmount: 0,
@@ -481,6 +484,7 @@ contract ReshufflingGatewayTest is L1Base {
 
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](1);
         instructions[0] = IBridgeAdapter.BridgeInstruction({
+            value: 0,
             token: address(token),
             amount: amount,
             minTokenAmount: 0,
@@ -507,6 +511,7 @@ contract ReshufflingGatewayTest is L1Base {
         uint256 amount = vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT);
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](1);
         instructions[0] = IBridgeAdapter.BridgeInstruction({
+            value: 0,
             token: address(notion),
             amount: amount,
             minTokenAmount: 0,
@@ -532,6 +537,7 @@ contract ReshufflingGatewayTest is L1Base {
 
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](1);
         instructions[0] = IBridgeAdapter.BridgeInstruction({
+            value: 0,
             token: address(notion),
             amount: amount,
             minTokenAmount: amount,
@@ -559,6 +565,56 @@ contract ReshufflingGatewayTest is L1Base {
                 bridgedAmount
             )
         );
+        reshufflingGateway.sendToCrossChainContainer(address(containerPrincipal), bridgeAdapters, instructions);
+    }
+
+    function test_RevertIf_SendToCrossChainContainer_BridgeInstructionValueExceedsNativeBalance() public {
+        _setReshufflingMode();
+
+        uint256 amount = vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT);
+        notion.mint(address(reshufflingGateway), amount);
+
+        address[] memory bridgeAdapters = new address[](1);
+        bridgeAdapters[0] = address(bridgeAdapter);
+
+        IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](1);
+        instructions[0] = IBridgeAdapter.BridgeInstruction({
+            value: 1,
+            token: address(notion),
+            amount: amount,
+            minTokenAmount: amount,
+            chainTo: REMOTE_CHAIN_ID,
+            payload: "0x"
+        });
+
+        vm.prank(roles.reshufflingManager);
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughNativeToken.selector, 1, 0));
+        reshufflingGateway.sendToCrossChainContainer(address(containerPrincipal), bridgeAdapters, instructions);
+    }
+
+    function test_SendToCrossChainContainer_BridgeInstructionValue_WithPrefundedNativeBalanceAndZeroMsgValue() public {
+        _setReshufflingMode();
+
+        uint256 amount = vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT);
+        notion.mint(address(reshufflingGateway), amount);
+
+        address[] memory bridgeAdapters = new address[](1);
+        bridgeAdapters[0] = address(bridgeAdapter);
+
+        IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](1);
+        instructions[0] = IBridgeAdapter.BridgeInstruction({
+            value: 1,
+            token: address(notion),
+            amount: amount,
+            minTokenAmount: amount,
+            chainTo: REMOTE_CHAIN_ID,
+            payload: "0x"
+        });
+
+        (bool success, ) = payable(address(reshufflingGateway)).call{value: 1}("");
+        assertTrue(success, "test_SendToCrossChainContainer_BridgeInstructionValue: prefund failed");
+
+        vm.prank(roles.reshufflingManager);
         reshufflingGateway.sendToCrossChainContainer(address(containerPrincipal), bridgeAdapters, instructions);
     }
 

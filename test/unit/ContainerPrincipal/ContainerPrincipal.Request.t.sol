@@ -181,7 +181,7 @@ contract ContainerPrincipalRequestTest is ContainerPrincipalBaseTest {
 
         vm.prank(roles.operator);
         containerPrincipal.sendWithdrawRequest(
-            ICrossChainContainer.MessageInstruction({adapter: address(messageAdapter), parameters: ""})
+            ICrossChainContainer.MessageInstruction({value: 0, adapter: address(messageAdapter), parameters: ""})
         );
 
         bytes32 path = messageRouter.calculatePath(
@@ -209,7 +209,7 @@ contract ContainerPrincipalRequestTest is ContainerPrincipalBaseTest {
         vm.prank(roles.operator);
         vm.expectRevert(Errors.ZeroAmount.selector);
         containerPrincipal.sendWithdrawRequest(
-            ICrossChainContainer.MessageInstruction({adapter: address(messageAdapter), parameters: ""})
+            ICrossChainContainer.MessageInstruction({value: 0, adapter: address(messageAdapter), parameters: ""})
         );
     }
 }

@@ -14,11 +14,13 @@ interface ICrossChainContainer is IContainer {
     }
 
     struct MessageInstruction {
+        uint256 value;
         address adapter;
         bytes parameters;
     }
 
     struct BridgeTokenLocalVars {
+        uint256 nativeBalanceCached;
         address tokenOnDestinationChain;
         uint256 minAllowedAmount;
         uint256 tokenBalanceBefore;

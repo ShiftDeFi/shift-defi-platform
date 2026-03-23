@@ -37,6 +37,8 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
         _;
     }
 
+    receive() external payable {}
+
     function __CrossChainContainer_init(CrossChainContainerInitParams calldata params) internal onlyInitializing {
         _setMessageRouter(params.messageRouter);
 
@@ -143,6 +145,12 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
 
         BridgeTokenLocalVars memory vars;
 
+        vars.nativeBalanceCached = address(this).balance;
+        require(
+            instruction.value <= vars.nativeBalanceCached,
+            Errors.NotEnoughNativeToken(instruction.value, vars.nativeBalanceCached)
+        );
+
         vars.tokenBalanceBefore = IERC20(instruction.token).balanceOf(address(this));
         require(
             vars.tokenBalanceBefore >= instruction.amount,
@@ -157,7 +165,7 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
 
         _approveTokenToBridgeAdapter(instruction.token, bridgeAdapter, instruction.amount);
 
-        vars.bridgedAmount = IBridgeAdapter(bridgeAdapter).bridge(instruction, bridgeTo);
+        vars.bridgedAmount = IBridgeAdapter(bridgeAdapter).bridge{value: instruction.value}(instruction, bridgeTo);
         vars.tokenBalanceAfter = IERC20(instruction.token).balanceOf(address(this));
         require(
             vars.bridgedAmount >= instruction.minTokenAmount,

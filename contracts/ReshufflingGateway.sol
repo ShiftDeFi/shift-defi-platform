@@ -40,6 +40,8 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         _disableInitializers();
     }
 
+    receive() external payable {}
+
     /**
      * @notice Initializes the ReshufflingGateway contract.
      * @param _vault The address of the vault contract.

@@ -163,7 +163,7 @@ abstract contract Base is Test {
                 DEFAULT_SLIPPAGE_CAP_PCT
             )
         );
-        return MockBridgeAdapter(proxy);
+        return MockBridgeAdapter(payable(proxy));
     }
 
     function _deployMessageAdapter() internal returns (IMessageAdapter) {

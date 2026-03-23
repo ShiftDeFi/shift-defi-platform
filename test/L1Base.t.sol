@@ -205,24 +205,26 @@ abstract contract L1Base is Base {
         address implementation = address(new MockCrossChainContainer());
         return
             MockCrossChainContainer(
-                _proxify(
-                    roles.deployer,
-                    implementation,
-                    roles.defaultAdmin,
-                    abi.encodeWithSelector(
-                        MockCrossChainContainer.initialize.selector,
-                        IContainer.ContainerInitParams({
-                            vault: address(vault),
-                            notion: address(notion),
-                            defaultAdmin: roles.defaultAdmin,
-                            operator: roles.operator,
-                            tokenManager: roles.tokenManager,
-                            swapRouter: address(swapRouter)
-                        }),
-                        address(messageRouter),
-                        REMOTE_CHAIN_ID,
-                        roles.messengerManager,
-                        roles.bridgeAdapterManager
+                payable(
+                    _proxify(
+                        roles.deployer,
+                        implementation,
+                        roles.defaultAdmin,
+                        abi.encodeWithSelector(
+                            MockCrossChainContainer.initialize.selector,
+                            IContainer.ContainerInitParams({
+                                vault: address(vault),
+                                notion: address(notion),
+                                defaultAdmin: roles.defaultAdmin,
+                                operator: roles.operator,
+                                tokenManager: roles.tokenManager,
+                                swapRouter: address(swapRouter)
+                            }),
+                            address(messageRouter),
+                            REMOTE_CHAIN_ID,
+                            roles.messengerManager,
+                            roles.bridgeAdapterManager
+                        )
                     )
                 )
             );

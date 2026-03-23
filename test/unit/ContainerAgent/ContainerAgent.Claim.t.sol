@@ -1,4 +1,4 @@
-// SPDX License-Identifier: UNLICENSED
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
 import {IContainer} from "contracts/interfaces/IContainer.sol";
@@ -33,8 +33,12 @@ contract ContainerAgentClaimTest is ContainerAgentBaseTest {
         dai.mint(address(bridgeAdapter), DEPOSIT_AMOUNT);
         notion.mint(address(bridgeAdapter), DEPOSIT_AMOUNT);
 
-        MockBridgeAdapter(address(bridgeAdapter)).finalizeBridge(address(containerAgent), address(dai), DEPOSIT_AMOUNT);
-        MockBridgeAdapter(address(bridgeAdapter)).finalizeBridge(
+        MockBridgeAdapter(payable(address(bridgeAdapter))).finalizeBridge(
+            address(containerAgent),
+            address(dai),
+            DEPOSIT_AMOUNT
+        );
+        MockBridgeAdapter(payable(address(bridgeAdapter))).finalizeBridge(
             address(containerAgent),
             address(notion),
             DEPOSIT_AMOUNT

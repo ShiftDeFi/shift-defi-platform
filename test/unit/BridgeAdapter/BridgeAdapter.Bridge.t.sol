@@ -49,6 +49,21 @@ contract BridgeAdapterBridgeTest is BridgeAdapterBase {
         );
     }
 
+    function test_Bridge_UsesLeftoverNativeBalanceWhenMsgValueIsZero() public {
+        address receiver = makeAddr("Receiver");
+
+        notion.mint(users.alice, BRIDGE_AMOUNT * 2);
+        vm.deal(users.alice, 1);
+        IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
+        instruction.value = 1;
+
+        vm.startPrank(users.alice);
+        IERC20(address(notion)).approve(address(bridgeAdapter), BRIDGE_AMOUNT * 2);
+        bridgeAdapter.bridge{value: 1}(instruction, receiver);
+        bridgeAdapter.bridge(instruction, receiver);
+        vm.stopPrank();
+    }
+
     function test_RevertIf_Bridge_ZeroReceiver() public {
         IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
         vm.expectRevert(Errors.ZeroAddress.selector);

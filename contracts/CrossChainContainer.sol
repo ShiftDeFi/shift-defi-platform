@@ -37,6 +37,8 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
         _;
     }
 
+    receive() external payable {}
+
     function __CrossChainContainer_init(CrossChainContainerInitParams calldata params) internal onlyInitializing {
         _setMessageRouter(params.messageRouter);
 

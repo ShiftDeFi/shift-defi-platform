@@ -32,6 +32,8 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
 
     uint256 private _nonce;
 
+    receive() external payable {}
+
     function __BridgeAdapter_init(
         address defaultAdmin,
         address bridgeAdapterManager,

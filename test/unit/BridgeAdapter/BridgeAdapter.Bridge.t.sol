@@ -86,9 +86,10 @@ contract BridgeAdapterBridgeTest is BridgeAdapterBase {
         vm.startPrank(users.alice);
         IERC20(address(notion)).approve(address(bridgeAdapter), BRIDGE_AMOUNT);
         bridgeAdapter.bridge(instruction, receiver);
-
-        bridgeAdapter.retryBridge(instruction, receiver, nonce);
         vm.stopPrank();
+
+        vm.prank(roles.cacheManager);
+        bridgeAdapter.retryBridge(instruction, receiver, nonce);
     }
 
     function test_RevertIf_RetryBridge_NotCached() public {
@@ -102,15 +103,8 @@ contract BridgeAdapterBridgeTest is BridgeAdapterBase {
                 keccak256(abi.encode(instruction.token, instruction.chainTo, instruction.amount, receiver, nonce))
             )
         );
-        vm.prank(users.alice);
+        vm.prank(roles.cacheManager);
         bridgeAdapter.retryBridge(instruction, receiver, nonce);
-    }
-
-    function test_RevertIf_RetryBridge_NotWhitelistedBridger() public {
-        uint256 nonce = 0;
-        IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
-        vm.expectRevert(abi.encodeWithSelector(IBridgeAdapter.BridgerNotWhitelisted.selector, address(this)));
-        bridgeAdapter.retryBridge(instruction, makeAddr("Receiver"), nonce);
     }
 
     function test_RevertIf_ValidateBridgeInstruction_ZeroToken() public {

@@ -107,9 +107,11 @@ interface IBridgeAdapter {
     function blacklistBridger(address bridger) external;
 
     /*
-     * @dev Retries the bridge for a given instruction and receiver.
-     * @param instruction The instruction for the bridge.
-     * @param receiver The address to receive the bridged token on the destination chain.
-     */
+     /**
+      * @dev Retries the bridge for a given instruction and receiver.
+      * Only callable by an address with the CACHE_MANAGER_ROLE.
+      * @param instruction The instruction for the bridge.
+      * @param receiver The address to receive the bridged token on the destination chain.
+      */
     function retryBridge(BridgeInstruction calldata instruction, address receiver, uint256 nonce) external payable;
 }

@@ -162,6 +162,7 @@ abstract contract Base is Test {
                 MockBridgeAdapter.initialize.selector,
                 roles.defaultAdmin,
                 roles.bridgeAdapterManager,
+                roles.cacheManager,
                 DEFAULT_SLIPPAGE_CAP_PCT
             )
         );

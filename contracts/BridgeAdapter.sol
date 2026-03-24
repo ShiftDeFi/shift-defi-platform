@@ -19,6 +19,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     using RingCacheLib for RingCacheLib.RingCache;
 
     bytes32 internal constant BRIDGE_ADAPTER_MANAGER_ROLE = keccak256("BRIDGE_ADAPTER_MANAGER_ROLE");
+    bytes32 internal constant CACHE_MANAGER_ROLE = keccak256("CACHE_MANAGER_ROLE");
 
     mapping(address => mapping(uint256 => address)) public bridgePaths;
     mapping(address => mapping(address => uint256)) public claimableAmounts;
@@ -37,6 +38,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
     function __BridgeAdapter_init(
         address defaultAdmin,
         address bridgeAdapterManager,
+        address cacheManager,
         uint256 slippageCapPct,
         uint256 maxCacheSize
     ) internal onlyInitializing {
@@ -45,9 +47,11 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
 
         require(defaultAdmin != address(0), Errors.ZeroAddress());
         require(bridgeAdapterManager != address(0), Errors.ZeroAddress());
+        require(cacheManager != address(0), Errors.ZeroAddress());
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(BRIDGE_ADAPTER_MANAGER_ROLE, bridgeAdapterManager);
+        _grantRole(CACHE_MANAGER_ROLE, cacheManager);
 
         _setSlippageCapPct(slippageCapPct);
 
@@ -140,9 +144,7 @@ abstract contract BridgeAdapter is Initializable, AccessControlUpgradeable, Reen
         BridgeInstruction calldata instruction,
         address receiver,
         uint256 nonce
-    ) external payable virtual nonReentrant {
-        require(whitelistedBridgers[msg.sender], BridgerNotWhitelisted(msg.sender));
-
+    ) external payable virtual nonReentrant onlyRole(CACHE_MANAGER_ROLE) {
         _validateBridgeInstruction(instruction);
 
         bytes32 key = keccak256(

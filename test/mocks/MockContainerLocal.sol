@@ -121,14 +121,6 @@ contract MockContainerLocal is IContainerLocal {
         return false;
     }
 
-    function isReshufflingMode() external pure returns (bool) {
-        return false;
-    }
-
-    function isResolvingEmergency() external pure returns (bool) {
-        return false;
-    }
-
     function enterInReshufflingMode(address, uint256[] calldata, uint256) external pure {}
 
     function exitInReshufflingMode(address, uint256, uint256) external pure {}

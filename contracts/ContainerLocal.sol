@@ -106,7 +106,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         address strategy,
         address[] calldata inputTokens,
         address[] calldata outputTokens
-    ) external nonReentrant notResolvingEmergency onlyRole(STRATEGY_MANAGER_ROLE) {
+    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
         require(status == ContainerLocalStatus.Idle, Errors.IncorrectContainerStatus());
         _addStrategy(strategy, inputTokens, outputTokens);
     }
@@ -114,7 +114,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     /// @inheritdoc IStrategyContainer
     function removeStrategy(
         address strategy
-    ) external nonReentrant notResolvingEmergency onlyRole(STRATEGY_MANAGER_ROLE) {
+    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(status == ContainerLocalStatus.Idle, Errors.IncorrectContainerStatus());
         _removeStrategy(strategy);
     }
@@ -226,7 +226,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     function withdrawToReshufflingGateway(
         address[] memory tokens,
         uint256[] memory amounts
-    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         uint256 length = tokens.length;
         require(length > 0, Errors.ZeroArrayLength());
         require(length == amounts.length, Errors.ArrayLengthMismatch());

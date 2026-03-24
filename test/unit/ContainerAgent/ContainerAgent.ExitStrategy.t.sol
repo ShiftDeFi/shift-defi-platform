@@ -24,9 +24,15 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
     function setUp() public virtual override {
         super.setUp();
 
+        vm.prank(roles.reshufflingManager);
+        containerAgent.enableReshufflingMode();
+
         strategy0 = _addStrategyNotionInputOutput();
         strategy1 = _addStrategyNotionInputOutput();
         strategy2 = _addStrategyNotionInputOutput();
+
+        vm.prank(roles.reshufflingExecutor);
+        containerAgent.disableReshufflingMode();
 
         uint256 strategiesNumber = 3;
         address[] memory strategies = new address[](strategiesNumber);
@@ -104,10 +110,17 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
 
     function test_ExitStrategy_TheOnlyStrategy() public {
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.Idle);
-        vm.startPrank(roles.strategyManager);
+
+        vm.prank(roles.reshufflingManager);
+        containerAgent.enableReshufflingMode();
+
+        vm.startPrank(roles.reshufflingExecutor);
         containerAgent.removeStrategy(strategy1);
         containerAgent.removeStrategy(strategy2);
         vm.stopPrank();
+
+        vm.prank(roles.reshufflingExecutor);
+        containerAgent.disableReshufflingMode();
 
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.WithdrawalRequestReceived);
 
@@ -137,7 +150,7 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
     function test_RevertIf_ExitStrategy_InReshufflingMode() public {
         _toggleReshufflingMode(true);
 
-        vm.expectRevert(IStrategyContainer.ActionUnavailableInReshufflingMode.selector);
+        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
         vm.prank(roles.operator);
         containerAgent.exitStrategy(strategy0, maxNavDelta);
     }
@@ -152,10 +165,17 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
 
     function test_ExitStrategyMultiple_1Of1() public {
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.Idle);
-        vm.startPrank(roles.strategyManager);
+
+        vm.prank(roles.reshufflingManager);
+        containerAgent.enableReshufflingMode();
+
+        vm.startPrank(roles.reshufflingExecutor);
         containerAgent.removeStrategy(strategy1);
         containerAgent.removeStrategy(strategy2);
         vm.stopPrank();
+
+        vm.prank(roles.reshufflingExecutor);
+        containerAgent.disableReshufflingMode();
 
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.WithdrawalRequestReceived);
 
@@ -276,7 +296,7 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
 
         _toggleReshufflingMode(true);
 
-        vm.expectRevert(IStrategyContainer.ActionUnavailableInReshufflingMode.selector);
+        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
         vm.prank(roles.operator);
         containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
     }

@@ -100,6 +100,7 @@ abstract contract L2Base is Base {
                         strategyManager: roles.strategyManager,
                         harvestManager: roles.harvestManager,
                         reshufflingManager: roles.reshufflingManager,
+                        reshufflingExecutor: roles.reshufflingExecutor,
                         emergencyManager: roles.emergencyManager,
                         emergencyExecutor: roles.emergencyExecutor
                     }),

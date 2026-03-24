@@ -32,6 +32,8 @@ contract ContainerAgentBaseTest is L2Base {
         super.setUp();
 
         containerAgent = _deployContainerAgent();
+        vm.prank(roles.reshufflingExecutor);
+        containerAgent.disableReshufflingMode();
 
         vm.prank(roles.strategyManager);
         containerAgent.setTreasury(treasury);
@@ -58,23 +60,17 @@ contract ContainerAgentBaseTest is L2Base {
 
     function test_ToggleEmergencyResolutionMode() public {
         _toggleEmergencyResolutionMode(true);
-        assertTrue(
-            containerAgent.isResolvingEmergency(),
-            "test_ToggleEmergencyResolutionMode: should be resolving emergency"
-        );
+        assertTrue(_isResolvingEmergency(), "test_ToggleEmergencyResolutionMode: should be resolving emergency");
         _toggleEmergencyResolutionMode(false);
-        assertFalse(
-            containerAgent.isResolvingEmergency(),
-            "test_ToggleEmergencyResolutionMode: should not be resolving emergency"
-        );
+        assertFalse(_isResolvingEmergency(), "test_ToggleEmergencyResolutionMode: should not be resolving emergency");
     }
 
     function test_ToggleReshufflingMode() public {
         _toggleReshufflingMode(true);
-        assertTrue(containerAgent.isReshufflingMode(), "test_ToggleReshufflingMode: reshuffling mode not enabled");
+        assertTrue(_isReshufflingMode(), "test_ToggleReshufflingMode: reshuffling mode not enabled");
 
         _toggleReshufflingMode(false);
-        assertFalse(containerAgent.isReshufflingMode(), "test_ToggleReshufflingMode: reshuffling mode not disabled");
+        assertFalse(_isReshufflingMode(), "test_ToggleReshufflingMode: reshuffling mode not disabled");
     }
 
     function _addStrategyNotionInputOutput() internal returns (address) {
@@ -84,7 +80,7 @@ contract ContainerAgentBaseTest is L2Base {
         address[] memory outputTokens = new address[](tokenNumber);
         inputTokens[0] = address(notion);
         outputTokens[0] = address(notion);
-        vm.prank(roles.strategyManager);
+        vm.prank(roles.reshufflingManager);
         containerAgent.addStrategy(strategy, inputTokens, outputTokens);
         MockStrategy(strategy).setState(bytes32(uint256(1)), true, true, false, 1);
 
@@ -182,5 +178,15 @@ contract ContainerAgentBaseTest is L2Base {
         }
 
         vm.store(address(containerAgent), IS_RESOLVING_EMERGENCY_AND_RESHUFFLING_MODE_SLOT, bytes32(value));
+    }
+
+    function _isResolvingEmergency() internal view returns (bool) {
+        uint256 value = uint256(vm.load(address(containerAgent), IS_RESOLVING_EMERGENCY_AND_RESHUFFLING_MODE_SLOT));
+        return (value & (uint256(1) << IS_RESOLVING_EMERGENCY_OFFSET)) != 0;
+    }
+
+    function _isReshufflingMode() internal view returns (bool) {
+        uint256 value = uint256(vm.load(address(containerAgent), IS_RESOLVING_EMERGENCY_AND_RESHUFFLING_MODE_SLOT));
+        return (value & (uint256(1) << RESHUFFLING_MODE_OFFSET)) != 0;
     }
 }

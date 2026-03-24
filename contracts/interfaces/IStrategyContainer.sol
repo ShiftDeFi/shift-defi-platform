@@ -18,6 +18,7 @@ interface IStrategyContainer is IContainer {
         address strategyManager;
         address harvestManager;
         address reshufflingManager;
+        address reshufflingExecutor;
         address emergencyManager;
         address emergencyExecutor;
     }
@@ -56,7 +57,8 @@ interface IStrategyContainer is IContainer {
     event FeePctUpdated(uint256 oldFeePct, uint256 newFeePct);
     event ReshufflingGatewayUpdated(address oldReshufflingGateway, address newReshufflingGateway);
     event PriceOracleUpdated(address oldPriceOracle, address newPriceOracle);
-    event ReshufflingModeUpdated(bool reshufflingMode);
+    event ReshufflingModeEnabled();
+    event ReshufflingModeDisabled();
     event EmergencyResolutionStarted(address strategy);
     event EmergencyResolutionCompleted();
     event StrategyNavResolved(address indexed strategy, uint256 resolvedNav);
@@ -72,8 +74,6 @@ interface IStrategyContainer is IContainer {
     error StrategyHarvestOutdated(address strategy);
     error IncorrectNav0();
     error NoSharesRegisteredForExit();
-    error ActionUnavailableNotInReshufflingMode();
-    error ActionUnavailableInReshufflingMode();
     error IncorrectEnterNav(uint256 nav0, uint256 nav1);
     error StrategyNavUnresolved(address strategy);
     error StrategyNavAlreadyResolved(address strategy);
@@ -223,18 +223,6 @@ interface IStrategyContainer is IContainer {
      * @dev Can only be called by accounts with appropriate role.
      */
     function startEmergencyResolution() external;
-
-    /**
-     * @notice Checks if reshuffling mode is enabled.
-     * @return True if reshuffling mode is enabled, false otherwise
-     */
-    function isReshufflingMode() external view returns (bool);
-
-    /**
-     * @notice Checks if emergency resolution is in progress.
-     * @return True if emergency resolution is in progress, false otherwise
-     */
-    function isResolvingEmergency() external view returns (bool);
 
     /**
      * @notice Completes emergency resolution process.

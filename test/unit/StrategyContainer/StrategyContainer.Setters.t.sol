@@ -25,7 +25,7 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
     // ---- setReshufflingGateway tests ----
 
     function test_SetReshufflingGateway() public {
-        address reshufflingGateway = makeAddr("RESHUFFLING_GATEWAY");
+        address reshufflingGateway = makeAddr("NEW_RESHUFFLING_GATEWAY");
         vm.prank(roles.reshufflingManager);
         strategyContainer.setReshufflingGateway(reshufflingGateway);
         assertEq(
@@ -142,16 +142,22 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
 
     function test_SetStrategyInputTokens_EmptyContainer_StrategyNotFound() public {
         address[] memory inputTokens = _createTokensArray(address(notion));
+
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
         _addStrategyWithTokens(address(strategy), inputTokens, _createTokensArray(address(notion)));
 
         address[] memory newInputTokens = _createTokensArray(whitelistedToken);
 
-        vm.startPrank(roles.strategyManager);
+        vm.startPrank(roles.reshufflingExecutor);
         vm.expectCall(
             address(strategy),
             abi.encodeWithSelector(IStrategyTemplate.setInputTokens.selector, newInputTokens)
         );
         strategyContainer.setStrategyInputTokens(address(strategy), newInputTokens);
+
+        strategyContainer.disableReshufflingMode();
         vm.stopPrank();
 
         address[] memory retrievedInputTokens = IStrategyTemplate(address(strategy)).getInputTokens();
@@ -169,13 +175,17 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
 
     function test_SetStrategyInputTokens_ExistingStrategy() public {
         address[] memory initialInputTokens = _createTokensArray(address(notion));
+
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
         _addStrategyWithTokens(address(strategy), initialInputTokens, _createTokensArray(address(notion)));
 
         address[] memory newInputTokens = new address[](2);
         newInputTokens[0] = address(notion);
         newInputTokens[1] = address(notion);
 
-        vm.startPrank(roles.strategyManager);
+        vm.startPrank(roles.reshufflingExecutor);
         vm.expectCall(
             address(strategy),
             abi.encodeWithSelector(IStrategyTemplate.setInputTokens.selector, newInputTokens)
@@ -205,13 +215,19 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
         address nonStrategy = makeAddr("NON_STRATEGY");
         address[] memory inputTokens = _createTokensArray(address(notion));
 
-        vm.startPrank(roles.strategyManager);
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
+        vm.startPrank(roles.reshufflingExecutor);
         vm.expectRevert(IStrategyContainer.StrategyNotFound.selector);
         strategyContainer.setStrategyInputTokens(nonStrategy, inputTokens);
         vm.stopPrank();
     }
 
     function test_RevertIf_NotStrategyManagerInSetStrategyInputTokens() public {
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
         address[] memory inputTokens = _createTokensArray(address(notion));
         _addStrategyWithTokens(address(strategy), inputTokens, _createTokensArray(address(notion)));
 
@@ -221,28 +237,34 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 randomAddress,
-                STRATEGY_MANAGER_ROLE
+                RESHUFFLING_EXECUTOR_ROLE
             )
         );
         strategyContainer.setStrategyInputTokens(address(strategy), inputTokens);
     }
 
     function test_RevertIf_InputTokensIsEmpty() public {
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
         address[] memory inputTokens = _createTokensArray(address(notion));
         _addStrategyWithTokens(address(strategy), inputTokens, _createTokensArray(address(notion)));
 
-        vm.startPrank(roles.strategyManager);
         address[] memory emptyInputTokens = new address[](0);
+        vm.startPrank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ZeroArrayLength.selector);
         strategyContainer.setStrategyInputTokens(address(strategy), emptyInputTokens);
         vm.stopPrank();
     }
 
     function test_RevertIf_InputTokenIsZeroAddress() public {
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
         address[] memory inputTokens = _createTokensArray(address(notion));
         _addStrategyWithTokens(address(strategy), inputTokens, _createTokensArray(address(notion)));
 
-        vm.startPrank(roles.strategyManager);
+        vm.startPrank(roles.reshufflingExecutor);
         address[] memory tokensWithZero = _createTokensArray(address(0));
         vm.expectRevert(Errors.ZeroAddress.selector);
         strategyContainer.setStrategyInputTokens(address(strategy), tokensWithZero);
@@ -250,10 +272,13 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
     }
 
     function test_RevertIf_InputTokenNotWhitelisted() public {
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
         address[] memory inputTokens = _createTokensArray(address(notion));
         _addStrategyWithTokens(address(strategy), inputTokens, _createTokensArray(address(notion)));
 
-        vm.startPrank(roles.strategyManager);
+        vm.startPrank(roles.reshufflingExecutor);
         address nonWhitelistedToken = address(_deployMockERC20("Token", "TKN", 18));
         address[] memory tokensWithNonWhitelisted = _createTokensArray(nonWhitelistedToken);
         vm.expectRevert(abi.encodeWithSelector(IContainer.NotWhitelistedToken.selector, nonWhitelistedToken));
@@ -266,17 +291,24 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
     function test_SetStrategyOutputTokens_EmptyContainer() public {
         address[] memory inputTokens = _createTokensArray(address(notion));
         address[] memory outputTokens = _createTokensArray(address(notion));
+
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
         _addStrategyWithTokens(address(strategy), inputTokens, outputTokens);
 
         address[] memory newOutputTokens = _createTokensArray(whitelistedToken);
 
-        vm.startPrank(roles.strategyManager);
+        vm.startPrank(roles.reshufflingExecutor);
         vm.expectCall(
             address(strategy),
             abi.encodeWithSelector(IStrategyTemplate.setOutputTokens.selector, newOutputTokens)
         );
         strategyContainer.setStrategyOutputTokens(address(strategy), newOutputTokens);
         vm.stopPrank();
+
+        vm.prank(roles.reshufflingExecutor);
+        strategyContainer.disableReshufflingMode();
 
         address[] memory retrievedOutputTokens = IStrategyTemplate(address(strategy)).getOutputTokens();
         assertEq(
@@ -294,18 +326,24 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
     function test_SetStrategyOutputTokens_ExistingStrategy() public {
         address[] memory inputTokens = _createTokensArray(address(notion));
         address[] memory initialOutputTokens = _createTokensArray(address(notion));
+
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
         _addStrategyWithTokens(address(strategy), inputTokens, initialOutputTokens);
 
         address[] memory newOutputTokens = new address[](2);
         newOutputTokens[0] = address(notion);
         newOutputTokens[1] = address(notion);
 
-        vm.startPrank(roles.strategyManager);
+        vm.startPrank(roles.reshufflingExecutor);
         vm.expectCall(
             address(strategy),
             abi.encodeWithSelector(IStrategyTemplate.setOutputTokens.selector, newOutputTokens)
         );
         strategyContainer.setStrategyOutputTokens(address(strategy), newOutputTokens);
+
+        strategyContainer.disableReshufflingMode();
         vm.stopPrank();
 
         address[] memory retrievedOutputTokens = IStrategyTemplate(address(strategy)).getOutputTokens();
@@ -330,7 +368,10 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
         address nonStrategy = makeAddr("NON_STRATEGY");
         address[] memory outputTokens = _createTokensArray(address(notion));
 
-        vm.startPrank(roles.strategyManager);
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
+        vm.startPrank(roles.reshufflingExecutor);
         vm.expectRevert(IStrategyContainer.StrategyNotFound.selector);
         strategyContainer.setStrategyOutputTokens(nonStrategy, outputTokens);
         vm.stopPrank();
@@ -339,6 +380,10 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
     function test_RevertIf_NotStrategyManagerInSetStrategyOutputTokens() public {
         address[] memory inputTokens = _createTokensArray(address(notion));
         address[] memory outputTokens = _createTokensArray(address(notion));
+
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
         _addStrategyWithTokens(address(strategy), inputTokens, outputTokens);
 
         address randomAddress = makeAddr("RANDOM_ADDRESS");
@@ -347,18 +392,21 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 randomAddress,
-                STRATEGY_MANAGER_ROLE
+                RESHUFFLING_EXECUTOR_ROLE
             )
         );
         strategyContainer.setStrategyOutputTokens(address(strategy), outputTokens);
     }
 
     function test_RevertIf_OutputTokensIsEmpty() public {
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
         address[] memory inputTokens = _createTokensArray(address(notion));
         address[] memory outputTokens = _createTokensArray(address(notion));
         _addStrategyWithTokens(address(strategy), inputTokens, outputTokens);
 
-        vm.startPrank(roles.strategyManager);
+        vm.startPrank(roles.reshufflingExecutor);
         address[] memory emptyOutputTokens = new address[](0);
         vm.expectRevert(Errors.ZeroArrayLength.selector);
         strategyContainer.setStrategyOutputTokens(address(strategy), emptyOutputTokens);
@@ -366,11 +414,14 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
     }
 
     function test_RevertIf_OutputTokenIsZeroAddress() public {
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
         address[] memory inputTokens = _createTokensArray(address(notion));
         address[] memory outputTokens = _createTokensArray(address(notion));
         _addStrategyWithTokens(address(strategy), inputTokens, outputTokens);
 
-        vm.startPrank(roles.strategyManager);
+        vm.startPrank(roles.reshufflingExecutor);
         address[] memory tokensWithZero = _createTokensArray(address(0));
         vm.expectRevert(Errors.ZeroAddress.selector);
         strategyContainer.setStrategyOutputTokens(address(strategy), tokensWithZero);
@@ -378,11 +429,14 @@ contract StrategyContainerSettersTest is StrategyContainerBaseTest {
     }
 
     function test_RevertIf_OutputTokenNotWhitelisted() public {
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
         address[] memory inputTokens = _createTokensArray(address(notion));
         address[] memory outputTokens = _createTokensArray(address(notion));
         _addStrategyWithTokens(address(strategy), inputTokens, outputTokens);
 
-        vm.startPrank(roles.strategyManager);
+        vm.startPrank(roles.reshufflingExecutor);
         address nonWhitelistedToken = address(_deployMockERC20("Token", "TKN", 18));
         address[] memory tokensWithNonWhitelisted = _createTokensArray(nonWhitelistedToken);
         vm.expectRevert(abi.encodeWithSelector(IContainer.NotWhitelistedToken.selector, nonWhitelistedToken));

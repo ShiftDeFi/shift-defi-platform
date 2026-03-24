@@ -30,14 +30,18 @@ contract ContainerLocalBaseTest is L1Base {
         strategy = _deployMockStrategy(address(containerLocal));
         MockStrategy(address(strategy)).setState(bytes32(uint256(1)), true, true, false, 1);
 
-        vm.startPrank(roles.strategyManager);
+        vm.prank(roles.reshufflingManager);
         containerLocal.addStrategy(
             address(strategy),
             _createTokensArray(address(notion)),
             _createTokensArray(address(notion))
         );
+
+        vm.prank(roles.reshufflingExecutor);
+        containerLocal.disableReshufflingMode();
+
+        vm.prank(roles.strategyManager);
         containerLocal.setTreasury(treasury);
-        vm.stopPrank();
     }
 
     function _setContainerStatus(IContainerLocal.ContainerLocalStatus status) internal {

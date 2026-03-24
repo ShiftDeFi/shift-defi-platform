@@ -78,7 +78,7 @@ contract ContainerAgentClaimTest is ContainerAgentBaseTest {
 
     function test_RevertIf_Claim_InReshufflingMode() public {
         _toggleReshufflingMode(true);
-        vm.expectRevert(IStrategyContainer.ActionUnavailableInReshufflingMode.selector);
+        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
         vm.prank(roles.operator);
         containerAgent.claim(address(bridgeAdapter), address(dai));
     }
@@ -187,7 +187,7 @@ contract ContainerAgentClaimTest is ContainerAgentBaseTest {
         tokens[0] = address(dai);
 
         _toggleReshufflingMode(true);
-        vm.expectRevert(IStrategyContainer.ActionUnavailableInReshufflingMode.selector);
+        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
         vm.prank(roles.operator);
         containerAgent.claimMultiple(bridgeAdapters, tokens);
     }
@@ -215,7 +215,7 @@ contract ContainerAgentClaimTest is ContainerAgentBaseTest {
         dai.mint(address(newBridgeAdapter), DEPOSIT_AMOUNT);
         newBridgeAdapter.finalizeBridge(address(containerAgent), address(dai), DEPOSIT_AMOUNT);
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         containerAgent.claimInReshufflingMode(address(newBridgeAdapter), address(dai));
 
         assertEq(dai.balanceOf(address(newBridgeAdapter)), 0, "test_ClaimInReshufflingMode: dai balance not zero");
@@ -232,7 +232,7 @@ contract ContainerAgentClaimTest is ContainerAgentBaseTest {
         address newBridgeAdapter = address(_deployBridgeAdapter());
 
         vm.expectRevert(ICrossChainContainer.BridgeAdapterNotSupported.selector);
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         containerAgent.claimInReshufflingMode(newBridgeAdapter, address(dai));
     }
 
@@ -242,7 +242,7 @@ contract ContainerAgentClaimTest is ContainerAgentBaseTest {
         address notWhitelistedToken = address(0x123);
 
         vm.expectRevert(abi.encodeWithSelector(IContainer.NotWhitelistedToken.selector, notWhitelistedToken));
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         containerAgent.claimInReshufflingMode(address(bridgeAdapter), notWhitelistedToken);
     }
 }

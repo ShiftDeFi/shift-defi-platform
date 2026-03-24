@@ -86,12 +86,14 @@ abstract contract Base is Test {
     bytes32 internal constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
     bytes32 internal constant CONFIGURATOR_ROLE = keccak256("CONFIGURATOR_ROLE");
     bytes32 internal constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
+    bytes32 internal constant EMERGENCY_EXECUTOR_ROLE = keccak256("EMERGENCY_EXECUTOR_ROLE");
     bytes32 internal constant TOKEN_MANAGER_ROLE = keccak256("TOKEN_MANAGER_ROLE");
     bytes32 internal constant MESSENGER_MANAGER_ROLE = keccak256("MESSENGER_MANAGER_ROLE");
     bytes32 internal constant BRIDGE_ADAPTER_MANAGER_ROLE = keccak256("BRIDGE_ADAPTER_MANAGER_ROLE");
     bytes32 internal constant WHITELIST_MANAGER_ROLE = keccak256("WHITELIST_MANAGER_ROLE");
     bytes32 internal constant STRATEGY_MANAGER_ROLE = keccak256("STRATEGY_MANAGER_ROLE");
     bytes32 internal constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
+    bytes32 internal constant RESHUFFLING_EXECUTOR_ROLE = keccak256("RESHUFFLING_EXECUTOR_ROLE");
     bytes32 internal constant CACHE_MANAGER_ROLE = keccak256("CACHE_MANAGER_ROLE");
     bytes32 internal constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
@@ -201,6 +203,7 @@ abstract contract Base is Test {
                     strategyManager: roles.strategyManager,
                     harvestManager: roles.harvestManager,
                     reshufflingManager: roles.reshufflingManager,
+                    reshufflingExecutor: roles.reshufflingExecutor,
                     emergencyManager: roles.emergencyManager,
                     emergencyExecutor: roles.emergencyExecutor
                 }),

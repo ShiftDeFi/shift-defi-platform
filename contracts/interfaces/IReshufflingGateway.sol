@@ -109,4 +109,16 @@ interface IReshufflingGateway {
         address[] memory tokens,
         uint256[] memory amounts
     ) external payable;
+
+    /**
+     * @notice Pauses all state-changing operations in the reshuffling gateway.
+     * @dev Can only be called by accounts with EMERGENCY_PAUSER_ROLE.
+     */
+    function pause() external;
+
+    /**
+     * @notice Unpauses the reshuffling gateway and re-enables state-changing operations.
+     * @dev Can only be called by accounts with EMERGENCY_PAUSER_ROLE.
+     */
+    function unpause() external;
 }

@@ -65,7 +65,8 @@ abstract contract L2Base is Base {
                 roles.defaultAdmin,
                 roles.bridgeAdapterManager,
                 roles.reshufflingExecutor,
-                roles.tokenManager
+                roles.tokenManager,
+                roles.emergencyPauser
             )
         );
         vm.label(address(proxy), "RESHUFFLING_GATEWAY");
@@ -78,6 +79,7 @@ abstract contract L2Base is Base {
             notion: address(notion),
             defaultAdmin: roles.defaultAdmin,
             operator: roles.operator,
+            emergencyPauser: roles.emergencyPauser,
             tokenManager: roles.tokenManager,
             swapRouter: address(swapRouter)
         });

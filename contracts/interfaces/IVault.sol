@@ -29,6 +29,7 @@ interface IVault {
         address configurator;
         address reshufflingManager;
         address reshufflingExecutor;
+        address emergencyPauser;
     }
 
     struct ContainerReport {
@@ -402,6 +403,18 @@ interface IVault {
      * @dev Can only be called by accounts with OPERATOR_ROLE. Sets vault status back to Idle, making it ready for the next deposit batch.
      */
     function resolveWithdrawBatch() external;
+
+    /**
+     * @notice Pauses all state-changing operations in the vault.
+     * @dev Can only be called by accounts with EMERGENCY_PAUSER_ROLE.
+     */
+    function pause() external;
+
+    /**
+     * @notice Unpauses the vault and re-enables state-changing operations.
+     * @dev Can only be called by accounts with EMERGENCY_PAUSER_ROLE.
+     */
+    function unpause() external;
 
     /**
      * @notice Returns the current vault status.

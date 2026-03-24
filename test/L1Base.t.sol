@@ -108,7 +108,8 @@ abstract contract L1Base is Base {
                     operator: roles.operator,
                     configurator: roles.configurator,
                     reshufflingManager: roles.reshufflingManager,
-                    reshufflingExecutor: roles.reshufflingExecutor
+                    reshufflingExecutor: roles.reshufflingExecutor,
+                    emergencyPauser: roles.emergencyPauser
                 }),
                 IVault.Limits({
                     maxDepositAmount: MAX_DEPOSIT_AMOUNT * NOTION_PRECISION,
@@ -143,6 +144,7 @@ abstract contract L1Base is Base {
             notion: address(notion),
             defaultAdmin: roles.defaultAdmin,
             operator: roles.operator,
+            emergencyPauser: roles.emergencyPauser,
             tokenManager: roles.tokenManager,
             swapRouter: address(swapRouter)
         });
@@ -181,6 +183,7 @@ abstract contract L1Base is Base {
             notion: address(notion),
             defaultAdmin: roles.defaultAdmin,
             operator: roles.operator,
+            emergencyPauser: roles.emergencyPauser,
             tokenManager: roles.tokenManager,
             swapRouter: address(swapRouter)
         });
@@ -226,6 +229,7 @@ abstract contract L1Base is Base {
                                 notion: address(notion),
                                 defaultAdmin: roles.defaultAdmin,
                                 operator: roles.operator,
+                                emergencyPauser: roles.emergencyPauser,
                                 tokenManager: roles.tokenManager,
                                 swapRouter: address(swapRouter)
                             }),
@@ -252,7 +256,8 @@ abstract contract L1Base is Base {
                 roles.defaultAdmin,
                 roles.bridgeAdapterManager,
                 roles.reshufflingExecutor,
-                roles.tokenManager
+                roles.tokenManager,
+                roles.emergencyPauser
             )
         );
         vm.label(address(proxy), "RESHUFFLING_GATEWAY");

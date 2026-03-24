@@ -45,7 +45,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     // ---- Container Principal logic ----
 
     /// @inheritdoc IContainerPrincipal
-    function registerDepositRequest(uint256 amount) external nonReentrant onlyVault {
+    function registerDepositRequest(uint256 amount) external whenNotPaused nonReentrant onlyVault {
         require(status == ContainerPrincipalStatus.Idle, Errors.IncorrectContainerStatus());
         require(amount > 0, Errors.ZeroAmount());
         status = ContainerPrincipalStatus.DepositRequestRegistered;
@@ -55,7 +55,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     }
 
     /// @inheritdoc IContainerPrincipal
-    function registerWithdrawRequest(uint256 amount) external onlyVault {
+    function registerWithdrawRequest(uint256 amount) external whenNotPaused onlyVault {
         require(status == ContainerPrincipalStatus.Idle, Errors.IncorrectContainerStatus());
         require(amount > 0, Errors.ZeroAmount());
         status = ContainerPrincipalStatus.WithdrawalRequestRegistered;
@@ -69,7 +69,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         MessageInstruction memory messageInstruction,
         address[] calldata bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata bridgeInstructions
-    ) external payable nonReentrant onlyRole(OPERATOR_ROLE) {
+    ) external payable whenNotPaused nonReentrant onlyRole(OPERATOR_ROLE) {
         require(status == ContainerPrincipalStatus.DepositRequestRegistered, Errors.IncorrectContainerStatus());
 
         uint256 bridgeInstructionsLength = bridgeInstructions.length;
@@ -119,7 +119,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     /// @inheritdoc IContainerPrincipal
     function sendWithdrawRequest(
         MessageInstruction memory messageInstruction
-    ) external payable nonReentrant onlyRole(OPERATOR_ROLE) {
+    ) external payable whenNotPaused nonReentrant onlyRole(OPERATOR_ROLE) {
         require(status == ContainerPrincipalStatus.WithdrawalRequestRegistered, Errors.IncorrectContainerStatus());
         require(remoteChainId > 0, RemoteChainIdNotSet());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
@@ -153,7 +153,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     }
 
     /// @inheritdoc IContainerPrincipal
-    function reportDeposit() external payable nonReentrant onlyRole(OPERATOR_ROLE) {
+    function reportDeposit() external payable whenNotPaused nonReentrant onlyRole(OPERATOR_ROLE) {
         require(
             status == ContainerPrincipalStatus.BridgeClaimed ||
                 status == ContainerPrincipalStatus.DepositResponseReceived,
@@ -176,7 +176,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     }
 
     /// @inheritdoc IContainerPrincipal
-    function reportWithdrawal() external payable nonReentrant onlyRole(OPERATOR_ROLE) {
+    function reportWithdrawal() external payable whenNotPaused nonReentrant onlyRole(OPERATOR_ROLE) {
         require(status == ContainerPrincipalStatus.BridgeClaimed, Errors.IncorrectContainerStatus());
         require(registeredWithdrawShareAmount > 0, Errors.ZeroAmount());
         require(claimCounter == 0, UnclaimedTokens());
@@ -194,7 +194,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     // ---- Messaging logic ----
 
     /// @inheritdoc ICrossChainContainer
-    function receiveMessage(bytes memory rawMessage) external nonReentrant onlyMessageRouter {
+    function receiveMessage(bytes memory rawMessage) external whenNotPaused nonReentrant onlyMessageRouter {
         ContainerPrincipalStatus statusCached = status;
         require(
             statusCached == ContainerPrincipalStatus.DepositRequestSent ||
@@ -233,7 +233,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     // ---- Bridge logic ----
 
     /// @inheritdoc IContainerPrincipal
-    function claim(address bridgeAdapter, address token) external nonReentrant onlyRole(OPERATOR_ROLE) {
+    function claim(address bridgeAdapter, address token) external whenNotPaused nonReentrant onlyRole(OPERATOR_ROLE) {
         require(
             status == ContainerPrincipalStatus.DepositResponseReceived ||
                 status == ContainerPrincipalStatus.WithdrawalResponseReceived,
@@ -251,7 +251,7 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     function claimMultiple(
         address[] calldata bridgeAdapters,
         address[] calldata tokens
-    ) external nonReentrant onlyRole(OPERATOR_ROLE) {
+    ) external whenNotPaused nonReentrant onlyRole(OPERATOR_ROLE) {
         require(
             status == ContainerPrincipalStatus.DepositResponseReceived ||
                 status == ContainerPrincipalStatus.WithdrawalResponseReceived,

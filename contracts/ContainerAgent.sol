@@ -46,7 +46,14 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         address strategy,
         address[] calldata inputTokens,
         address[] calldata outputTokens
-    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    )
+        external
+        whenNotPaused
+        nonReentrant
+        notResolvingEmergency
+        onlyInReshufflingMode
+        onlyRole(RESHUFFLING_MANAGER_ROLE)
+    {
         require(status == ContainerAgentStatus.Idle, Errors.IncorrectContainerStatus());
         _addStrategy(strategy, inputTokens, outputTokens);
     }
@@ -54,7 +61,14 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     /// @inheritdoc IStrategyContainer
     function removeStrategy(
         address strategy
-    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+    )
+        external
+        whenNotPaused
+        nonReentrant
+        notResolvingEmergency
+        onlyInReshufflingMode
+        onlyRole(RESHUFFLING_EXECUTOR_ROLE)
+    {
         require(status == ContainerAgentStatus.Idle, Errors.IncorrectContainerStatus());
         _removeStrategy(strategy);
     }
@@ -66,7 +80,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         address strategy,
         uint256[] calldata inputAmounts,
         uint256 minNavDelta
-    ) external nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    ) external whenNotPaused nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerAgentStatus.BridgeClaimed, Errors.IncorrectContainerStatus());
 
         _enterStrategy(strategy, inputAmounts, minNavDelta);
@@ -82,7 +96,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         address[] calldata strategies,
         uint256[][] calldata inputAmounts,
         uint256[] calldata minNavDelta
-    ) external nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    ) external whenNotPaused nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerAgentStatus.BridgeClaimed, Errors.IncorrectContainerStatus());
 
         uint256 length = strategies.length;
@@ -104,7 +118,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     function exitStrategy(
         address strategy,
         uint256 minNavDelta
-    ) external nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    ) external whenNotPaused nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerAgentStatus.WithdrawalRequestReceived, Errors.IncorrectContainerStatus());
 
         uint256 registeredShareAmountCached = registeredWithdrawShareAmount;
@@ -121,7 +135,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     function exitStrategyMultiple(
         address[] calldata strategies,
         uint256[] calldata minNavDeltas
-    ) external nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    ) external whenNotPaused nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerAgentStatus.WithdrawalRequestReceived, Errors.IncorrectContainerStatus());
 
         uint256 length = strategies.length;
@@ -146,7 +160,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         MessageInstruction calldata messageInstruction,
         address[] calldata bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata bridgeInstructions
-    ) external payable nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    ) external payable whenNotPaused nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerAgentStatus.AllStrategiesEntered, Errors.IncorrectContainerStatus());
         require(remoteChainId > 0, RemoteChainIdNotSet());
         require(bridgeAdapters.length == bridgeInstructions.length, Errors.ArrayLengthMismatch());
@@ -205,7 +219,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         MessageInstruction calldata messageInstruction,
         address[] calldata bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata bridgeInstructions
-    ) external payable nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    ) external payable whenNotPaused nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerAgentStatus.AllStrategiesExited, Errors.IncorrectContainerStatus());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
         require(remoteChainId > 0, RemoteChainIdNotSet());
@@ -260,7 +274,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     /// @inheritdoc ICrossChainContainer
     function receiveMessage(
         bytes memory rawMessage
-    ) external notResolvingEmergency notInReshufflingMode onlyMessageRouter {
+    ) external whenNotPaused notResolvingEmergency notInReshufflingMode onlyMessageRouter {
         require(status == ContainerAgentStatus.Idle, Errors.IncorrectContainerStatus());
 
         uint8 messageType = Codec.fetchMessageType(rawMessage);
@@ -293,7 +307,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     function claim(
         address bridgeAdapter,
         address token
-    ) external nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    ) external whenNotPaused nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerAgentStatus.DepositRequestReceived, Errors.IncorrectContainerStatus());
         _claimExpectedToken(bridgeAdapter, token);
 
@@ -306,7 +320,14 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     function claimInReshufflingMode(
         address bridgeAdapter,
         address token
-    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+    )
+        external
+        whenNotPaused
+        nonReentrant
+        notResolvingEmergency
+        onlyInReshufflingMode
+        onlyRole(RESHUFFLING_EXECUTOR_ROLE)
+    {
         _validateBridgeAdapter(bridgeAdapter);
         require(_isTokenWhitelisted(token), NotWhitelistedToken(token));
         IBridgeAdapter(bridgeAdapter).claim(token);
@@ -316,7 +337,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     function claimMultiple(
         address[] calldata bridgeAdapters,
         address[] calldata tokens
-    ) external nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    ) external whenNotPaused nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerAgentStatus.DepositRequestReceived, Errors.IncorrectContainerStatus());
 
         uint256 length = bridgeAdapters.length;
@@ -335,7 +356,15 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     function withdrawToReshufflingGateway(
         address[] memory bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata instructions
-    ) external payable nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+    )
+        external
+        payable
+        whenNotPaused
+        nonReentrant
+        notResolvingEmergency
+        onlyInReshufflingMode
+        onlyRole(RESHUFFLING_EXECUTOR_ROLE)
+    {
         require(bridgeAdapters.length == instructions.length, Errors.ArrayLengthMismatch());
         require(bridgeAdapters.length > 0, Errors.ZeroArrayLength());
 

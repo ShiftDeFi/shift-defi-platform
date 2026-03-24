@@ -55,6 +55,10 @@ contract MockContainerLocal is IContainerLocal {
 
     function prepareLiquidity(ISwapRouter.SwapInstruction[] calldata) external override {}
 
+    function pause() external pure {}
+
+    function unpause() external pure {}
+
     function setMessageRouter(address) external pure {}
 
     function peerContainer() external pure returns (address) {

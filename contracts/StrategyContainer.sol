@@ -93,22 +93,22 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     /// @inheritdoc IStrategyContainer
     function setReshufflingGateway(
         address newReshufflingGateway
-    ) external notInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    ) external whenNotPaused notInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
         _setReshufflingGateway(newReshufflingGateway);
     }
 
     /// @inheritdoc IStrategyContainer
-    function setTreasury(address newTreasury) external onlyRole(STRATEGY_MANAGER_ROLE) {
+    function setTreasury(address newTreasury) external whenNotPaused onlyRole(STRATEGY_MANAGER_ROLE) {
         _setTreasury(newTreasury);
     }
 
     /// @inheritdoc IStrategyContainer
-    function setFeePct(uint256 newFeePct) external onlyRole(STRATEGY_MANAGER_ROLE) {
+    function setFeePct(uint256 newFeePct) external whenNotPaused onlyRole(STRATEGY_MANAGER_ROLE) {
         _setFeePct(newFeePct);
     }
 
     /// @inheritdoc IStrategyContainer
-    function setPriceOracle(address newPriceOracle) external onlyRole(STRATEGY_MANAGER_ROLE) {
+    function setPriceOracle(address newPriceOracle) external whenNotPaused onlyRole(STRATEGY_MANAGER_ROLE) {
         _setPriceOracle(newPriceOracle);
     }
 
@@ -146,6 +146,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     /// @inheritdoc IStrategyContainer
     function enableReshufflingMode()
         external
+        whenNotPaused
         notResolvingEmergency
         notInReshufflingMode
         onlyRole(RESHUFFLING_MANAGER_ROLE)
@@ -158,6 +159,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     /// @inheritdoc IStrategyContainer
     function disableReshufflingMode()
         external
+        whenNotPaused
         onlyInReshufflingMode
         notResolvingEmergency
         onlyRole(RESHUFFLING_EXECUTOR_ROLE)
@@ -188,7 +190,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     function setStrategyInputTokens(
         address strategy,
         address[] calldata inputTokens
-    ) external onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+    ) external whenNotPaused onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(_isStrategy(strategy), StrategyNotFound());
         _setStrategyInputTokens(strategy, inputTokens);
     }
@@ -197,7 +199,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     function setStrategyOutputTokens(
         address strategy,
         address[] calldata outputTokens
-    ) external onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+    ) external whenNotPaused onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(_isStrategy(strategy), StrategyNotFound());
         _setStrategyOutputTokens(strategy, outputTokens);
     }
@@ -331,7 +333,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         address strategy,
         uint256[] calldata inputAmounts,
         uint256 minNavDelta
-    ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+    ) external whenNotPaused nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(_isStrategy(strategy), StrategyNotFound());
         require(!isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
 
@@ -369,7 +371,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         address strategy,
         uint256 share,
         uint256 maxNavDelta
-    ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+    ) external whenNotPaused nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(share > 0, Errors.ZeroAmount());
         require(share <= MAX_BPS, Errors.IncorrectAmount());
         require(_isStrategy(strategy), StrategyNotFound());
@@ -422,7 +424,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     // ---- Emergency resolution logic ----
 
     /// @inheritdoc IStrategyContainer
-    function startEmergencyResolution() external {
+    function startEmergencyResolution() external whenNotPaused {
         require(_isStrategy(msg.sender), StrategyNotFound());
 
         (, uint256 strategyIndex) = _strategies.indexOf(msg.sender);
@@ -436,7 +438,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     }
 
     /// @inheritdoc IStrategyContainer
-    function completeEmergencyResolution() external onlyRole(EMERGENCY_MANAGER_ROLE) {
+    function completeEmergencyResolution() external whenNotPaused onlyRole(EMERGENCY_MANAGER_ROLE) {
         require(isResolvingEmergency, NotResolvingEmergency());
         isResolvingEmergency = false;
         require(_strategyUnresolvedNavBitmask == 0, EmergencyResolutionNotCompleted(_strategyUnresolvedNavBitmask));
@@ -444,7 +446,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     }
 
     /// @inheritdoc IStrategyContainer
-    function resolveStrategyNav(uint256 resolvedNav) external {
+    function resolveStrategyNav(uint256 resolvedNav) external whenNotPaused {
         require(_isStrategy(msg.sender), StrategyNotFound());
         require(isStrategyNavUnresolved(msg.sender), StrategyNavAlreadyResolved(msg.sender));
 

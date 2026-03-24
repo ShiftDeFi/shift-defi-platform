@@ -34,6 +34,7 @@ abstract contract Base is Test {
         address defaultAdmin;
         address containerManager;
         address operator;
+        address emergencyPauser;
         address configurator;
         address cacheManager;
         address emergencyManager;
@@ -85,6 +86,7 @@ abstract contract Base is Test {
     bytes32 internal constant CONTAINER_MANAGER_ROLE = keccak256("CONTAINER_MANAGER_ROLE");
     bytes32 internal constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
     bytes32 internal constant CONFIGURATOR_ROLE = keccak256("CONFIGURATOR_ROLE");
+    bytes32 internal constant EMERGENCY_PAUSER_ROLE = keccak256("EMERGENCY_PAUSER_ROLE");
     bytes32 internal constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
     bytes32 internal constant EMERGENCY_EXECUTOR_ROLE = keccak256("EMERGENCY_EXECUTOR_ROLE");
     bytes32 internal constant TOKEN_MANAGER_ROLE = keccak256("TOKEN_MANAGER_ROLE");
@@ -102,6 +104,7 @@ abstract contract Base is Test {
         roles.defaultAdmin = makeAddr("DEFAULT_ADMIN");
         roles.containerManager = makeAddr("CONTAINER_MANAGER");
         roles.operator = makeAddr("OPERATOR");
+        roles.emergencyPauser = makeAddr("EMERGENCY_PAUSER");
         roles.configurator = makeAddr("CONFIGURATOR");
         roles.cacheManager = makeAddr("CACHE_MANAGER");
         roles.emergencyManager = makeAddr("EMERGENCY_MANAGER");
@@ -187,6 +190,7 @@ abstract contract Base is Test {
             notion: address(notion),
             defaultAdmin: roles.defaultAdmin,
             operator: roles.operator,
+            emergencyPauser: roles.emergencyPauser,
             tokenManager: roles.tokenManager,
             swapRouter: makeAddr("SWAP_ROUTER")
         });

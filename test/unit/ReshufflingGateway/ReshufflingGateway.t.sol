@@ -50,11 +50,13 @@ contract ReshufflingGatewayTest is L1Base {
 
         containerPrincipal.setPeerContainer(makeAddr("ContainerAgent"));
 
-        vm.startPrank(roles.whitelistManager);
+        vm.prank(roles.whitelistManager);
         swapRouter.whitelistSwapAdapter(address(mockSwapAdapter));
+
+        vm.prank(roles.bridgeAdapterManager);
         reshufflingGateway.whitelistBridgeAdapter(address(bridgeAdapter));
+        vm.prank(roles.tokenManager);
         reshufflingGateway.whitelistToken(address(notion));
-        vm.stopPrank();
 
         vm.startPrank(roles.bridgeAdapterManager);
         bridgeAdapter.whitelistBridger(address(reshufflingGateway));
@@ -92,18 +94,18 @@ contract ReshufflingGatewayTest is L1Base {
         vm.expectEmit();
         emit IReshufflingGateway.TokenWhitelisted(token);
 
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.tokenManager);
         reshufflingGateway.whitelistToken(token);
     }
 
     function test_RevertIf_WhitelistToken_ZeroAddress() public {
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.tokenManager);
         vm.expectRevert(Errors.ZeroAddress.selector);
         reshufflingGateway.whitelistToken(address(0));
     }
 
     function test_RevertIf_WhitelistToken_AlreadyWhitelisted() public {
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.tokenManager);
         vm.expectRevert(IReshufflingGateway.AlreadyWhitelistedToken.selector);
         reshufflingGateway.whitelistToken(address(notion));
     }
@@ -111,18 +113,18 @@ contract ReshufflingGatewayTest is L1Base {
     function test_BlacklistToken() public {
         address token = makeAddr("TOKEN");
 
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.tokenManager);
         reshufflingGateway.whitelistToken(token);
 
         vm.expectEmit();
         emit IReshufflingGateway.TokenBlacklisted(token);
 
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.tokenManager);
         reshufflingGateway.blacklistToken(token);
     }
 
     function test_RevertIf_BlacklistToken_ZeroAddress() public {
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.tokenManager);
         vm.expectRevert(Errors.ZeroAddress.selector);
         reshufflingGateway.blacklistToken(address(0));
     }
@@ -130,7 +132,7 @@ contract ReshufflingGatewayTest is L1Base {
     function test_RevertIf_BlacklistToken_NotWhitelisted() public {
         address notWhitelistedToken = makeAddr("NOT_WHITELISTED_TOKEN");
 
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.tokenManager);
         vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotWhitelistedToken.selector, notWhitelistedToken));
         reshufflingGateway.blacklistToken(notWhitelistedToken);
     }
@@ -141,18 +143,18 @@ contract ReshufflingGatewayTest is L1Base {
         vm.expectEmit();
         emit IReshufflingGateway.BridgeAdapterWhitelisted(_bridgeAdapter);
 
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.bridgeAdapterManager);
         reshufflingGateway.whitelistBridgeAdapter(_bridgeAdapter);
     }
 
     function test_RevertIf_WhitelistBridgeAdapter_ZeroAddress() public {
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.bridgeAdapterManager);
         vm.expectRevert(Errors.ZeroAddress.selector);
         reshufflingGateway.whitelistBridgeAdapter(address(0));
     }
 
     function test_RevertIf_WhitelistBridgeAdapter_AlreadyWhitelisted() public {
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.bridgeAdapterManager);
         vm.expectRevert(IReshufflingGateway.AlreadyWhitelistedBridgeAdapter.selector);
         reshufflingGateway.whitelistBridgeAdapter(address(bridgeAdapter));
     }
@@ -160,18 +162,18 @@ contract ReshufflingGatewayTest is L1Base {
     function test_BlacklistBridgeAdapter() public {
         address _bridgeAdapter = makeAddr("BRIDGE_ADAPTER");
 
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.bridgeAdapterManager);
         reshufflingGateway.whitelistBridgeAdapter(_bridgeAdapter);
 
         vm.expectEmit();
         emit IReshufflingGateway.BridgeAdapterBlacklisted(_bridgeAdapter);
 
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.bridgeAdapterManager);
         reshufflingGateway.blacklistBridgeAdapter(_bridgeAdapter);
     }
 
     function test_RevertIf_BlacklistBridgeAdapter_ZeroAddress() public {
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.bridgeAdapterManager);
         vm.expectRevert(Errors.ZeroAddress.selector);
         reshufflingGateway.blacklistBridgeAdapter(address(0));
     }
@@ -179,7 +181,7 @@ contract ReshufflingGatewayTest is L1Base {
     function test_RevertIf_BlacklistBridgeAdapter_NotWhitelisted() public {
         address notWhitelistedBridgeAdapter = makeAddr("NOT_WHITELISTED_BRIDGE_ADAPTER");
 
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.bridgeAdapterManager);
         vm.expectRevert(
             abi.encodeWithSelector(
                 IReshufflingGateway.NotWhitelistedBridgeAdapter.selector,
@@ -193,7 +195,7 @@ contract ReshufflingGatewayTest is L1Base {
         address newSwapRouter = makeAddr("NEW_SWAP_ROUTER");
         address previousSwapRouter = reshufflingGateway.swapRouter();
 
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.tokenManager);
         reshufflingGateway.setSwapRouter(newSwapRouter);
 
         assertEq(reshufflingGateway.swapRouter(), newSwapRouter);
@@ -201,7 +203,7 @@ contract ReshufflingGatewayTest is L1Base {
     }
 
     function test_RevertIf_SetSwapRouter_ZeroAddress() public {
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.tokenManager);
         vm.expectRevert(Errors.ZeroAddress.selector);
         reshufflingGateway.setSwapRouter(address(0));
     }
@@ -247,13 +249,13 @@ contract ReshufflingGatewayTest is L1Base {
         uint256 amount = vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT);
         uint256 expectedAmount = amount;
 
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.tokenManager);
         reshufflingGateway.whitelistToken(address(dai));
 
         notion.mint(address(reshufflingGateway), amount);
         dai.mint(address(swapRouter), expectedAmount);
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         reshufflingGateway.prepareLiquidity(
             _craftSwapInstructions(address(notion), address(dai), amount, expectedAmount - 1)
         );
@@ -271,7 +273,7 @@ contract ReshufflingGatewayTest is L1Base {
     }
 
     function test_RevertIf_PrepareLiquidity_NotWhitelistedTokenOut() public {
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotWhitelistedToken.selector, address(dai)));
         reshufflingGateway.prepareLiquidity(
             _craftSwapInstructions(address(notion), address(dai), vm.randomUint(MIN_TOKEN_AMOUNT, MAX_TOKEN_AMOUNT), 0)
@@ -281,7 +283,7 @@ contract ReshufflingGatewayTest is L1Base {
     function test_RevertIf_PrepareLiquidity_NotWhitelistedTokenIn() public {
         address notWhitelistedToken = makeAddr("NOT_WHITELISTED_TOKEN");
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotWhitelistedToken.selector, notWhitelistedToken));
         reshufflingGateway.prepareLiquidity(
             _craftSwapInstructions(notWhitelistedToken, address(dai), vm.randomUint(1e6, 10_000_000 * 1e18), 0)
@@ -289,7 +291,7 @@ contract ReshufflingGatewayTest is L1Base {
     }
 
     function test_RevertIf_PrepareLiquidity_ZeroArrayLength() public {
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ZeroArrayLength.selector);
         reshufflingGateway.prepareLiquidity(new ISwapRouter.SwapInstruction[](0));
     }
@@ -314,7 +316,7 @@ contract ReshufflingGatewayTest is L1Base {
             payload: "0x"
         });
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         reshufflingGateway.sendToCrossChainContainer(address(containerPrincipal), bridgeAdapters, instructions);
 
         assertEq(
@@ -332,7 +334,7 @@ contract ReshufflingGatewayTest is L1Base {
     function test_RevertIf_SendToCrossChainContainer_NotBridgeAdaptersPassed() public {
         _setReshufflingMode();
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ZeroArrayLength.selector);
         reshufflingGateway.sendToCrossChainContainer(
             address(containerPrincipal),
@@ -342,7 +344,7 @@ contract ReshufflingGatewayTest is L1Base {
     }
 
     function test_RevertIf_SendToCrossChainContainer_VaultNotInReshufflingMode() public {
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(IReshufflingGateway.VaultNotInReshufflingMode.selector);
         reshufflingGateway.sendToCrossChainContainer(
             address(containerPrincipal),
@@ -354,7 +356,7 @@ contract ReshufflingGatewayTest is L1Base {
     function test_RevertIf_SendToCrossChainContainer_InconsistentBridgeAdaptersAndInstructionsLengths() public {
         _setReshufflingMode();
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ArrayLengthMismatch.selector);
         reshufflingGateway.sendToCrossChainContainer(
             address(containerPrincipal),
@@ -366,7 +368,7 @@ contract ReshufflingGatewayTest is L1Base {
     function test_RevertIf_SendToCrossChainContainer_NotPrincipalContainer() public {
         _setReshufflingMode();
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(
             abi.encodeWithSelector(
                 Errors.IncorrectContainerType.selector,
@@ -387,7 +389,7 @@ contract ReshufflingGatewayTest is L1Base {
 
         address notVaultContainer = address(_deployMockContainerPrincipal());
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotContainer.selector, notVaultContainer));
         reshufflingGateway.sendToCrossChainContainer(
             notVaultContainer,
@@ -405,7 +407,7 @@ contract ReshufflingGatewayTest is L1Base {
 
         _setReshufflingMode();
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(
             abi.encodeWithSelector(IReshufflingGateway.IncorrectPeerContainer.selector, address(containerPrincipal))
         );
@@ -422,7 +424,7 @@ contract ReshufflingGatewayTest is L1Base {
         address[] memory bridgeAdapters = new address[](1);
         bridgeAdapters[0] = makeAddr("NOT_WHITELISTED_BRIDGE_ADAPTER");
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(
             abi.encodeWithSelector(IReshufflingGateway.NotWhitelistedBridgeAdapter.selector, bridgeAdapters[0])
         );
@@ -450,7 +452,7 @@ contract ReshufflingGatewayTest is L1Base {
             payload: "0x"
         });
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotWhitelistedToken.selector, notWhitelistedToken));
         reshufflingGateway.sendToCrossChainContainer(address(containerPrincipal), bridgeAdapters, instructions);
     }
@@ -473,7 +475,7 @@ contract ReshufflingGatewayTest is L1Base {
             payload: "0x"
         });
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(
             abi.encodeWithSelector(IReshufflingGateway.WrongRemoteChainId.selector, wrongChainId, REMOTE_CHAIN_ID)
         );
@@ -488,7 +490,7 @@ contract ReshufflingGatewayTest is L1Base {
         MockERC20 token = _deployMockERC20("Token", "TKN", 18);
         token.mint(address(reshufflingGateway), amount);
 
-        vm.prank(roles.whitelistManager);
+        vm.prank(roles.tokenManager);
         reshufflingGateway.whitelistToken(address(token));
 
         address[] memory bridgeAdapters = new address[](1);
@@ -510,7 +512,7 @@ contract ReshufflingGatewayTest is L1Base {
             abi.encode(false)
         );
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(
             abi.encodeWithSelector(IReshufflingGateway.TokenNotWhitelistedOnContainer.selector, address(token))
         );
@@ -534,7 +536,7 @@ contract ReshufflingGatewayTest is L1Base {
         address[] memory bridgeAdapters = new address[](1);
         bridgeAdapters[0] = address(bridgeAdapter);
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughTokens.selector, address(notion), amount, 0));
         reshufflingGateway.sendToCrossChainContainer(address(containerPrincipal), bridgeAdapters, instructions);
     }
@@ -568,7 +570,7 @@ contract ReshufflingGatewayTest is L1Base {
             abi.encode(bridgedAmount)
         );
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(
             abi.encodeWithSelector(
                 IReshufflingGateway.NotEnoughTokensBridged.selector,
@@ -599,7 +601,7 @@ contract ReshufflingGatewayTest is L1Base {
             payload: "0x"
         });
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughNativeToken.selector, 1, 0));
         reshufflingGateway.sendToCrossChainContainer(address(containerPrincipal), bridgeAdapters, instructions);
     }
@@ -626,7 +628,7 @@ contract ReshufflingGatewayTest is L1Base {
         (bool success, ) = payable(address(reshufflingGateway)).call{value: 1}("");
         assertTrue(success, "test_SendToCrossChainContainer_BridgeInstructionValue: prefund failed");
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         reshufflingGateway.sendToCrossChainContainer(address(containerPrincipal), bridgeAdapters, instructions);
     }
 
@@ -643,7 +645,7 @@ contract ReshufflingGatewayTest is L1Base {
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = amount;
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         reshufflingGateway.sendToLocalContainer(address(containerLocal), tokens, amounts);
 
         assertEq(
@@ -659,14 +661,14 @@ contract ReshufflingGatewayTest is L1Base {
     }
 
     function test_RevertIf_SendToLocalContainer_NotReshufflingMode() public {
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(IReshufflingGateway.VaultNotInReshufflingMode.selector);
         reshufflingGateway.sendToLocalContainer(address(containerLocal), new address[](1), new uint256[](1));
     }
 
     function test_RevertIf_SendToLocalContainer_ArrayLengthMismatch() public {
         _setReshufflingMode();
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ArrayLengthMismatch.selector);
         reshufflingGateway.sendToLocalContainer(address(containerLocal), new address[](1), new uint256[](2));
     }
@@ -676,14 +678,14 @@ contract ReshufflingGatewayTest is L1Base {
 
         address notContainer = makeAddr("NOT_CONTAINER");
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotContainer.selector, notContainer));
         reshufflingGateway.sendToLocalContainer(notContainer, new address[](1), new uint256[](1));
     }
 
     function test_RevertIf_SendToLocalContainer_NotLocalContainer() public {
         _setReshufflingMode();
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(
             abi.encodeWithSelector(
                 Errors.IncorrectContainerType.selector,
@@ -701,7 +703,7 @@ contract ReshufflingGatewayTest is L1Base {
         address[] memory tokens = new address[](1);
         tokens[0] = makeAddr("NOT_WHITELISTED_TOKEN");
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotWhitelistedToken.selector, address(tokens[0])));
         reshufflingGateway.sendToLocalContainer(address(containerLocal), tokens, new uint256[](1));
     }
@@ -718,7 +720,7 @@ contract ReshufflingGatewayTest is L1Base {
             abi.encode(false)
         );
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(
             abi.encodeWithSelector(IReshufflingGateway.TokenNotWhitelistedOnContainer.selector, address(notion))
         );
@@ -741,7 +743,7 @@ contract ReshufflingGatewayTest is L1Base {
             abi.encode(balance)
         );
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(abi.encodeWithSelector(Errors.NotEnoughTokens.selector, address(notion), amounts[0], balance));
         reshufflingGateway.sendToLocalContainer(address(containerLocal), tokens, amounts);
     }
@@ -749,7 +751,7 @@ contract ReshufflingGatewayTest is L1Base {
     function test_RevertIf_SendToLocalContainer_EmptyArray() public {
         _setReshufflingMode();
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ZeroArrayLength.selector);
         reshufflingGateway.sendToLocalContainer(address(containerLocal), new address[](0), new uint256[](0));
     }

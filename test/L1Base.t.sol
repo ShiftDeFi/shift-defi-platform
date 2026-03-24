@@ -250,8 +250,9 @@ abstract contract L1Base is Base {
                 address(vault),
                 address(swapRouter),
                 roles.defaultAdmin,
-                roles.reshufflingManager,
-                roles.whitelistManager
+                roles.bridgeAdapterManager,
+                roles.reshufflingExecutor,
+                roles.tokenManager
             )
         );
         vm.label(address(proxy), "RESHUFFLING_GATEWAY");

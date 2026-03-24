@@ -24,6 +24,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     bytes32 internal constant HARVEST_MANAGER_ROLE = keccak256("HARVEST_MANAGER_ROLE");
     bytes32 internal constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
     bytes32 internal constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
+    bytes32 internal constant EMERGENCY_EXECUTOR_ROLE = keccak256("EMERGENCY_EXECUTOR_ROLE");
 
     EnumerableSet.AddressSet internal _strategies;
 
@@ -68,11 +69,13 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         require(params.roleAddresses.harvestManager != address(0), Errors.ZeroAddress());
         require(params.roleAddresses.reshufflingManager != address(0), Errors.ZeroAddress());
         require(params.roleAddresses.emergencyManager != address(0), Errors.ZeroAddress());
+        require(params.roleAddresses.emergencyExecutor != address(0), Errors.ZeroAddress());
 
         _grantRole(STRATEGY_MANAGER_ROLE, params.roleAddresses.strategyManager);
         _grantRole(RESHUFFLING_MANAGER_ROLE, params.roleAddresses.reshufflingManager);
         _grantRole(HARVEST_MANAGER_ROLE, params.roleAddresses.harvestManager);
         _grantRole(EMERGENCY_MANAGER_ROLE, params.roleAddresses.emergencyManager);
+        _grantRole(EMERGENCY_EXECUTOR_ROLE, params.roleAddresses.emergencyExecutor);
 
         _setReshufflingGateway(params.reshufflingGateway);
         _setTreasury(params.treasury);

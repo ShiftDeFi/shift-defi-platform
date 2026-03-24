@@ -197,7 +197,8 @@ abstract contract L1Base is Base {
                     strategyManager: roles.strategyManager,
                     harvestManager: roles.harvestManager,
                     reshufflingManager: roles.reshufflingManager,
-                    emergencyManager: roles.emergencyManager
+                    emergencyManager: roles.emergencyManager,
+                    emergencyExecutor: roles.emergencyExecutor
                 }),
                 address(reshufflingGateway),
                 treasury,

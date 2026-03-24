@@ -19,6 +19,7 @@ interface IStrategyContainer is IContainer {
         address harvestManager;
         address reshufflingManager;
         address emergencyManager;
+        address emergencyExecutor;
     }
 
     struct StrategyContainerInitParams {

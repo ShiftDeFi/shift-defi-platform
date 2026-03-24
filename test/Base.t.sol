@@ -37,6 +37,7 @@ abstract contract Base is Test {
         address configurator;
         address cacheManager;
         address emergencyManager;
+        address emergencyExecutor;
         address tokenManager;
         address messengerManager;
         address bridgeAdapterManager;
@@ -102,6 +103,7 @@ abstract contract Base is Test {
         roles.configurator = makeAddr("CONFIGURATOR");
         roles.cacheManager = makeAddr("CACHE_MANAGER");
         roles.emergencyManager = makeAddr("EMERGENCY_MANAGER");
+        roles.emergencyExecutor = makeAddr("EMERGENCY_EXECUTOR");
         roles.tokenManager = makeAddr("TOKEN_MANAGER");
         roles.messengerManager = makeAddr("MESSENGER_MANAGER");
         roles.bridgeAdapterManager = makeAddr("BRIDGE_ADAPTER_MANAGER");
@@ -199,7 +201,8 @@ abstract contract Base is Test {
                     strategyManager: roles.strategyManager,
                     harvestManager: roles.harvestManager,
                     reshufflingManager: roles.reshufflingManager,
-                    emergencyManager: roles.emergencyManager
+                    emergencyManager: roles.emergencyManager,
+                    emergencyExecutor: roles.emergencyExecutor
                 }),
                 makeAddr("RESHUFFLING_GATEWAY"),
                 treasury,

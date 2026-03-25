@@ -1,6 +1,6 @@
 {
   "name": "@shift-defi/core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Core smart contracts suite for Shift DeFi Platform",
   "author": "ShiftDeFi",
   "license": "MIT",
@@ -16,7 +16,7 @@
   "files": [
     "contracts/dependencies/**/*.sol",
     "contracts/interfaces/*.sol",
-    "contracts/libraries/**/*.sol",
+    "contracts/libraries/*.sol",
     "contracts/priceOracles/*.sol",
     "contracts/BridgeAdapter.sol",
     "contracts/Container.sol",

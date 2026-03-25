@@ -104,41 +104,41 @@ interface IStrategyContainer is IContainer {
 
     /**
      * @notice Sets the reshuffling gateway address.
-     * @dev Can only be called by accounts with appropriate role.
+     * @dev Can only be called by accounts with RESHUFFLING_MANAGER_ROLE.
      * @param newReshufflingGateway The address of the new reshuffling gateway contract
      */
     function setReshufflingGateway(address newReshufflingGateway) external;
 
     /**
      * @notice Sets the treasury address.
-     * @dev Can only be called by accounts with appropriate role.
+     * @dev Can only be called by accounts with STRATEGY_MANAGER_ROLE.
      * @param newTreasury The address of the new treasury contract
      */
     function setTreasury(address newTreasury) external;
 
     /**
      * @notice Sets the fee percentage.
-     * @dev Can only be called by accounts with appropriate role.
+     * @dev Can only be called by accounts with STRATEGY_MANAGER_ROLE.
      * @param newFeePct The new fee percentage in basis points
      */
     function setFeePct(uint256 newFeePct) external;
 
     /**
      * @notice Sets the price oracle address.
-     * @dev Can only be called by accounts with appropriate role.
+     * @dev Can only be called by accounts with STRATEGY_MANAGER_ROLE.
      * @param newPriceOracle The address of the new price oracle contract
      */
     function setPriceOracle(address newPriceOracle) external;
 
     /**
      * @notice Enables reshuffling mode.
-     * @dev Can only be called by accounts with appropriate role.
+     * @dev Can only be called by accounts with RESHUFFLING_MANAGER_ROLE.
      */
     function enableReshufflingMode() external;
 
     /**
      * @notice Disables reshuffling mode.
-     * @dev Can only be called by accounts with appropriate role.
+     * @dev Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
      */
     function disableReshufflingMode() external;
 
@@ -163,7 +163,7 @@ interface IStrategyContainer is IContainer {
 
     /**
      * @notice Adds a new strategy to the container.
-     * @dev Can only be called by accounts with appropriate role.
+     * @dev Can only be called by accounts with RESHUFFLING_MANAGER_ROLE.
      * @param strategy The address of the strategy contract to add
      * @param inputTokens Array of input token addresses for the strategy
      * @param outputTokens Array of output token addresses for the strategy
@@ -172,14 +172,14 @@ interface IStrategyContainer is IContainer {
 
     /**
      * @notice Removes a strategy from the container.
-     * @dev Can only be called by accounts with appropriate role.
+     * @dev Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
      * @param strategy The address of the strategy contract to remove
      */
     function removeStrategy(address strategy) external;
 
     /**
      * @notice Sets the input tokens for a strategy.
-     * @dev Can only be called by accounts with appropriate role.
+     * @dev Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
      * @param strategy The address of the strategy
      * @param inputTokens Array of input token addresses
      */
@@ -187,7 +187,7 @@ interface IStrategyContainer is IContainer {
 
     /**
      * @notice Sets the output tokens for a strategy.
-     * @dev Can only be called by accounts with appropriate role.
+     * @dev Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
      * @param strategy The address of the strategy
      * @param outputTokens Array of output token addresses
      */
@@ -202,7 +202,7 @@ interface IStrategyContainer is IContainer {
 
     /**
      * @notice Enters a strategy in reshuffling mode.
-     * @dev Can only be called when in reshuffling mode. Can only be called by accounts with appropriate role.
+     * @dev Can only be called when in reshuffling mode. Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
      * @param strategy The address of the strategy to enter
      * @param inputAmounts Array of input token amounts
      * @param minNavDelta The minimum NAV delta required
@@ -211,7 +211,7 @@ interface IStrategyContainer is IContainer {
 
     /**
      * @notice Exits a strategy in reshuffling mode.
-     * @dev Can only be called when in reshuffling mode. Can only be called by accounts with appropriate role.
+     * @dev Can only be called when in reshuffling mode. Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
      * @param strategy The address of the strategy to exit
      * @param share The share amount to exit
      * @param maxNavDelta The maximum NAV delta allowed
@@ -220,19 +220,19 @@ interface IStrategyContainer is IContainer {
 
     /**
      * @notice Starts emergency resolution process.
-     * @dev Can only be called by accounts with appropriate role.
+     * @dev Can only be called by registered strategies.
      */
     function startEmergencyResolution() external;
 
     /**
      * @notice Completes emergency resolution process.
-     * @dev Can only be called when all strategy NAVs have been resolved.
+     * @dev Can only be called when all strategy NAVs have been resolved. Can only be called by accounts with EMERGENCY_MANAGER_ROLE.
      */
     function completeEmergencyResolution() external;
 
     /**
      * @notice Resolves the NAV for a strategy during emergency resolution.
-     * @dev Can only be called during emergency resolution. Can only be called by accounts with appropriate role.
+     * @dev Can only be called during emergency resolution. Can only be called by registered strategies.
      * @param resolvedNav The resolved NAV value for the strategy
      */
     function resolveStrategyNav(uint256 resolvedNav) external;

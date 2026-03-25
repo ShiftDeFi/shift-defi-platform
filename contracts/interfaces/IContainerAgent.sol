@@ -133,7 +133,7 @@ interface IContainerAgent is ICrossChainContainer, IStrategyContainer {
 
     /**
      * @notice Claims tokens from a bridge adapter in reshuffling mode.
-     * @dev Can only be called when in reshuffling mode. Can only be called by accounts with OPERATOR_ROLE.
+     * @dev Can only be called when in reshuffling mode. Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
      * @param bridgeAdapter The address of the bridge adapter
      * @param token The address of the token to claim
      */
@@ -149,7 +149,7 @@ interface IContainerAgent is ICrossChainContainer, IStrategyContainer {
 
     /**
      * @notice Withdraws tokens to the reshuffling gateway.
-     * @dev Can only be called when in reshuffling mode. Can only be called by accounts with OPERATOR_ROLE.
+     * @dev Can only be called when in reshuffling mode. Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
      * @param bridgeAdapters Array of bridge adapter addresses to use
      * @param instructions Array of bridge instructions for each adapter
      */

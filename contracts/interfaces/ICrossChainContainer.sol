@@ -84,14 +84,14 @@ interface ICrossChainContainer is IContainer {
 
     /**
      * @notice Sets the message router address.
-     * @dev Can only be called by accounts with appropriate role.
+     * @dev Can only be called by accounts with MESSENGER_MANAGER_ROLE.
      * @param newMessageRouter The address of the new message router contract
      */
     function setMessageRouter(address newMessageRouter) external;
 
     /**
      * @notice Sets the peer container address.
-     * @dev Can only be called by accounts with appropriate role. Can only be set once.
+     * @dev Can only be called by accounts with MESSENGER_MANAGER_ROLE. Can only be set once.
      * @param newPeerContainer The address of the peer container on the remote chain
      */
     function setPeerContainer(address newPeerContainer) external;
@@ -105,7 +105,7 @@ interface ICrossChainContainer is IContainer {
 
     /**
      * @notice Sets whether a bridge adapter is supported.
-     * @dev Can only be called by accounts with appropriate role.
+     * @dev Can only be called by accounts with BRIDGE_ADAPTER_MANAGER_ROLE.
      * @param bridgeAdapter The address of the bridge adapter
      * @param isSupported True to enable the bridge adapter, false to disable
      */

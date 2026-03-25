@@ -102,10 +102,7 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
     // ---- Bridge logic ----
 
     /// @inheritdoc ICrossChainContainer
-    function setBridgeAdapter(
-        address bridgeAdapter,
-        bool isSupported
-    ) external whenNotPaused onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
+    function setBridgeAdapter(address bridgeAdapter, bool isSupported) external onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
         require(bridgeAdapter != address(0), Errors.ZeroAddress());
         require(_isBridgeAdapterSupported[bridgeAdapter] != isSupported, SameBridgeAdapterStatus());
 

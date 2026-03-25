@@ -174,7 +174,7 @@ contract Vault is
     /// @inheritdoc IVault
     function setReshufflingGateway(
         address _reshufflingGateway
-    ) external whenNotPaused onlyRole(RESHUFFLING_MANAGER_ROLE) notInReshufflingMode {
+    ) external onlyRole(RESHUFFLING_MANAGER_ROLE) notInReshufflingMode {
         require(_reshufflingGateway != address(0), Errors.ZeroAddress());
         address previousGateway = reshufflingGateway;
         require(previousGateway != _reshufflingGateway, Errors.SettingSameValue());
@@ -183,7 +183,7 @@ contract Vault is
     }
 
     /// @inheritdoc IVault
-    function enableReshufflingMode() external whenNotPaused onlyRole(RESHUFFLING_MANAGER_ROLE) notInReshufflingMode {
+    function enableReshufflingMode() external onlyRole(RESHUFFLING_MANAGER_ROLE) notInReshufflingMode {
         require(reshufflingGateway != address(0), Errors.ReshufflingGatewayNotSet());
         require(status == VaultStatus.Idle, IncorrectVaultStatus(status));
         isReshuffling = true;
@@ -191,7 +191,7 @@ contract Vault is
     }
 
     /// @inheritdoc IVault
-    function disableReshufflingMode() external whenNotPaused onlyRole(RESHUFFLING_EXECUTOR_ROLE) onlyInReshufflingMode {
+    function disableReshufflingMode() external onlyRole(RESHUFFLING_EXECUTOR_ROLE) onlyInReshufflingMode {
         for (uint256 i = 0; i < _containers.length(); ++i) {
             address container = _containers.at(i);
             require(containerWeights[container] > 0, ZeroContainerWeight(container));
@@ -202,50 +202,42 @@ contract Vault is
     }
 
     /// @inheritdoc IVault
-    function setMaxDepositAmount(uint256 _maxDepositAmount) external whenNotPaused onlyRole(CONFIGURATOR_ROLE) {
+    function setMaxDepositAmount(uint256 _maxDepositAmount) external onlyRole(CONFIGURATOR_ROLE) {
         _setMaxDepositAmount(_maxDepositAmount);
     }
 
     /// @inheritdoc IVault
-    function setMinDepositAmount(uint256 _minDepositAmount) external whenNotPaused onlyRole(CONFIGURATOR_ROLE) {
+    function setMinDepositAmount(uint256 _minDepositAmount) external onlyRole(CONFIGURATOR_ROLE) {
         _setMinDepositAmount(_minDepositAmount);
     }
 
     /// @inheritdoc IVault
-    function setMaxDepositBatchSize(uint256 _maxDepositBatchSize) external whenNotPaused onlyRole(CONFIGURATOR_ROLE) {
+    function setMaxDepositBatchSize(uint256 _maxDepositBatchSize) external onlyRole(CONFIGURATOR_ROLE) {
         _setMaxDepositBatchSize(_maxDepositBatchSize);
     }
 
     /// @inheritdoc IVault
-    function setMinDepositBatchSize(uint256 _minDepositBatchSize) external whenNotPaused onlyRole(CONFIGURATOR_ROLE) {
+    function setMinDepositBatchSize(uint256 _minDepositBatchSize) external onlyRole(CONFIGURATOR_ROLE) {
         _setMinDepositBatchSize(_minDepositBatchSize);
     }
 
     /// @inheritdoc IVault
-    function setMinWithdrawBatchRatio(
-        uint256 _minWithdrawBatchRatio
-    ) external whenNotPaused onlyRole(CONFIGURATOR_ROLE) {
+    function setMinWithdrawBatchRatio(uint256 _minWithdrawBatchRatio) external onlyRole(CONFIGURATOR_ROLE) {
         _setMinWithdrawBatchRatio(_minWithdrawBatchRatio);
     }
 
     /// @inheritdoc IVault
-    function setForcedDepositThreshold(
-        uint256 _forcedDepositThreshold
-    ) external whenNotPaused onlyRole(CONFIGURATOR_ROLE) {
+    function setForcedDepositThreshold(uint256 _forcedDepositThreshold) external onlyRole(CONFIGURATOR_ROLE) {
         _setForcedDepositThreshold(_forcedDepositThreshold);
     }
 
     /// @inheritdoc IVault
-    function setForcedWithdrawThreshold(
-        uint256 _forcedWithdrawThreshold
-    ) external whenNotPaused onlyRole(CONFIGURATOR_ROLE) {
+    function setForcedWithdrawThreshold(uint256 _forcedWithdrawThreshold) external onlyRole(CONFIGURATOR_ROLE) {
         _setForcedWithdrawThreshold(_forcedWithdrawThreshold);
     }
 
     /// @inheritdoc IVault
-    function setForcedBatchBlockLimit(
-        uint256 _forcedBatchBlockLimit
-    ) external whenNotPaused onlyRole(CONFIGURATOR_ROLE) {
+    function setForcedBatchBlockLimit(uint256 _forcedBatchBlockLimit) external onlyRole(CONFIGURATOR_ROLE) {
         _setForcedBatchBlockLimit(_forcedBatchBlockLimit);
     }
 
@@ -329,7 +321,7 @@ contract Vault is
     function addContainer(
         address container,
         uint256 chainId
-    ) external whenNotPaused nonReentrant onlyRole(CONTAINER_MANAGER_ROLE) onlyInReshufflingMode {
+    ) external nonReentrant onlyRole(CONTAINER_MANAGER_ROLE) onlyInReshufflingMode {
         require(status == VaultStatus.Idle, IncorrectVaultStatus(status));
         require(container != address(0), Errors.ZeroAddress());
         require(chainId > 0, Errors.IncorrectChainId(chainId));
@@ -364,7 +356,7 @@ contract Vault is
     function setContainerWeights(
         address[] calldata containers,
         uint256[] calldata weights
-    ) external whenNotPaused onlyRole(CONTAINER_MANAGER_ROLE) onlyInReshufflingMode {
+    ) external onlyRole(CONTAINER_MANAGER_ROLE) onlyInReshufflingMode {
         require(status == VaultStatus.Idle, IncorrectVaultStatus(status));
         uint256 length = containers.length;
         require(length == weights.length, Errors.ArrayLengthMismatch());
@@ -765,7 +757,7 @@ contract Vault is
     }
 
     /// @inheritdoc IVault
-    function pause() external onlyRole(EMERGENCY_PAUSER_ROLE) {
+    function pause() external whenNotPaused onlyRole(EMERGENCY_PAUSER_ROLE) {
         _pause();
     }
 

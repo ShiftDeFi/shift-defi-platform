@@ -96,39 +96,35 @@ contract ReshufflingGateway is
     }
 
     /// @inheritdoc IReshufflingGateway
-    function whitelistToken(address token) external whenNotPaused onlyRole(TOKEN_MANAGER_ROLE) {
+    function whitelistToken(address token) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(_whitelistedTokens.add(token), AlreadyWhitelistedToken());
         emit TokenWhitelisted(token);
     }
 
     /// @inheritdoc IReshufflingGateway
-    function whitelistBridgeAdapter(
-        address bridgeAdapter
-    ) external whenNotPaused onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
+    function whitelistBridgeAdapter(address bridgeAdapter) external onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
         require(bridgeAdapter != address(0), Errors.ZeroAddress());
         require(_whitelistedBridgeAdapters.add(bridgeAdapter), AlreadyWhitelistedBridgeAdapter());
         emit BridgeAdapterWhitelisted(bridgeAdapter);
     }
 
     /// @inheritdoc IReshufflingGateway
-    function blacklistToken(address token) external whenNotPaused onlyRole(TOKEN_MANAGER_ROLE) {
+    function blacklistToken(address token) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(_whitelistedTokens.remove(token), NotWhitelistedToken(token));
         emit TokenBlacklisted(token);
     }
 
     /// @inheritdoc IReshufflingGateway
-    function blacklistBridgeAdapter(
-        address bridgeAdapter
-    ) external whenNotPaused onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
+    function blacklistBridgeAdapter(address bridgeAdapter) external onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
         require(bridgeAdapter != address(0), Errors.ZeroAddress());
         require(_whitelistedBridgeAdapters.remove(bridgeAdapter), NotWhitelistedBridgeAdapter(bridgeAdapter));
         emit BridgeAdapterBlacklisted(bridgeAdapter);
     }
 
     /// @inheritdoc IReshufflingGateway
-    function setSwapRouter(address newSwapRouter) external whenNotPaused onlyRole(TOKEN_MANAGER_ROLE) {
+    function setSwapRouter(address newSwapRouter) external onlyRole(TOKEN_MANAGER_ROLE) {
         _setSwapRouter(newSwapRouter);
     }
 
@@ -163,7 +159,7 @@ contract ReshufflingGateway is
     /// @inheritdoc IReshufflingGateway
     function prepareLiquidity(
         ISwapRouter.SwapInstruction[] calldata swapInstructions
-    ) external whenNotPaused nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+    ) external nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         uint256 length = swapInstructions.length;
         require(length > 0, Errors.ZeroArrayLength());
         for (uint256 i = 0; i < length; i++) {
@@ -186,7 +182,7 @@ contract ReshufflingGateway is
         address container,
         address[] memory bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata instructions
-    ) external payable whenNotPaused onlyReshufflingMode nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+    ) external payable onlyReshufflingMode nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(bridgeAdapters.length > 0, Errors.ZeroArrayLength());
         require(bridgeAdapters.length == instructions.length, Errors.ArrayLengthMismatch());
 
@@ -248,7 +244,7 @@ contract ReshufflingGateway is
         address container,
         address[] memory tokens,
         uint256[] memory amounts
-    ) external payable whenNotPaused onlyReshufflingMode nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+    ) external payable onlyReshufflingMode nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(tokens.length > 0, Errors.ZeroArrayLength());
         require(tokens.length == amounts.length, Errors.ArrayLengthMismatch());
         require(IVault(vault).isContainer(container), NotContainer(container));
@@ -272,7 +268,7 @@ contract ReshufflingGateway is
     }
 
     /// @inheritdoc IReshufflingGateway
-    function pause() external onlyRole(EMERGENCY_PAUSER_ROLE) {
+    function pause() external whenNotPaused onlyRole(EMERGENCY_PAUSER_ROLE) {
         _pause();
     }
 

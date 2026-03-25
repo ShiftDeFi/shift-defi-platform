@@ -125,7 +125,7 @@ abstract contract Container is
     }
 
     /// @inheritdoc IContainer
-    function setSwapRouter(address newSwapRouter) external whenNotPaused onlyRole(TOKEN_MANAGER_ROLE) {
+    function setSwapRouter(address newSwapRouter) external onlyRole(TOKEN_MANAGER_ROLE) {
         _setSwapRouter(newSwapRouter);
     }
 
@@ -141,9 +141,7 @@ abstract contract Container is
     }
 
     /// @inheritdoc IContainer
-    function prepareLiquidity(
-        ISwapRouter.SwapInstruction[] calldata instructions
-    ) external whenNotPaused onlyRole(OPERATOR_ROLE) {
+    function prepareLiquidity(ISwapRouter.SwapInstruction[] calldata instructions) external onlyRole(OPERATOR_ROLE) {
         require(instructions.length > 0, Errors.ZeroArrayLength());
         _prepareLiquidity(instructions);
     }
@@ -179,7 +177,7 @@ abstract contract Container is
     }
 
     /// @inheritdoc IContainer
-    function pause() external onlyRole(EMERGENCY_PAUSER_ROLE) {
+    function pause() external whenNotPaused onlyRole(EMERGENCY_PAUSER_ROLE) {
         _pause();
     }
 

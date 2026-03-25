@@ -46,14 +46,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         address strategy,
         address[] calldata inputTokens,
         address[] calldata outputTokens
-    )
-        external
-        whenNotPaused
-        nonReentrant
-        notResolvingEmergency
-        onlyInReshufflingMode
-        onlyRole(RESHUFFLING_MANAGER_ROLE)
-    {
+    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
         require(status == ContainerAgentStatus.Idle, Errors.IncorrectContainerStatus());
         _addStrategy(strategy, inputTokens, outputTokens);
     }
@@ -61,14 +54,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     /// @inheritdoc IStrategyContainer
     function removeStrategy(
         address strategy
-    )
-        external
-        whenNotPaused
-        nonReentrant
-        notResolvingEmergency
-        onlyInReshufflingMode
-        onlyRole(RESHUFFLING_EXECUTOR_ROLE)
-    {
+    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(status == ContainerAgentStatus.Idle, Errors.IncorrectContainerStatus());
         _removeStrategy(strategy);
     }
@@ -320,14 +306,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     function claimInReshufflingMode(
         address bridgeAdapter,
         address token
-    )
-        external
-        whenNotPaused
-        nonReentrant
-        notResolvingEmergency
-        onlyInReshufflingMode
-        onlyRole(RESHUFFLING_EXECUTOR_ROLE)
-    {
+    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         _validateBridgeAdapter(bridgeAdapter);
         require(_isTokenWhitelisted(token), NotWhitelistedToken(token));
         IBridgeAdapter(bridgeAdapter).claim(token);
@@ -356,15 +335,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     function withdrawToReshufflingGateway(
         address[] memory bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata instructions
-    )
-        external
-        payable
-        whenNotPaused
-        nonReentrant
-        notResolvingEmergency
-        onlyInReshufflingMode
-        onlyRole(RESHUFFLING_EXECUTOR_ROLE)
-    {
+    ) external payable nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(bridgeAdapters.length == instructions.length, Errors.ArrayLengthMismatch());
         require(bridgeAdapters.length > 0, Errors.ZeroArrayLength());
 

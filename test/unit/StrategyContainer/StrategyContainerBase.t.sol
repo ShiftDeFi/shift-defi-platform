@@ -25,9 +25,8 @@ contract StrategyContainerBaseTest is Base {
         vm.prank(roles.reshufflingExecutor);
         strategyContainer.disableReshufflingMode();
 
-        vm.startPrank(roles.strategyManager);
+        vm.prank(roles.strategyManager);
         strategyContainer.setTreasury(treasury);
-        vm.stopPrank();
     }
 
     function _createAndAddStrategyWithTokens(

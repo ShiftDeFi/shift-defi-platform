@@ -117,10 +117,10 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
         vm.startPrank(roles.reshufflingExecutor);
         containerAgent.removeStrategy(strategy1);
         containerAgent.removeStrategy(strategy2);
+        containerAgent.disableReshufflingMode();
         vm.stopPrank();
 
-        vm.prank(roles.reshufflingExecutor);
-        containerAgent.disableReshufflingMode();
+        vm.prank(roles.operator);
 
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.WithdrawalRequestReceived);
 
@@ -172,10 +172,8 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
         vm.startPrank(roles.reshufflingExecutor);
         containerAgent.removeStrategy(strategy1);
         containerAgent.removeStrategy(strategy2);
-        vm.stopPrank();
-
-        vm.prank(roles.reshufflingExecutor);
         containerAgent.disableReshufflingMode();
+        vm.stopPrank();
 
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.WithdrawalRequestReceived);
 

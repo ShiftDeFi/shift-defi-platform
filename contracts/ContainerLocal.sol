@@ -92,7 +92,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     }
 
     /// @inheritdoc IContainerLocal
-    function reportWithdraw()
+    function reportWithdrawal()
         external
         whenNotPaused
         nonReentrant

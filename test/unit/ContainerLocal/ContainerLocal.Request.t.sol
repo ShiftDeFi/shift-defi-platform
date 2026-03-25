@@ -99,25 +99,25 @@ contract ContainerLocalRequestTest is ContainerLocalBaseTest {
         containerLocal.reportDeposit();
     }
 
-    function test_ReportWithdraw() public {
+    function test_ReportWithdrawal() public {
         _setContainerStatus(IContainerLocal.ContainerLocalStatus.AllStrategiesExited);
         _setVaultStatus(IVault.VaultStatus.WithdrawBatchProcessingStarted);
         deal(address(notion), address(containerLocal), 1);
 
         vm.prank(roles.operator);
-        containerLocal.reportWithdraw();
+        containerLocal.reportWithdrawal();
 
         assertEq(uint256(containerLocal.status()), uint256(IContainerLocal.ContainerLocalStatus.Idle));
         assertEq(
             containerLocal.registeredWithdrawShareAmount(),
             0,
-            "test_ReportWithdraw: registeredWithdrawShareAmount mismatch"
+            "test_ReportWithdrawal: registeredWithdrawShareAmount mismatch"
         );
     }
 
-    function test_RevertIf_StatusNotAllStrategiesExitedAndReportWithdraw() public {
+    function test_RevertIf_StatusNotAllStrategiesExitedAndReportWithdrawal() public {
         vm.prank(roles.operator);
         vm.expectRevert(Errors.IncorrectContainerStatus.selector);
-        containerLocal.reportWithdraw();
+        containerLocal.reportWithdrawal();
     }
 }

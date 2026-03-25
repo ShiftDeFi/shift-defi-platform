@@ -27,7 +27,7 @@ contract MockContainerLocal is IContainerLocal {
 
     function reportDeposit() external {}
 
-    function reportWithdraw() external {}
+    function reportWithdrawal() external {}
 
     function withdrawToReshufflingGateway(address[] memory tokens, uint256[] memory amounts) external {}
 

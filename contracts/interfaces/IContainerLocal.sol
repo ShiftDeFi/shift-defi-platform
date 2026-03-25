@@ -61,7 +61,7 @@ interface IContainerLocal is IStrategyContainer {
      * @notice Reports withdrawal results to the vault.
      * @dev Can only be called by accounts with OPERATOR_ROLE. Requires status to be AllStrategiesExited.
      */
-    function reportWithdraw() external;
+    function reportWithdrawal() external;
 
     /**
      * @notice Enters a single strategy.

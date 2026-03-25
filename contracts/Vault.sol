@@ -762,7 +762,7 @@ contract Vault is
     }
 
     /// @inheritdoc IVault
-    function unpause() external onlyRole(EMERGENCY_PAUSER_ROLE) {
+    function unpause() external whenPaused onlyRole(EMERGENCY_PAUSER_ROLE) {
         _unpause();
     }
 }

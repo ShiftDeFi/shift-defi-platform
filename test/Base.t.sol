@@ -34,9 +34,11 @@ abstract contract Base is Test {
         address defaultAdmin;
         address containerManager;
         address operator;
+        address emergencyPauser;
         address configurator;
         address cacheManager;
         address emergencyManager;
+        address emergencyExecutor;
         address tokenManager;
         address messengerManager;
         address bridgeAdapterManager;
@@ -45,6 +47,7 @@ abstract contract Base is Test {
         address oracleManager;
         address strategyManager;
         address reshufflingManager;
+        address reshufflingExecutor;
         address feederRole;
         address harvestManager;
     }
@@ -83,13 +86,16 @@ abstract contract Base is Test {
     bytes32 internal constant CONTAINER_MANAGER_ROLE = keccak256("CONTAINER_MANAGER_ROLE");
     bytes32 internal constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
     bytes32 internal constant CONFIGURATOR_ROLE = keccak256("CONFIGURATOR_ROLE");
+    bytes32 internal constant EMERGENCY_PAUSER_ROLE = keccak256("EMERGENCY_PAUSER_ROLE");
     bytes32 internal constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
+    bytes32 internal constant EMERGENCY_EXECUTOR_ROLE = keccak256("EMERGENCY_EXECUTOR_ROLE");
     bytes32 internal constant TOKEN_MANAGER_ROLE = keccak256("TOKEN_MANAGER_ROLE");
     bytes32 internal constant MESSENGER_MANAGER_ROLE = keccak256("MESSENGER_MANAGER_ROLE");
     bytes32 internal constant BRIDGE_ADAPTER_MANAGER_ROLE = keccak256("BRIDGE_ADAPTER_MANAGER_ROLE");
     bytes32 internal constant WHITELIST_MANAGER_ROLE = keccak256("WHITELIST_MANAGER_ROLE");
     bytes32 internal constant STRATEGY_MANAGER_ROLE = keccak256("STRATEGY_MANAGER_ROLE");
     bytes32 internal constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
+    bytes32 internal constant RESHUFFLING_EXECUTOR_ROLE = keccak256("RESHUFFLING_EXECUTOR_ROLE");
     bytes32 internal constant CACHE_MANAGER_ROLE = keccak256("CACHE_MANAGER_ROLE");
     bytes32 internal constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
@@ -98,9 +104,11 @@ abstract contract Base is Test {
         roles.defaultAdmin = makeAddr("DEFAULT_ADMIN");
         roles.containerManager = makeAddr("CONTAINER_MANAGER");
         roles.operator = makeAddr("OPERATOR");
+        roles.emergencyPauser = makeAddr("EMERGENCY_PAUSER");
         roles.configurator = makeAddr("CONFIGURATOR");
         roles.cacheManager = makeAddr("CACHE_MANAGER");
         roles.emergencyManager = makeAddr("EMERGENCY_MANAGER");
+        roles.emergencyExecutor = makeAddr("EMERGENCY_EXECUTOR");
         roles.tokenManager = makeAddr("TOKEN_MANAGER");
         roles.messengerManager = makeAddr("MESSENGER_MANAGER");
         roles.bridgeAdapterManager = makeAddr("BRIDGE_ADAPTER_MANAGER");
@@ -108,6 +116,7 @@ abstract contract Base is Test {
         roles.oracleManager = makeAddr("ORACLE_MANAGER");
         roles.strategyManager = makeAddr("STRATEGY_MANAGER");
         roles.reshufflingManager = makeAddr("RESHUFFLING_MANAGER");
+        roles.reshufflingExecutor = makeAddr("RESHUFFLING_EXECUTOR");
         roles.feederRole = makeAddr("FEEDER_ROLE");
         roles.harvestManager = makeAddr("HARVEST_MANAGER");
 
@@ -160,6 +169,7 @@ abstract contract Base is Test {
                 MockBridgeAdapter.initialize.selector,
                 roles.defaultAdmin,
                 roles.bridgeAdapterManager,
+                roles.cacheManager,
                 DEFAULT_SLIPPAGE_CAP_PCT
             )
         );
@@ -180,6 +190,7 @@ abstract contract Base is Test {
             notion: address(notion),
             defaultAdmin: roles.defaultAdmin,
             operator: roles.operator,
+            emergencyPauser: roles.emergencyPauser,
             tokenManager: roles.tokenManager,
             swapRouter: makeAddr("SWAP_ROUTER")
         });
@@ -196,7 +207,9 @@ abstract contract Base is Test {
                     strategyManager: roles.strategyManager,
                     harvestManager: roles.harvestManager,
                     reshufflingManager: roles.reshufflingManager,
-                    emergencyManager: roles.emergencyManager
+                    reshufflingExecutor: roles.reshufflingExecutor,
+                    emergencyManager: roles.emergencyManager,
+                    emergencyExecutor: roles.emergencyExecutor
                 }),
                 makeAddr("RESHUFFLING_GATEWAY"),
                 treasury,

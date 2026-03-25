@@ -5,6 +5,7 @@ import {StrategyContainerBaseTest} from "test/unit/StrategyContainer/StrategyCon
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {IContainer} from "contracts/interfaces/IContainer.sol";
+import {ISwapRouter} from "contracts/interfaces/ISwapRouter.sol";
 import {Errors} from "contracts/libraries/Errors.sol";
 import {MockStrategyInterfaceBased} from "test/mocks/MockStrategyInterfaceBased.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
@@ -22,7 +23,7 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
         vm.prank(roles.reshufflingManager);
         strategyContainer.enableReshufflingMode();
 
-        assertTrue(strategyContainer.isReshufflingMode(), "test_EnableReshufflingMode: Reshuffling mode not enabled");
+        assertTrue(strategyContainer.isReshuffling(), "test_EnableReshufflingMode: Reshuffling mode not enabled");
     }
 
     function test_RevertIf_EnableReshufflingInEmergencyResolution() public {
@@ -39,7 +40,7 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
         strategyContainer.enableReshufflingMode();
 
         vm.prank(roles.reshufflingManager);
-        vm.expectRevert(IStrategyContainer.ActionUnavailableInReshufflingMode.selector);
+        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
         strategyContainer.enableReshufflingMode();
     }
 
@@ -68,20 +69,17 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
         vm.prank(roles.reshufflingManager);
         strategyContainer.enableReshufflingMode();
 
-        assertTrue(strategyContainer.isReshufflingMode(), "test_DisableReshufflingMode: Reshuffling mode not enabled");
+        assertTrue(strategyContainer.isReshuffling(), "test_DisableReshufflingMode: Reshuffling mode not enabled");
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         strategyContainer.disableReshufflingMode();
 
-        assertFalse(
-            strategyContainer.isReshufflingMode(),
-            "test_DisableReshufflingMode: Reshuffling mode not disabled"
-        );
+        assertFalse(strategyContainer.isReshuffling(), "test_DisableReshufflingMode: Reshuffling mode not disabled");
     }
 
     function test_RevertIf_DisableReshufflingModeNotEnabled() public {
-        vm.prank(roles.reshufflingManager);
-        vm.expectRevert(IStrategyContainer.ActionUnavailableNotInReshufflingMode.selector);
+        vm.prank(roles.reshufflingExecutor);
+        vm.expectRevert(Errors.ReshufflingModeDisabled.selector);
         strategyContainer.disableReshufflingMode();
     }
 
@@ -92,7 +90,7 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
         vm.prank(address(mockStrategy));
         strategyContainer.startEmergencyResolution();
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(IStrategyContainer.EmergencyResolutionInProgress.selector);
         strategyContainer.disableReshufflingMode();
     }
@@ -107,7 +105,7 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 randomAddress,
-                RESHUFFLING_MANAGER_ROLE
+                RESHUFFLING_EXECUTOR_ROLE
             )
         );
         strategyContainer.disableReshufflingMode();
@@ -119,7 +117,7 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
 
         strategyContainer.craftCurrentBatchType(IStrategyContainer.CurrentBatchType.DepositBatch);
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.IncorrectContainerStatus.selector);
         strategyContainer.disableReshufflingMode();
     }
@@ -132,7 +130,7 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
 
         vm.prank(roles.reshufflingManager);
         strategyContainer.enableReshufflingMode();
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         strategyContainer.enterInReshufflingMode(address(mockStrategy), inputAmounts, 0);
 
         for (uint256 i = 0; i < inputTokens.length; i++) {
@@ -165,10 +163,10 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
         mockStrategy.craftNav1(nav1Response);
         mockStrategy.craftRemainingAmounts(remainingAmounts);
 
-        vm.startPrank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingManager);
         strategyContainer.enableReshufflingMode();
+        vm.prank(roles.reshufflingExecutor);
         strategyContainer.enterInReshufflingMode(address(mockStrategy), inputAmounts, 0);
-        vm.stopPrank();
 
         for (uint256 i = 0; i < inputTokens.length; i++) {
             assertEq(
@@ -195,7 +193,7 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 randomAddress,
-                RESHUFFLING_MANAGER_ROLE
+                RESHUFFLING_EXECUTOR_ROLE
             )
         );
         strategyContainer.enterInReshufflingMode(address(mockStrategy), emptyInputAmounts, 0);
@@ -204,7 +202,7 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
     function test_RevertIf_NotStrategyInEnterInReshufflingMode() public {
         vm.prank(roles.reshufflingManager);
         strategyContainer.enableReshufflingMode();
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(IStrategyContainer.StrategyNotFound.selector);
         strategyContainer.enterInReshufflingMode(makeAddr("RANDOM_ADDRESS"), new uint256[](0), 0);
     }
@@ -214,7 +212,7 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
         strategyContainer.enableReshufflingMode();
         vm.prank(address(mockStrategy));
         strategyContainer.startEmergencyResolution();
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(
             abi.encodeWithSelector(IStrategyContainer.StrategyNavUnresolved.selector, address(mockStrategy))
         );
@@ -224,7 +222,7 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
     function test_RevertIf_IncorrectArrayLengthInEnterInReshufflingMode() public {
         vm.prank(roles.reshufflingManager);
         strategyContainer.enableReshufflingMode();
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ArrayLengthMismatch.selector);
         strategyContainer.enterInReshufflingMode(address(mockStrategy), new uint256[](2), 0);
     }
@@ -251,11 +249,11 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
         mockStrategy.craftNav1(nav1Response);
         mockStrategy.craftRemainingAmounts(remainingAmounts);
 
-        vm.startPrank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingManager);
         strategyContainer.enableReshufflingMode();
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(abi.encodeWithSelector(IContainer.NotWhitelistedToken.selector, inputTokens[0]));
         strategyContainer.enterInReshufflingMode(address(mockStrategy), inputAmounts, 0);
-        vm.stopPrank();
     }
 
     function test_ExitInReshufflingMode_Success() public {
@@ -270,10 +268,10 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
             mockStrategy.approveToken(outputTokens[i], outputAmounts[i], address(strategyContainer));
         }
 
-        vm.startPrank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingManager);
         strategyContainer.enableReshufflingMode();
+        vm.prank(roles.reshufflingExecutor);
         strategyContainer.exitInReshufflingMode(address(mockStrategy), share, type(uint256).max);
-        vm.stopPrank();
 
         for (uint256 i = 0; i < outputTokens.length; i++) {
             uint256 expectedAmount = (outputAmounts[i] * share) / MAX_BPS;
@@ -308,10 +306,10 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
             mockStrategy.approveToken(newOutputTokens[i], outputAmounts[i], address(strategyContainer));
         }
 
-        vm.startPrank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingManager);
         strategyContainer.enableReshufflingMode();
+        vm.prank(roles.reshufflingExecutor);
         strategyContainer.exitInReshufflingMode(address(mockStrategy), share, type(uint256).max);
-        vm.stopPrank();
 
         uint256 expectedAmountToken0 = (outputAmounts[0] * share) / MAX_BPS;
         assertEq(
@@ -346,56 +344,67 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 randomAddress,
-                RESHUFFLING_MANAGER_ROLE
+                RESHUFFLING_EXECUTOR_ROLE
             )
         );
         strategyContainer.exitInReshufflingMode(address(mockStrategy), MAX_BPS, type(uint256).max);
     }
 
     function test_RevertIf_NotInReshufflingModeInExitInReshufflingMode() public {
-        vm.startPrank(roles.reshufflingManager);
-        vm.expectRevert(IStrategyContainer.ActionUnavailableNotInReshufflingMode.selector);
+        vm.prank(roles.reshufflingExecutor);
+        vm.expectRevert(Errors.ReshufflingModeDisabled.selector);
         strategyContainer.exitInReshufflingMode(address(mockStrategy), MAX_BPS, type(uint256).max);
-        vm.stopPrank();
     }
 
     function test_RevertIf_NotStrategyInExitInReshufflingMode() public {
-        vm.startPrank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingManager);
         strategyContainer.enableReshufflingMode();
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(IStrategyContainer.StrategyNotFound.selector);
         strategyContainer.exitInReshufflingMode(makeAddr("RANDOM_ADDRESS"), MAX_BPS, type(uint256).max);
-        vm.stopPrank();
     }
 
     function test_RevertIf_StrategyNavUnresolvedInExitInReshufflingMode() public {
-        vm.startPrank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingManager);
         strategyContainer.enableReshufflingMode();
-        vm.stopPrank();
 
         vm.prank(address(mockStrategy));
         strategyContainer.startEmergencyResolution();
 
-        vm.startPrank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(
             abi.encodeWithSelector(IStrategyContainer.StrategyNavUnresolved.selector, address(mockStrategy))
         );
         strategyContainer.exitInReshufflingMode(address(mockStrategy), MAX_BPS, type(uint256).max);
-        vm.stopPrank();
     }
 
     function test_RevertIf_ZeroShareInExitInReshufflingMode() public {
-        vm.startPrank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingManager);
         strategyContainer.enableReshufflingMode();
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ZeroAmount.selector);
         strategyContainer.exitInReshufflingMode(address(mockStrategy), 0, type(uint256).max);
-        vm.stopPrank();
     }
 
     function test_RevertIf_ShareExceedsBPSInExitInReshufflingMode() public {
-        vm.startPrank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingManager);
         strategyContainer.enableReshufflingMode();
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.IncorrectAmount.selector);
         strategyContainer.exitInReshufflingMode(address(mockStrategy), MAX_BPS + 1, type(uint256).max);
-        vm.stopPrank();
+    }
+
+    function test_RevertIf_PrepareLiquidityInReshufflingMode_NotInReshufflingMode() public {
+        vm.prank(roles.reshufflingExecutor);
+        vm.expectRevert(Errors.ReshufflingModeDisabled.selector);
+        strategyContainer.prepareLiquidityInReshufflingMode(new ISwapRouter.SwapInstruction[](0));
+    }
+
+    function test_RevertIf_PrepareLiquidityInReshufflingMode_ZeroArrayLength() public {
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+        vm.prank(roles.reshufflingExecutor);
+        vm.expectRevert(Errors.ZeroArrayLength.selector);
+        strategyContainer.prepareLiquidityInReshufflingMode(new ISwapRouter.SwapInstruction[](0));
     }
 }

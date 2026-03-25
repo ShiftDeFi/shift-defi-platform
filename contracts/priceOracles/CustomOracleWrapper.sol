@@ -30,16 +30,7 @@ contract CustomOracleWrapper is AccessControl, IPriceOracle, ICustomOracleWrappe
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(ORACLE_MANAGER_ROLE, oracleManager);
         _grantRole(FEEDER_ROLE, feederRole);
-    }
-
-    /// @inheritdoc ICustomOracleWrapper
-    function whitelistFeeder(address feeder) external onlyRole(ORACLE_MANAGER_ROLE) {
-        _grantRole(FEEDER_ROLE, feeder);
-    }
-
-    /// @inheritdoc ICustomOracleWrapper
-    function blacklistFeeder(address feeder) external onlyRole(ORACLE_MANAGER_ROLE) {
-        _revokeRole(FEEDER_ROLE, feeder);
+        _setRoleAdmin(FEEDER_ROLE, ORACLE_MANAGER_ROLE);
     }
 
     /// @inheritdoc ICustomOracleWrapper

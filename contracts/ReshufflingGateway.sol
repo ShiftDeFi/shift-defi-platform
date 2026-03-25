@@ -22,8 +22,9 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    bytes32 public constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
-    bytes32 public constant WHITELIST_MANAGER_ROLE = keccak256("WHITELIST_MANAGER_ROLE");
+    bytes32 public constant BRIDGE_ADAPTER_MANAGER_ROLE = keccak256("BRIDGE_ADAPTER_MANAGER_ROLE");
+    bytes32 public constant RESHUFFLING_EXECUTOR_ROLE = keccak256("RESHUFFLING_EXECUTOR_ROLE");
+    bytes32 public constant TOKEN_MANAGER_ROLE = keccak256("TOKEN_MANAGER_ROLE");
 
     address public vault;
     address public swapRouter;
@@ -31,8 +32,8 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
     EnumerableSet.AddressSet private _whitelistedTokens;
     EnumerableSet.AddressSet private _whitelistedBridgeAdapters;
 
-    modifier onlyReshufflingMode() {
-        require(IVault(vault).isReshuffling(), VaultNotInReshufflingMode());
+    modifier onlyInReshufflingMode() {
+        require(IVault(vault).isReshuffling(), Errors.ReshufflingModeDisabled());
         _;
     }
 
@@ -47,15 +48,17 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
      * @param _vault The address of the vault contract.
      * @param _swapRouter The address of the swap router contract.
      * @param _defaultAdmin The address to receive DEFAULT_ADMIN_ROLE.
-     * @param _reshufflingManager The address to receive RESHUFFLING_MANAGER_ROLE.
-     * @param _whitelistManager The address to receive WHITELIST_MANAGER_ROLE.
+     * @param _bridgeAdapterManager The address to receive BRIDGE_ADAPTER_MANAGER_ROLE.
+     * @param _reshufflingExecutor The address to receive RESHUFFLING_EXECUTOR_ROLE.
+     * @param _tokenManager The address to receive TOKEN_MANAGER_ROLE.
      */
     function initialize(
         address _vault,
         address _swapRouter,
         address _defaultAdmin,
-        address _reshufflingManager,
-        address _whitelistManager
+        address _bridgeAdapterManager,
+        address _reshufflingExecutor,
+        address _tokenManager
     ) external initializer {
         __AccessControl_init();
         __ReentrancyGuard_init();
@@ -66,12 +69,14 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         _setSwapRouter(_swapRouter);
 
         require(_defaultAdmin != address(0), Errors.ZeroAddress());
-        require(_reshufflingManager != address(0), Errors.ZeroAddress());
-        require(_whitelistManager != address(0), Errors.ZeroAddress());
+        require(_bridgeAdapterManager != address(0), Errors.ZeroAddress());
+        require(_reshufflingExecutor != address(0), Errors.ZeroAddress());
+        require(_tokenManager != address(0), Errors.ZeroAddress());
 
         _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
-        _grantRole(RESHUFFLING_MANAGER_ROLE, _reshufflingManager);
-        _grantRole(WHITELIST_MANAGER_ROLE, _whitelistManager);
+        _grantRole(BRIDGE_ADAPTER_MANAGER_ROLE, _bridgeAdapterManager);
+        _grantRole(RESHUFFLING_EXECUTOR_ROLE, _reshufflingExecutor);
+        _grantRole(TOKEN_MANAGER_ROLE, _tokenManager);
     }
 
     /// @inheritdoc IReshufflingGateway
@@ -80,35 +85,35 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
     }
 
     /// @inheritdoc IReshufflingGateway
-    function whitelistToken(address token) external onlyRole(WHITELIST_MANAGER_ROLE) {
+    function whitelistToken(address token) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(_whitelistedTokens.add(token), AlreadyWhitelistedToken());
         emit TokenWhitelisted(token);
     }
 
     /// @inheritdoc IReshufflingGateway
-    function whitelistBridgeAdapter(address bridgeAdapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
+    function whitelistBridgeAdapter(address bridgeAdapter) external onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
         require(bridgeAdapter != address(0), Errors.ZeroAddress());
         require(_whitelistedBridgeAdapters.add(bridgeAdapter), AlreadyWhitelistedBridgeAdapter());
         emit BridgeAdapterWhitelisted(bridgeAdapter);
     }
 
     /// @inheritdoc IReshufflingGateway
-    function blacklistToken(address token) external onlyRole(WHITELIST_MANAGER_ROLE) {
+    function blacklistToken(address token) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
         require(_whitelistedTokens.remove(token), NotWhitelistedToken(token));
         emit TokenBlacklisted(token);
     }
 
     /// @inheritdoc IReshufflingGateway
-    function blacklistBridgeAdapter(address bridgeAdapter) external onlyRole(WHITELIST_MANAGER_ROLE) {
+    function blacklistBridgeAdapter(address bridgeAdapter) external onlyRole(BRIDGE_ADAPTER_MANAGER_ROLE) {
         require(bridgeAdapter != address(0), Errors.ZeroAddress());
         require(_whitelistedBridgeAdapters.remove(bridgeAdapter), NotWhitelistedBridgeAdapter(bridgeAdapter));
         emit BridgeAdapterBlacklisted(bridgeAdapter);
     }
 
     /// @inheritdoc IReshufflingGateway
-    function setSwapRouter(address newSwapRouter) external onlyRole(WHITELIST_MANAGER_ROLE) {
+    function setSwapRouter(address newSwapRouter) external onlyRole(TOKEN_MANAGER_ROLE) {
         _setSwapRouter(newSwapRouter);
     }
 
@@ -131,7 +136,10 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
     }
 
     /// @inheritdoc IReshufflingGateway
-    function claimBridge(address bridgeAdapter, address token) external nonReentrant returns (uint256) {
+    function claimBridge(
+        address bridgeAdapter,
+        address token
+    ) external nonReentrant onlyInReshufflingMode returns (uint256) {
         require(_whitelistedBridgeAdapters.contains(bridgeAdapter), NotWhitelistedBridgeAdapter(bridgeAdapter));
         require(_whitelistedTokens.contains(token), NotWhitelistedToken(token));
 
@@ -143,7 +151,7 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
     /// @inheritdoc IReshufflingGateway
     function prepareLiquidity(
         ISwapRouter.SwapInstruction[] calldata swapInstructions
-    ) external nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         uint256 length = swapInstructions.length;
         require(length > 0, Errors.ZeroArrayLength());
         for (uint256 i = 0; i < length; i++) {
@@ -166,7 +174,7 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         address container,
         address[] memory bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata instructions
-    ) external payable onlyReshufflingMode nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    ) external payable onlyInReshufflingMode nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(bridgeAdapters.length > 0, Errors.ZeroArrayLength());
         require(bridgeAdapters.length == instructions.length, Errors.ArrayLengthMismatch());
 
@@ -228,7 +236,7 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
         address container,
         address[] memory tokens,
         uint256[] memory amounts
-    ) external payable onlyReshufflingMode nonReentrant onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    ) external payable onlyInReshufflingMode nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(tokens.length > 0, Errors.ZeroArrayLength());
         require(tokens.length == amounts.length, Errors.ArrayLengthMismatch());
         require(IVault(vault).isContainer(container), NotContainer(container));

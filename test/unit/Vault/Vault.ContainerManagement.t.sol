@@ -11,6 +11,13 @@ import {L1Base} from "test/L1Base.t.sol";
 contract VaultContainerManagementTest is L1Base {
     uint256 internal constant MAX_CONTAINERS = 255;
 
+    function setUp() public virtual override {
+        super.setUp();
+
+        vm.prank(roles.reshufflingManager);
+        vault.enableReshufflingMode();
+    }
+
     function test_AddContainer() public {
         IContainerPrincipal container = _deployMockContainerPrincipal();
         _addContainer(address(container), REMOTE_CHAIN_ID);

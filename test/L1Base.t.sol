@@ -72,6 +72,9 @@ abstract contract L1Base is Base {
         vault = _deployVault();
         vm.label(address(vault), "VAULT");
 
+        vm.prank(roles.reshufflingExecutor);
+        vault.disableReshufflingMode();
+
         swapRouter = _deploySwapRouter();
         messageRouter = _deployMockMessageRouter(MAX_CACHE_SIZE);
         bridgeAdapter = _deployBridgeAdapter();
@@ -83,6 +86,9 @@ abstract contract L1Base is Base {
         deal(address(notion), address(this), 100_000_000e18);
         deal(address(notion), address(mockSwapAdapter), 100_000_000e18);
         reshufflingGateway = _deployReshufflingGateway();
+
+        vm.prank(roles.reshufflingManager);
+        vault.setReshufflingGateway(address(reshufflingGateway));
     }
 
     function _deployVault() internal returns (IVault) {
@@ -101,7 +107,9 @@ abstract contract L1Base is Base {
                     containerManager: roles.containerManager,
                     operator: roles.operator,
                     configurator: roles.configurator,
-                    emergencyManager: roles.emergencyManager
+                    reshufflingManager: roles.reshufflingManager,
+                    reshufflingExecutor: roles.reshufflingExecutor,
+                    emergencyPauser: roles.emergencyPauser
                 }),
                 IVault.Limits({
                     maxDepositAmount: MAX_DEPOSIT_AMOUNT * NOTION_PRECISION,
@@ -136,6 +144,7 @@ abstract contract L1Base is Base {
             notion: address(notion),
             defaultAdmin: roles.defaultAdmin,
             operator: roles.operator,
+            emergencyPauser: roles.emergencyPauser,
             tokenManager: roles.tokenManager,
             swapRouter: address(swapRouter)
         });
@@ -174,6 +183,7 @@ abstract contract L1Base is Base {
             notion: address(notion),
             defaultAdmin: roles.defaultAdmin,
             operator: roles.operator,
+            emergencyPauser: roles.emergencyPauser,
             tokenManager: roles.tokenManager,
             swapRouter: address(swapRouter)
         });
@@ -190,7 +200,9 @@ abstract contract L1Base is Base {
                     strategyManager: roles.strategyManager,
                     harvestManager: roles.harvestManager,
                     reshufflingManager: roles.reshufflingManager,
-                    emergencyManager: roles.emergencyManager
+                    reshufflingExecutor: roles.reshufflingExecutor,
+                    emergencyManager: roles.emergencyManager,
+                    emergencyExecutor: roles.emergencyExecutor
                 }),
                 address(reshufflingGateway),
                 treasury,
@@ -217,6 +229,7 @@ abstract contract L1Base is Base {
                                 notion: address(notion),
                                 defaultAdmin: roles.defaultAdmin,
                                 operator: roles.operator,
+                                emergencyPauser: roles.emergencyPauser,
                                 tokenManager: roles.tokenManager,
                                 swapRouter: address(swapRouter)
                             }),
@@ -241,8 +254,10 @@ abstract contract L1Base is Base {
                 address(vault),
                 address(swapRouter),
                 roles.defaultAdmin,
-                roles.reshufflingManager,
-                roles.whitelistManager
+                roles.bridgeAdapterManager,
+                roles.reshufflingExecutor,
+                roles.tokenManager,
+                roles.emergencyPauser
             )
         );
         vm.label(address(proxy), "RESHUFFLING_GATEWAY");

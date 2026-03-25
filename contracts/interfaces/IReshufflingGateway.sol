@@ -15,7 +15,6 @@ interface IReshufflingGateway {
     event SwapRouterUpdated(address indexed previousSwapRouter, address indexed newSwapRouter);
 
     error NotContainer(address container);
-    error VaultNotInReshufflingMode();
     error AlreadyWhitelistedToken();
     error NotWhitelistedToken(address token);
     error AlreadyWhitelistedBridgeAdapter();
@@ -44,30 +43,35 @@ interface IReshufflingGateway {
 
     /**
      * @notice Whitelists a token for reshuffling.
+     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE.
      * @param token Token address.
      */
     function whitelistToken(address token) external;
 
     /**
      * @notice Whitelists a bridge adapter.
+     * @dev Can only be called by accounts with BRIDGE_ADAPTER_MANAGER_ROLE.
      * @param bridgeAdapter Bridge adapter address.
      */
     function whitelistBridgeAdapter(address bridgeAdapter) external;
 
     /**
      * @notice Removes a token from the whitelist.
+     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE.
      * @param token Token address.
      */
     function blacklistToken(address token) external;
 
     /**
      * @notice Removes a bridge adapter from the whitelist.
+     * @dev Can only be called by accounts with BRIDGE_ADAPTER_MANAGER_ROLE.
      * @param bridgeAdapter Bridge adapter address.
      */
     function blacklistBridgeAdapter(address bridgeAdapter) external;
 
     /**
      * @notice Sets the swap router address.
+     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE.
      * @param newSwapRouter The address of the new swap router contract.
      */
     function setSwapRouter(address newSwapRouter) external;
@@ -82,12 +86,14 @@ interface IReshufflingGateway {
 
     /**
      * @notice Prepares liquidity via swaps before reshuffling.
+     * @dev Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
      * @param swapInstructions Swap instructions to execute.
      */
     function prepareLiquidity(ISwapRouter.SwapInstruction[] calldata swapInstructions) external;
 
     /**
      * @notice Sends assets to cross-chain container through bridge adapters.
+     * @dev Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
      * @param container Target container address.
      * @param bridgeAdapters Bridge adapters to use.
      * @param instructions Bridge instructions matching adapters.
@@ -100,6 +106,7 @@ interface IReshufflingGateway {
 
     /**
      * @notice Sends assets to local container.
+     * @dev Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
      * @param container Target container address.
      * @param tokens Tokens to send.
      * @param amounts Amounts to send per token.

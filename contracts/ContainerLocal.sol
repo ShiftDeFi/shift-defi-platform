@@ -45,7 +45,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     /// @inheritdoc IContainerLocal
     function registerDepositRequest(
         uint256 amount
-    ) external nonReentrant notResolvingEmergency notInReshufflingMode onlyVault {
+    ) external whenNotPaused nonReentrant notResolvingEmergency notInReshufflingMode onlyVault {
         require(status == ContainerLocalStatus.Idle, Errors.IncorrectContainerStatus());
         require(amount > 0, Errors.ZeroAmount());
         status = ContainerLocalStatus.DepositRequestRegistered;
@@ -57,7 +57,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     /// @inheritdoc IContainerLocal
     function registerWithdrawRequest(
         uint256 amount
-    ) external nonReentrant notResolvingEmergency notInReshufflingMode onlyVault {
+    ) external whenNotPaused nonReentrant notResolvingEmergency notInReshufflingMode onlyVault {
         require(status == ContainerLocalStatus.Idle, Errors.IncorrectContainerStatus());
         require(amount > 0, Errors.ZeroAmount());
         status = ContainerLocalStatus.WithdrawalRequestRegistered;
@@ -67,7 +67,14 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     }
 
     /// @inheritdoc IContainerLocal
-    function reportDeposit() external nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    function reportDeposit()
+        external
+        whenNotPaused
+        nonReentrant
+        notResolvingEmergency
+        notInReshufflingMode
+        onlyRole(OPERATOR_ROLE)
+    {
         require(status == ContainerLocalStatus.AllStrategiesEntered, Errors.IncorrectContainerStatus());
 
         require(_validateWhitelistedTokensBeforeReport(true, true), WhitelistedTokensOnBalance());
@@ -85,7 +92,14 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     }
 
     /// @inheritdoc IContainerLocal
-    function reportWithdraw() external nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    function reportWithdrawal()
+        external
+        whenNotPaused
+        nonReentrant
+        notResolvingEmergency
+        notInReshufflingMode
+        onlyRole(OPERATOR_ROLE)
+    {
         require(status == ContainerLocalStatus.AllStrategiesExited, Errors.IncorrectContainerStatus());
 
         status = ContainerLocalStatus.Idle;
@@ -106,7 +120,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         address strategy,
         address[] calldata inputTokens,
         address[] calldata outputTokens
-    ) external nonReentrant notResolvingEmergency onlyRole(STRATEGY_MANAGER_ROLE) {
+    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
         require(status == ContainerLocalStatus.Idle, Errors.IncorrectContainerStatus());
         _addStrategy(strategy, inputTokens, outputTokens);
     }
@@ -114,7 +128,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     /// @inheritdoc IStrategyContainer
     function removeStrategy(
         address strategy
-    ) external nonReentrant notResolvingEmergency onlyRole(STRATEGY_MANAGER_ROLE) {
+    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(status == ContainerLocalStatus.Idle, Errors.IncorrectContainerStatus());
         _removeStrategy(strategy);
     }
@@ -126,7 +140,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         address strategy,
         uint256[] calldata inputAmounts,
         uint256 minNavDelta
-    ) external nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    ) external whenNotPaused nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.DepositRequestRegistered, Errors.IncorrectContainerStatus());
         _enterStrategy(strategy, inputAmounts, minNavDelta);
 
@@ -141,7 +155,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         address[] calldata strategies,
         uint256[][] calldata inputAmounts,
         uint256[] calldata minNavDelta
-    ) external nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    ) external whenNotPaused nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.DepositRequestRegistered, Errors.IncorrectContainerStatus());
         uint256 length = strategies.length;
         require(length > 0 && length <= getStrategiesNumber(), Errors.InvalidArrayLength());
@@ -164,7 +178,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     function exitStrategy(
         address strategy,
         uint256 maxNavDelta
-    ) external nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    ) external whenNotPaused nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.WithdrawalRequestRegistered, Errors.IncorrectContainerStatus());
         uint256 registeredShareAmountCached = registeredWithdrawShareAmount;
         require(registeredShareAmountCached > 0, NoSharesRegisteredForExit());
@@ -180,7 +194,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     function exitStrategyMultiple(
         address[] calldata strategies,
         uint256[] calldata maxNavDeltas
-    ) external nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
+    ) external whenNotPaused nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.WithdrawalRequestRegistered, Errors.IncorrectContainerStatus());
         uint256 length = strategies.length;
         require(length > 0 && length <= getStrategiesNumber(), Errors.InvalidArrayLength());
@@ -226,7 +240,7 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     function withdrawToReshufflingGateway(
         address[] memory tokens,
         uint256[] memory amounts
-    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    ) external nonReentrant notResolvingEmergency onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         uint256 length = tokens.length;
         require(length > 0, Errors.ZeroArrayLength());
         require(length == amounts.length, Errors.ArrayLengthMismatch());

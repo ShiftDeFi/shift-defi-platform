@@ -19,6 +19,7 @@ interface IContainer {
         address notion;
         address defaultAdmin;
         address operator;
+        address emergencyPauser;
         address tokenManager;
         address swapRouter;
     }
@@ -103,4 +104,16 @@ interface IContainer {
      * @param instructions Array of swap instructions to execute
      */
     function prepareLiquidity(ISwapRouter.SwapInstruction[] calldata instructions) external;
+
+    /**
+     * @notice Pauses all state-changing operations in the container.
+     * @dev Can only be called by accounts with EMERGENCY_PAUSER_ROLE.
+     */
+    function pause() external;
+
+    /**
+     * @notice Unpauses the container and re-enables state-changing operations.
+     * @dev Can only be called by accounts with EMERGENCY_PAUSER_ROLE.
+     */
+    function unpause() external;
 }

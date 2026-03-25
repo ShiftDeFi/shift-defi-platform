@@ -15,8 +15,15 @@ contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
 
     function setUp() public virtual override {
         super.setUp();
+        vm.prank(roles.reshufflingManager);
+        containerAgent.enableReshufflingMode();
+
         strategy0 = _addStrategyNotionInputOutput();
         strategy1 = _addStrategyNotionInputOutput();
+
+        vm.prank(roles.reshufflingExecutor);
+        containerAgent.disableReshufflingMode();
+
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.BridgeClaimed);
 
         deal(address(notion), address(containerAgent), DEPOSIT_AMOUNT * 2);
@@ -54,8 +61,14 @@ contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
         /// @dev Make strategy0 the only strategy on container
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.Idle);
 
-        vm.prank(roles.strategyManager);
+        vm.prank(roles.reshufflingManager);
+        containerAgent.enableReshufflingMode();
+
+        vm.prank(roles.reshufflingExecutor);
         containerAgent.removeStrategy(strategy1);
+
+        vm.prank(roles.reshufflingExecutor);
+        containerAgent.disableReshufflingMode();
 
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.BridgeClaimed);
 
@@ -92,7 +105,7 @@ contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
 
         _toggleReshufflingMode(true);
 
-        vm.expectRevert(IStrategyContainer.ActionUnavailableInReshufflingMode.selector);
+        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
         vm.prank(roles.operator);
         containerAgent.enterStrategy(strategy0, inputAmounts, minNavDelta);
     }
@@ -101,8 +114,14 @@ contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
         /// @dev Make strategy0 the only strategy on container
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.Idle);
 
-        vm.prank(roles.strategyManager);
+        vm.prank(roles.reshufflingManager);
+        containerAgent.enableReshufflingMode();
+
+        vm.prank(roles.reshufflingExecutor);
         containerAgent.removeStrategy(strategy1);
+
+        vm.prank(roles.reshufflingExecutor);
+        containerAgent.disableReshufflingMode();
 
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.BridgeClaimed);
 
@@ -157,7 +176,15 @@ contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
 
     function test_EnterStrategyMultiple_MOfN() public {
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.Idle);
+
+        vm.prank(roles.reshufflingManager);
+        containerAgent.enableReshufflingMode();
+
         _addStrategyNotionInputOutput();
+
+        vm.prank(roles.reshufflingExecutor);
+        containerAgent.disableReshufflingMode();
+
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.BridgeClaimed);
 
         uint256 strategiesNumber = 2;
@@ -272,7 +299,7 @@ contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
 
         _toggleReshufflingMode(true);
 
-        vm.expectRevert(IStrategyContainer.ActionUnavailableInReshufflingMode.selector);
+        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
         vm.prank(roles.operator);
         containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
     }

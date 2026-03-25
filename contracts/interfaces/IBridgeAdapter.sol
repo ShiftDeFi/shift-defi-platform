@@ -28,8 +28,8 @@ interface IBridgeAdapter {
     error BridgeInstructionNotCached(bytes32 id, bytes32 key);
     error NotEnoughNativeToken(uint256 value, uint256 msgValue);
 
-    /*
-     * @dev Sets slippage cap percentage (basis points).
+    /**
+     * @dev Sets slippage cap percentage (basis points). Can only be called by accounts with BRIDGE_ADAPTER_MANAGER_ROLE.
      * @param slippageCapPct Max allowed slippage delta percentage.
      */
     function setSlippageCapPct(uint256 slippageCapPct) external;
@@ -79,37 +79,38 @@ interface IBridgeAdapter {
      */
     function claimableAmounts(address claimer, address token) external view returns (uint256);
 
-    /*
-     * @dev Sets the bridge path for a given token and chain.
+    /**
+     * @dev Sets the bridge path for a given token and chain. Can only be called by accounts with BRIDGE_ADAPTER_MANAGER_ROLE.
      * @param token The token to bridge on source chain.
      * @param chain The destination chain to bridge to.
      * @param path The path to bridge the token.
      */
     function setBridgePath(address token, uint256 chain, address path) external;
 
-    /*
-     * @dev Sets the peer bridge adapter for a chain.
+    /**
+     * @dev Sets the peer bridge adapter for a chain. Can only be called by accounts with BRIDGE_ADAPTER_MANAGER_ROLE.
      * @param chainId Destination chain id.
      * @param peer Peer bridge adapter address.
      */
     function setPeer(uint256 chainId, address peer) external;
 
-    /*
-     * @dev Whitelists a bridger address.
+    /**
+     * @dev Whitelists a bridger address. Can only be called by accounts with BRIDGE_ADAPTER_MANAGER_ROLE.
      * @param bridger Bridger address to whitelist.
      */
     function whitelistBridger(address bridger) external;
 
-    /*
-     * @dev Blacklists a bridger address.
+    /**
+     * @dev Blacklists a bridger address. Can only be called by accounts with BRIDGE_ADAPTER_MANAGER_ROLE.
      * @param bridger Bridger address to blacklist.
      */
     function blacklistBridger(address bridger) external;
 
-    /*
-     * @dev Retries the bridge for a given instruction and receiver.
+    /**
+     * @dev Retries the bridge for a given instruction and receiver. Can only be called by accounts with CACHE_MANAGER_ROLE.
      * @param instruction The instruction for the bridge.
      * @param receiver The address to receive the bridged token on the destination chain.
+     * @param nonce Nonce of the original bridge attempt.
      */
     function retryBridge(BridgeInstruction calldata instruction, address receiver, uint256 nonce) external payable;
 }

@@ -50,6 +50,10 @@ contract MockContainerPrincipal is IContainerPrincipal {
 
     function prepareLiquidity(ISwapRouter.SwapInstruction[] calldata) external override {}
 
+    function pause() external pure override {}
+
+    function unpause() external pure override {}
+
     function setMessageRouter(address) external pure override {}
 
     function setPeerContainer(address _peerContainer) external override {

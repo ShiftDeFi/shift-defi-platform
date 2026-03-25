@@ -194,12 +194,15 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
 
         uint256 strategiesNumberBefore = containerLocal.getStrategiesNumber();
 
-        vm.prank(roles.strategyManager);
+        vm.startPrank(roles.reshufflingManager);
+        containerLocal.enableReshufflingMode();
+
         containerLocal.addStrategy(
             address(_strategy),
             _createTokensArray(address(notion)),
             _createTokensArray(address(notion))
         );
+        vm.stopPrank();
 
         assertEq(containerLocal.isStrategy(address(_strategy)), true, "test_AddStrategy: strategy not added");
         assertEq(
@@ -210,23 +213,29 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
     }
 
     function test_RevertIf_AddStrategy_IncorrectContainerStatus() public {
-        _setContainerStatus(IContainerLocal.ContainerLocalStatus.DepositRequestRegistered);
-
         IStrategyTemplate _strategy = _deployMockStrategy(address(containerLocal));
 
+        vm.startPrank(roles.reshufflingManager);
+        containerLocal.enableReshufflingMode();
+
+        _setContainerStatus(IContainerLocal.ContainerLocalStatus.DepositRequestRegistered);
+
         vm.expectRevert(Errors.IncorrectContainerStatus.selector);
-        vm.prank(roles.strategyManager);
         containerLocal.addStrategy(
             address(_strategy),
             _createTokensArray(address(notion)),
             _createTokensArray(address(notion))
         );
+        vm.stopPrank();
     }
 
     function test_RemoveStrategy() public {
         uint256 strategiesNumberBefore = containerLocal.getStrategiesNumber();
 
-        vm.prank(roles.strategyManager);
+        vm.prank(roles.reshufflingManager);
+        containerLocal.enableReshufflingMode();
+
+        vm.prank(roles.reshufflingExecutor);
         containerLocal.removeStrategy(address(strategy));
 
         assertEq(containerLocal.isStrategy(address(strategy)), false, "test_RemoveStrategy: strategy not removed");
@@ -238,10 +247,13 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
     }
 
     function test_RevertIf_RemoveStrategy_IncorrectContainerStatus() public {
+        vm.prank(roles.reshufflingManager);
+        containerLocal.enableReshufflingMode();
+
         _setContainerStatus(IContainerLocal.ContainerLocalStatus.DepositRequestRegistered);
 
         vm.expectRevert(Errors.IncorrectContainerStatus.selector);
-        vm.prank(roles.strategyManager);
+        vm.prank(roles.reshufflingExecutor);
         containerLocal.removeStrategy(address(strategy));
     }
 

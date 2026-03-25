@@ -298,7 +298,7 @@ contract ContainerAgentReportDepositTest is ContainerAgentBaseTest {
             IBridgeAdapter.BridgeInstruction[] memory bridgeInstructions
         ) = _prepareReportData(new address[](0), new uint256[](0));
 
-        vm.expectRevert(IStrategyContainer.ActionUnavailableInReshufflingMode.selector);
+        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
         vm.prank(roles.operator);
         containerAgent.reportDeposit(messageInstruction, bridgeAdapters, bridgeInstructions);
     }

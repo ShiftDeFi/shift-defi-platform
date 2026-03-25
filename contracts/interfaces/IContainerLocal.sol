@@ -61,7 +61,7 @@ interface IContainerLocal is IStrategyContainer {
      * @notice Reports withdrawal results to the vault.
      * @dev Can only be called by accounts with OPERATOR_ROLE. Requires status to be AllStrategiesExited.
      */
-    function reportWithdraw() external;
+    function reportWithdrawal() external;
 
     /**
      * @notice Enters a single strategy.
@@ -103,7 +103,7 @@ interface IContainerLocal is IStrategyContainer {
 
     /**
      * @notice Withdraws tokens to the reshuffling gateway.
-     * @dev Can only be called when in reshuffling mode. Can only be called by accounts with OPERATOR_ROLE.
+     * @dev Can only be called when in reshuffling mode. Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
      * @param tokens Array of token addresses to withdraw
      * @param amounts Array of token amounts to withdraw
      */

@@ -18,12 +18,15 @@ contract StrategyContainerBaseTest is Base {
 
     function setUp() public virtual override {
         super.setUp();
+
         swapRouter = _deployMockSwapRouter();
         strategyContainer = _deployMockStrategyContainer();
 
-        vm.startPrank(roles.strategyManager);
+        vm.prank(roles.reshufflingExecutor);
+        strategyContainer.disableReshufflingMode();
+
+        vm.prank(roles.strategyManager);
         strategyContainer.setTreasury(treasury);
-        vm.stopPrank();
     }
 
     function _createAndAddStrategyWithTokens(

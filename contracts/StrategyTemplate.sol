@@ -25,7 +25,8 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    bytes32 private constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
+    bytes32 internal constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
+    bytes32 internal constant EMERGENCY_EXECUTOR_ROLE = keccak256("EMERGENCY_EXECUTOR_ROLE");
     bytes32 internal constant HARVEST_MANAGER_ROLE = keccak256("HARVEST_MANAGER_ROLE");
 
     bytes32 internal constant NO_ALLOCATION_STATE_ID = bytes32(0);
@@ -62,20 +63,17 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         _;
     }
 
-    modifier onlyStrategyContainerOrEmergencyManager() {
-        address strategyContainerCached = _strategyContainer;
-        if (strategyContainerCached != msg.sender) {
-            require(
-                AccessControlUpgradeable(strategyContainerCached).hasRole(EMERGENCY_MANAGER_ROLE, msg.sender),
-                Errors.Unauthorized()
-            );
-        }
-        _;
-    }
-
     modifier onlyEmergencyManager() {
         require(
             AccessControlUpgradeable(_strategyContainer).hasRole(EMERGENCY_MANAGER_ROLE, msg.sender),
+            Errors.Unauthorized()
+        );
+        _;
+    }
+
+    modifier onlyEmergencyExecutor() {
+        require(
+            AccessControlUpgradeable(_strategyContainer).hasRole(EMERGENCY_EXECUTOR_ROLE, msg.sender),
             Errors.Unauthorized()
         );
         _;
@@ -360,7 +358,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         bytes32 toStateId,
         uint256 share,
         uint256 minNavDelta
-    ) public payable onlyStrategyContainerOrEmergencyManager nonReentrant {
+    ) public payable nonReentrant onlyEmergencyExecutor {
         require(share > 0 && share <= MAX_BPS, Errors.IncorrectAmount());
         require(_stateIds.contains(toStateId), StateNotFound(toStateId));
 

@@ -23,9 +23,6 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
     function test_WithdrawToReshufflingGateway() public {
         _toggleReshufflingMode(true);
 
-        vm.prank(roles.reshufflingManager);
-        containerAgent.setReshufflingGateway(address(reshufflingGateway));
-
         uint256 tokenNumber = 2;
         address[] memory bridgeAdapters = new address[](tokenNumber);
         bridgeAdapters[0] = address(bridgeAdapter);
@@ -44,7 +41,7 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
             instructions[i] = _craftBridgeInstruction(tokens[i], amounts[i]);
         }
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         containerAgent.withdrawToReshufflingGateway(bridgeAdapters, instructions);
 
         assertEq(dai.balanceOf(address(containerAgent)), 0, "test_WithdrawToReshufflingGateway: dai balance not zero");
@@ -68,9 +65,6 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
     function test_RevertIf_WithdrawToReshufflingGateway_ArrayLengthMismatch() public {
         _toggleReshufflingMode(true);
 
-        vm.prank(roles.reshufflingManager);
-        containerAgent.setReshufflingGateway(address(reshufflingGateway));
-
         uint256 tokenNumber = 1;
         address[] memory bridgeAdapters = new address[](tokenNumber + 1);
         bridgeAdapters[0] = address(bridgeAdapter);
@@ -78,7 +72,7 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](tokenNumber);
         instructions[0] = _craftBridgeInstruction(address(notion), DEPOSIT_AMOUNT);
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ArrayLengthMismatch.selector);
         containerAgent.withdrawToReshufflingGateway(bridgeAdapters, instructions);
     }
@@ -86,13 +80,10 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
     function test_RevertIf_WithdrawToReshufflingGateway_ZeroArrayLength() public {
         _toggleReshufflingMode(true);
 
-        vm.prank(roles.reshufflingManager);
-        containerAgent.setReshufflingGateway(address(reshufflingGateway));
-
         address[] memory bridgeAdapters = new address[](0);
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](0);
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ZeroArrayLength.selector);
         containerAgent.withdrawToReshufflingGateway(bridgeAdapters, instructions);
     }
@@ -110,7 +101,7 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
         bytes32 reshufflingGatewaySlot = bytes32(uint256(19));
         vm.store(address(containerAgent), reshufflingGatewaySlot, bytes32(uint256(0)));
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ZeroAddress.selector);
         containerAgent.withdrawToReshufflingGateway(bridgeAdapters, instructions);
     }
@@ -118,16 +109,13 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
     function test_RevertIf_WithdrawToReshufflingGateway_BridgeAdapterIsNotWhitelisted() public {
         _toggleReshufflingMode(true);
 
-        vm.prank(roles.reshufflingManager);
-        containerAgent.setReshufflingGateway(address(reshufflingGateway));
-
         address[] memory bridgeAdapters = new address[](1);
         bridgeAdapters[0] = address(makeAddr("BRIDGE_ADAPTER"));
 
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](1);
         instructions[0] = _craftBridgeInstruction(address(notion), DEPOSIT_AMOUNT);
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(ICrossChainContainer.BridgeAdapterNotSupported.selector);
         containerAgent.withdrawToReshufflingGateway(bridgeAdapters, instructions);
     }
@@ -140,8 +128,8 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](tokenNumber);
         instructions[0] = _craftBridgeInstruction(address(notion), DEPOSIT_AMOUNT);
 
-        vm.prank(roles.reshufflingManager);
-        vm.expectRevert(IStrategyContainer.ActionUnavailableNotInReshufflingMode.selector);
+        vm.prank(roles.reshufflingExecutor);
+        vm.expectRevert(Errors.ReshufflingModeDisabled.selector);
         containerAgent.withdrawToReshufflingGateway(bridgeAdapters, instructions);
     }
 
@@ -155,7 +143,7 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](tokenNumber);
         instructions[0] = _craftBridgeInstruction(address(notion), DEPOSIT_AMOUNT);
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(IStrategyContainer.EmergencyResolutionInProgress.selector);
         containerAgent.withdrawToReshufflingGateway(bridgeAdapters, instructions);
     }

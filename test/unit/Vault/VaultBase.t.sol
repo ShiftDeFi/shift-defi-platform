@@ -30,7 +30,10 @@ contract VaultBaseTest is L1Base {
     }
 
     function _setupNContainers(uint256 nContainers) internal {
-        for (uint i = 0; i < nContainers; i++) {
+        vm.prank(roles.reshufflingManager);
+        vault.enableReshufflingMode();
+
+        for (uint256 i = 0; i < nContainers; ++i) {
             address container = address(_deployMockContainerPrincipal());
             _addContainer(container, REMOTE_CHAIN_ID + i);
             vm.prank(container);
@@ -38,6 +41,9 @@ contract VaultBaseTest is L1Base {
         }
 
         _setVaultContainerWeightsProportionally();
+
+        vm.prank(roles.reshufflingExecutor);
+        vault.disableReshufflingMode();
     }
 
     function _processSingleUserResolvedWithdrawBatch(address user) internal returns (uint256 withdrawBatchId) {

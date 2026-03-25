@@ -24,8 +24,14 @@ contract ContainerPrincipalBaseTest is L1Base {
     function setUp() public virtual override {
         super.setUp();
 
+        vm.prank(roles.reshufflingManager);
+        vault.enableReshufflingMode();
+
         containerPrincipal = _deployContainerPrincipal();
         _addContainer(address(containerPrincipal), REMOTE_CHAIN_ID);
+
+        vm.prank(roles.reshufflingExecutor);
+        vault.disableReshufflingMode();
 
         vm.prank(roles.messengerManager);
         containerPrincipal.setPeerContainer(makeAddr("ContainerAgent"));

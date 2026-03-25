@@ -167,7 +167,7 @@ interface IStrategyTemplate {
 
     /**
      * @notice Performs an emergency exit to a specific state.
-     * @dev Callable by the strategy container or EMERGENCY_MANAGER_ROLE.
+     * @dev Callable by the strategy container or EMERGENCY_EXECUTOR_ROLE.
      * @param toStateId Destination state identifier for the emergency exit.
      * @param share Portion of the position to exit in basis points (10000 = 100%).
      * @param minNavDelta Minimum required NAV increase (notion units) after exit.

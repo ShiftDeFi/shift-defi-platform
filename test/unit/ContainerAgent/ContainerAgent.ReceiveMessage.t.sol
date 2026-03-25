@@ -80,7 +80,7 @@ contract ContainerAgentReceiveMessageTest is ContainerAgentBaseTest {
         uint256 share = 1_000;
         bytes memory rawMessage = _craftWithdrawalRequestMessage(share);
         vm.prank(address(messageRouter));
-        vm.expectRevert(IStrategyContainer.ActionUnavailableInReshufflingMode.selector);
+        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
         containerAgent.receiveMessage(rawMessage);
     }
 

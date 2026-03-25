@@ -11,6 +11,7 @@ import {Container} from "./Container.sol";
 
 import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
 import {IStrategyTemplate} from "./interfaces/IStrategyTemplate.sol";
+import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 
 import {EnumerableAddressSetExtended} from "./libraries/EnumerableAddressSetExtended.sol";
 import {Errors} from "./libraries/Errors.sol";
@@ -23,7 +24,9 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     bytes32 internal constant STRATEGY_MANAGER_ROLE = keccak256("STRATEGY_MANAGER_ROLE");
     bytes32 internal constant HARVEST_MANAGER_ROLE = keccak256("HARVEST_MANAGER_ROLE");
     bytes32 internal constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
+    bytes32 internal constant RESHUFFLING_EXECUTOR_ROLE = keccak256("RESHUFFLING_EXECUTOR_ROLE");
     bytes32 internal constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
+    bytes32 internal constant EMERGENCY_EXECUTOR_ROLE = keccak256("EMERGENCY_EXECUTOR_ROLE");
 
     EnumerableSet.AddressSet internal _strategies;
 
@@ -45,21 +48,21 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     uint256 private constant MAX_BPS = 1e18;
     uint256 private constant MAX_STRATEGIES = 255;
 
-    bool internal _reshufflingMode;
-    bool internal _isResolvingEmergency;
+    bool public isReshuffling;
+    bool public isResolvingEmergency;
 
     modifier notResolvingEmergency() {
-        require(!_isResolvingEmergency, EmergencyResolutionInProgress());
+        require(!isResolvingEmergency, EmergencyResolutionInProgress());
         _;
     }
 
     modifier notInReshufflingMode() {
-        require(!_reshufflingMode, ActionUnavailableInReshufflingMode());
+        require(!isReshuffling, Errors.ReshufflingModeEnabled());
         _;
     }
 
     modifier onlyInReshufflingMode() {
-        require(_reshufflingMode, ActionUnavailableNotInReshufflingMode());
+        require(isReshuffling, Errors.ReshufflingModeDisabled());
         _;
     }
 
@@ -67,23 +70,31 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         require(params.roleAddresses.strategyManager != address(0), Errors.ZeroAddress());
         require(params.roleAddresses.harvestManager != address(0), Errors.ZeroAddress());
         require(params.roleAddresses.reshufflingManager != address(0), Errors.ZeroAddress());
+        require(params.roleAddresses.reshufflingExecutor != address(0), Errors.ZeroAddress());
         require(params.roleAddresses.emergencyManager != address(0), Errors.ZeroAddress());
+        require(params.roleAddresses.emergencyExecutor != address(0), Errors.ZeroAddress());
 
         _grantRole(STRATEGY_MANAGER_ROLE, params.roleAddresses.strategyManager);
         _grantRole(RESHUFFLING_MANAGER_ROLE, params.roleAddresses.reshufflingManager);
+        _grantRole(RESHUFFLING_EXECUTOR_ROLE, params.roleAddresses.reshufflingExecutor);
         _grantRole(HARVEST_MANAGER_ROLE, params.roleAddresses.harvestManager);
         _grantRole(EMERGENCY_MANAGER_ROLE, params.roleAddresses.emergencyManager);
+        _grantRole(EMERGENCY_EXECUTOR_ROLE, params.roleAddresses.emergencyExecutor);
 
         _setReshufflingGateway(params.reshufflingGateway);
         _setTreasury(params.treasury);
         _setFeePct(params.feePct);
         _setPriceOracle(params.priceOracle);
+
+        isReshuffling = true;
     }
 
     // ---- Configuration ----
 
     /// @inheritdoc IStrategyContainer
-    function setReshufflingGateway(address newReshufflingGateway) external onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    function setReshufflingGateway(
+        address newReshufflingGateway
+    ) external notInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
         _setReshufflingGateway(newReshufflingGateway);
     }
 
@@ -105,6 +116,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     function _setReshufflingGateway(address newReshufflingGateway) internal {
         require(newReshufflingGateway != address(0), Errors.ZeroAddress());
         address oldReshufflingGateway = reshufflingGateway;
+        require(oldReshufflingGateway != newReshufflingGateway, Errors.SettingSameValue());
         reshufflingGateway = newReshufflingGateway;
         emit ReshufflingGatewayUpdated(oldReshufflingGateway, newReshufflingGateway);
     }
@@ -140,8 +152,8 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         onlyRole(RESHUFFLING_MANAGER_ROLE)
     {
         require(_getCurrentBatchType() == CurrentBatchType.NoBatch, Errors.IncorrectContainerStatus());
-        _reshufflingMode = true;
-        emit ReshufflingModeUpdated(true);
+        isReshuffling = true;
+        emit ReshufflingModeEnabled();
     }
 
     /// @inheritdoc IStrategyContainer
@@ -149,11 +161,18 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         external
         onlyInReshufflingMode
         notResolvingEmergency
-        onlyRole(RESHUFFLING_MANAGER_ROLE)
+        onlyRole(RESHUFFLING_EXECUTOR_ROLE)
     {
         require(_getCurrentBatchType() == CurrentBatchType.NoBatch, Errors.IncorrectContainerStatus());
-        _reshufflingMode = false;
-        emit ReshufflingModeUpdated(false);
+        isReshuffling = false;
+        emit ReshufflingModeDisabled();
+    }
+
+    function prepareLiquidityInReshufflingMode(
+        ISwapRouter.SwapInstruction[] calldata instructions
+    ) external onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+        require(instructions.length > 0, Errors.ZeroArrayLength());
+        _prepareLiquidity(instructions);
     }
 
     // ---- Strategies management logic ----
@@ -177,7 +196,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     function setStrategyInputTokens(
         address strategy,
         address[] calldata inputTokens
-    ) external onlyRole(STRATEGY_MANAGER_ROLE) {
+    ) external onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(_isStrategy(strategy), StrategyNotFound());
         _setStrategyInputTokens(strategy, inputTokens);
     }
@@ -186,7 +205,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     function setStrategyOutputTokens(
         address strategy,
         address[] calldata outputTokens
-    ) external onlyRole(STRATEGY_MANAGER_ROLE) {
+    ) external onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(_isStrategy(strategy), StrategyNotFound());
         _setStrategyOutputTokens(strategy, outputTokens);
     }
@@ -320,7 +339,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         address strategy,
         uint256[] calldata inputAmounts,
         uint256 minNavDelta
-    ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(_isStrategy(strategy), StrategyNotFound());
         require(!isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
 
@@ -358,7 +377,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         address strategy,
         uint256 share,
         uint256 maxNavDelta
-    ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_MANAGER_ROLE) {
+    ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(share > 0, Errors.ZeroAmount());
         require(share <= MAX_BPS, Errors.IncorrectAmount());
         require(_isStrategy(strategy), StrategyNotFound());
@@ -418,26 +437,16 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         uint256 mask = 1 << strategyIndex;
         _strategyUnresolvedNavBitmask |= mask;
 
-        if (!_isResolvingEmergency) {
-            _isResolvingEmergency = true;
+        if (!isResolvingEmergency) {
+            isResolvingEmergency = true;
             emit EmergencyResolutionStarted(msg.sender);
         }
     }
 
     /// @inheritdoc IStrategyContainer
-    function isReshufflingMode() external view returns (bool) {
-        return _reshufflingMode;
-    }
-
-    /// @inheritdoc IStrategyContainer
-    function isResolvingEmergency() external view returns (bool) {
-        return _isResolvingEmergency;
-    }
-
-    /// @inheritdoc IStrategyContainer
     function completeEmergencyResolution() external onlyRole(EMERGENCY_MANAGER_ROLE) {
-        require(_isResolvingEmergency, NotResolvingEmergency());
-        _isResolvingEmergency = false;
+        require(isResolvingEmergency, NotResolvingEmergency());
+        isResolvingEmergency = false;
         require(_strategyUnresolvedNavBitmask == 0, EmergencyResolutionNotCompleted(_strategyUnresolvedNavBitmask));
         emit EmergencyResolutionCompleted();
     }

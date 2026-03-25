@@ -27,7 +27,7 @@ contract MockContainerLocal is IContainerLocal {
 
     function reportDeposit() external {}
 
-    function reportWithdraw() external {}
+    function reportWithdrawal() external {}
 
     function withdrawToReshufflingGateway(address[] memory tokens, uint256[] memory amounts) external {}
 
@@ -54,6 +54,10 @@ contract MockContainerLocal is IContainerLocal {
     function setSwapRouter(address) external pure {}
 
     function prepareLiquidity(ISwapRouter.SwapInstruction[] calldata) external override {}
+
+    function pause() external pure {}
+
+    function unpause() external pure {}
 
     function setMessageRouter(address) external pure {}
 
@@ -121,14 +125,6 @@ contract MockContainerLocal is IContainerLocal {
         return false;
     }
 
-    function isReshufflingMode() external pure returns (bool) {
-        return false;
-    }
-
-    function isResolvingEmergency() external pure returns (bool) {
-        return false;
-    }
-
     function enterInReshufflingMode(address, uint256[] calldata, uint256) external pure {}
 
     function exitInReshufflingMode(address, uint256, uint256) external pure {}
@@ -148,4 +144,6 @@ contract MockContainerLocal is IContainerLocal {
     function exitStrategy(address, uint256) external pure {}
 
     function resolveStrategyNav(uint256) external {}
+
+    function prepareLiquidityInReshufflingMode(ISwapRouter.SwapInstruction[] calldata) external pure {}
 }

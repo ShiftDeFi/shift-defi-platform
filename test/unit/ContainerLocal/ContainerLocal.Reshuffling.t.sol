@@ -14,8 +14,8 @@ contract ContainerLocalReshufflingTest is ContainerLocalBaseTest {
         address[] memory tokens = new address[](0);
         uint256[] memory amounts = new uint256[](0);
 
-        vm.prank(roles.reshufflingManager);
-        vm.expectRevert(IStrategyContainer.ActionUnavailableNotInReshufflingMode.selector);
+        vm.prank(roles.reshufflingExecutor);
+        vm.expectRevert(Errors.ReshufflingModeDisabled.selector);
         containerLocal.withdrawToReshufflingGateway(tokens, amounts);
     }
 
@@ -26,14 +26,14 @@ contract ContainerLocalReshufflingTest is ContainerLocalBaseTest {
         address[] memory tokens = new address[](1);
         uint256[] memory amounts = new uint256[](0);
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ArrayLengthMismatch.selector);
         containerLocal.withdrawToReshufflingGateway(tokens, amounts);
 
         tokens = new address[](0);
         amounts = new uint256[](1);
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ZeroArrayLength.selector);
         containerLocal.withdrawToReshufflingGateway(tokens, amounts);
     }
@@ -48,23 +48,22 @@ contract ContainerLocalReshufflingTest is ContainerLocalBaseTest {
         bytes32 reshufflingGatewaySlot = bytes32(uint256(13));
         vm.store(address(containerLocal), reshufflingGatewaySlot, bytes32(uint256(0)));
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ZeroAddress.selector);
         containerLocal.withdrawToReshufflingGateway(tokens, amounts);
     }
 
     function test_WithdrawToReshufflingGateway() public {
-        vm.prank(roles.reshufflingManager);
-        containerLocal.enableReshufflingMode();
-
-        vm.prank(roles.reshufflingManager);
+        vm.startPrank(roles.reshufflingManager);
         containerLocal.setReshufflingGateway(address(1));
+        containerLocal.enableReshufflingMode();
+        vm.stopPrank();
 
         address[] memory tokens = new address[](1);
         tokens[0] = address(notion);
         uint256[] memory amounts = new uint256[](1);
 
-        vm.prank(roles.reshufflingManager);
+        vm.prank(roles.reshufflingExecutor);
         containerLocal.withdrawToReshufflingGateway(tokens, amounts);
     }
 }

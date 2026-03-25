@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {IContainer} from "./IContainer.sol";
+import {ISwapRouter} from "./ISwapRouter.sol";
 
 interface IStrategyContainer is IContainer {
     // ---- Enums ----
@@ -141,6 +142,13 @@ interface IStrategyContainer is IContainer {
      * @dev Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
      */
     function disableReshufflingMode() external;
+
+    /**
+     * @notice Prepares liquidity in reshuffling mode.
+     * @dev Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
+     * @param instructions Swap instructions to execute.
+     */
+    function prepareLiquidityInReshufflingMode(ISwapRouter.SwapInstruction[] calldata instructions) external;
 
     /**
      * @notice Returns all registered strategies.

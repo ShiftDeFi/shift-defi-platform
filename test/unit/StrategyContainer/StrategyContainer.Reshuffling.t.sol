@@ -5,6 +5,7 @@ import {StrategyContainerBaseTest} from "test/unit/StrategyContainer/StrategyCon
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {IContainer} from "contracts/interfaces/IContainer.sol";
+import {ISwapRouter} from "contracts/interfaces/ISwapRouter.sol";
 import {Errors} from "contracts/libraries/Errors.sol";
 import {MockStrategyInterfaceBased} from "test/mocks/MockStrategyInterfaceBased.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
@@ -391,5 +392,19 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
         vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.IncorrectAmount.selector);
         strategyContainer.exitInReshufflingMode(address(mockStrategy), MAX_BPS + 1, type(uint256).max);
+    }
+
+    function test_RevertIf_PrepareLiquidityInReshufflingMode_NotInReshufflingMode() public {
+        vm.prank(roles.reshufflingExecutor);
+        vm.expectRevert(Errors.ReshufflingModeDisabled.selector);
+        strategyContainer.prepareLiquidityInReshufflingMode(new ISwapRouter.SwapInstruction[](0));
+    }
+
+    function test_RevertIf_PrepareLiquidityInReshufflingMode_ZeroArrayLength() public {
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+        vm.prank(roles.reshufflingExecutor);
+        vm.expectRevert(Errors.ZeroArrayLength.selector);
+        strategyContainer.prepareLiquidityInReshufflingMode(new ISwapRouter.SwapInstruction[](0));
     }
 }

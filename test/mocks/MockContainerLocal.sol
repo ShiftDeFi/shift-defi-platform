@@ -144,4 +144,6 @@ contract MockContainerLocal is IContainerLocal {
     function exitStrategy(address, uint256) external pure {}
 
     function resolveStrategyNav(uint256) external {}
+
+    function prepareLiquidityInReshufflingMode(ISwapRouter.SwapInstruction[] calldata) external pure {}
 }

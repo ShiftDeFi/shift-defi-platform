@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -18,12 +17,7 @@ import {IVault} from "./interfaces/IVault.sol";
 
 import {Errors} from "./libraries/Errors.sol";
 
-contract ReshufflingGateway is
-    AccessControlUpgradeable,
-    PausableUpgradeable,
-    ReentrancyGuardUpgradeable,
-    IReshufflingGateway
-{
+contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradeable, IReshufflingGateway {
     using Math for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -31,7 +25,6 @@ contract ReshufflingGateway is
     bytes32 public constant BRIDGE_ADAPTER_MANAGER_ROLE = keccak256("BRIDGE_ADAPTER_MANAGER_ROLE");
     bytes32 public constant RESHUFFLING_EXECUTOR_ROLE = keccak256("RESHUFFLING_EXECUTOR_ROLE");
     bytes32 public constant TOKEN_MANAGER_ROLE = keccak256("TOKEN_MANAGER_ROLE");
-    bytes32 public constant EMERGENCY_PAUSER_ROLE = keccak256("EMERGENCY_PAUSER_ROLE");
 
     address public vault;
     address public swapRouter;
@@ -39,8 +32,8 @@ contract ReshufflingGateway is
     EnumerableSet.AddressSet private _whitelistedTokens;
     EnumerableSet.AddressSet private _whitelistedBridgeAdapters;
 
-    modifier onlyReshufflingMode() {
-        require(IVault(vault).isReshuffling(), VaultNotInReshufflingMode());
+    modifier onlyInReshufflingMode() {
+        require(IVault(vault).isReshuffling(), Errors.ReshufflingModeDisabled());
         _;
     }
 
@@ -65,11 +58,9 @@ contract ReshufflingGateway is
         address _defaultAdmin,
         address _bridgeAdapterManager,
         address _reshufflingExecutor,
-        address _tokenManager,
-        address _emergencyPauser
+        address _tokenManager
     ) external initializer {
         __AccessControl_init();
-        __Pausable_init();
         __ReentrancyGuard_init();
 
         require(_vault != address(0), Errors.ZeroAddress());
@@ -81,13 +72,11 @@ contract ReshufflingGateway is
         require(_bridgeAdapterManager != address(0), Errors.ZeroAddress());
         require(_reshufflingExecutor != address(0), Errors.ZeroAddress());
         require(_tokenManager != address(0), Errors.ZeroAddress());
-        require(_emergencyPauser != address(0), Errors.ZeroAddress());
 
         _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
         _grantRole(BRIDGE_ADAPTER_MANAGER_ROLE, _bridgeAdapterManager);
         _grantRole(RESHUFFLING_EXECUTOR_ROLE, _reshufflingExecutor);
         _grantRole(TOKEN_MANAGER_ROLE, _tokenManager);
-        _grantRole(EMERGENCY_PAUSER_ROLE, _emergencyPauser);
     }
 
     /// @inheritdoc IReshufflingGateway
@@ -147,7 +136,10 @@ contract ReshufflingGateway is
     }
 
     /// @inheritdoc IReshufflingGateway
-    function claimBridge(address bridgeAdapter, address token) external whenNotPaused nonReentrant returns (uint256) {
+    function claimBridge(
+        address bridgeAdapter,
+        address token
+    ) external nonReentrant onlyInReshufflingMode returns (uint256) {
         require(_whitelistedBridgeAdapters.contains(bridgeAdapter), NotWhitelistedBridgeAdapter(bridgeAdapter));
         require(_whitelistedTokens.contains(token), NotWhitelistedToken(token));
 
@@ -159,7 +151,7 @@ contract ReshufflingGateway is
     /// @inheritdoc IReshufflingGateway
     function prepareLiquidity(
         ISwapRouter.SwapInstruction[] calldata swapInstructions
-    ) external nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+    ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         uint256 length = swapInstructions.length;
         require(length > 0, Errors.ZeroArrayLength());
         for (uint256 i = 0; i < length; i++) {
@@ -182,7 +174,7 @@ contract ReshufflingGateway is
         address container,
         address[] memory bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata instructions
-    ) external payable onlyReshufflingMode nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+    ) external payable onlyInReshufflingMode nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(bridgeAdapters.length > 0, Errors.ZeroArrayLength());
         require(bridgeAdapters.length == instructions.length, Errors.ArrayLengthMismatch());
 
@@ -244,7 +236,7 @@ contract ReshufflingGateway is
         address container,
         address[] memory tokens,
         uint256[] memory amounts
-    ) external payable onlyReshufflingMode nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+    ) external payable onlyInReshufflingMode nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(tokens.length > 0, Errors.ZeroArrayLength());
         require(tokens.length == amounts.length, Errors.ArrayLengthMismatch());
         require(IVault(vault).isContainer(container), NotContainer(container));
@@ -265,15 +257,5 @@ contract ReshufflingGateway is
             IERC20(token).safeTransfer(container, amount);
             emit SentToLocalContainer(container, token, amount);
         }
-    }
-
-    /// @inheritdoc IReshufflingGateway
-    function pause() external whenNotPaused onlyRole(EMERGENCY_PAUSER_ROLE) {
-        _pause();
-    }
-
-    /// @inheritdoc IReshufflingGateway
-    function unpause() external onlyRole(EMERGENCY_PAUSER_ROLE) {
-        _unpause();
     }
 }

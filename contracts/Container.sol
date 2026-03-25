@@ -141,7 +141,9 @@ abstract contract Container is
     }
 
     /// @inheritdoc IContainer
-    function prepareLiquidity(ISwapRouter.SwapInstruction[] calldata instructions) external onlyRole(OPERATOR_ROLE) {
+    function prepareLiquidity(
+        ISwapRouter.SwapInstruction[] calldata instructions
+    ) external whenNotPaused onlyRole(OPERATOR_ROLE) {
         require(instructions.length > 0, Errors.ZeroArrayLength());
         _prepareLiquidity(instructions);
     }

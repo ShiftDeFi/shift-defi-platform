@@ -213,6 +213,9 @@ contract ReshufflingGatewayTest is L1Base {
 
         notion.mint(address(bridgeAdapter), amount);
         bridgeAdapter.finalizeBridge(address(reshufflingGateway), address(notion), amount);
+
+        _setReshufflingMode();
+
         reshufflingGateway.claimBridge(address(bridgeAdapter), address(notion));
         assertEq(
             notion.balanceOf(address(reshufflingGateway)),
@@ -228,6 +231,9 @@ contract ReshufflingGatewayTest is L1Base {
 
     function test_RevertIf_ClaimBridge_NotWhitelistedBridgeAdapter() public {
         address notWhitelistedBridgeAdapter = makeAddr("NOT_WHITELISTED_BRIDGE_ADAPTER");
+
+        _setReshufflingMode();
+
         vm.prank(users.alice);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -240,6 +246,9 @@ contract ReshufflingGatewayTest is L1Base {
 
     function test_RevertIf_ClaimBridge_NotWhitelistedToken() public {
         address notWhitelistedToken = makeAddr("NOT_WHITELISTED_TOKEN");
+
+        _setReshufflingMode();
+
         vm.prank(users.alice);
         vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotWhitelistedToken.selector, notWhitelistedToken));
         reshufflingGateway.claimBridge(address(bridgeAdapter), notWhitelistedToken);
@@ -254,6 +263,8 @@ contract ReshufflingGatewayTest is L1Base {
 
         notion.mint(address(reshufflingGateway), amount);
         dai.mint(address(swapRouter), expectedAmount);
+
+        _setReshufflingMode();
 
         vm.prank(roles.reshufflingExecutor);
         reshufflingGateway.prepareLiquidity(
@@ -273,6 +284,8 @@ contract ReshufflingGatewayTest is L1Base {
     }
 
     function test_RevertIf_PrepareLiquidity_NotWhitelistedTokenOut() public {
+        _setReshufflingMode();
+
         vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotWhitelistedToken.selector, address(dai)));
         reshufflingGateway.prepareLiquidity(
@@ -283,6 +296,8 @@ contract ReshufflingGatewayTest is L1Base {
     function test_RevertIf_PrepareLiquidity_NotWhitelistedTokenIn() public {
         address notWhitelistedToken = makeAddr("NOT_WHITELISTED_TOKEN");
 
+        _setReshufflingMode();
+
         vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotWhitelistedToken.selector, notWhitelistedToken));
         reshufflingGateway.prepareLiquidity(
@@ -291,6 +306,8 @@ contract ReshufflingGatewayTest is L1Base {
     }
 
     function test_RevertIf_PrepareLiquidity_ZeroArrayLength() public {
+        _setReshufflingMode();
+
         vm.prank(roles.reshufflingExecutor);
         vm.expectRevert(Errors.ZeroArrayLength.selector);
         reshufflingGateway.prepareLiquidity(new ISwapRouter.SwapInstruction[](0));
@@ -343,9 +360,9 @@ contract ReshufflingGatewayTest is L1Base {
         );
     }
 
-    function test_RevertIf_SendToCrossChainContainer_VaultNotInReshufflingMode() public {
+    function test_RevertIf_SendToCrossChainContainer_NotInReshufflingMode() public {
         vm.prank(roles.reshufflingExecutor);
-        vm.expectRevert(IReshufflingGateway.VaultNotInReshufflingMode.selector);
+        vm.expectRevert(Errors.ReshufflingModeDisabled.selector);
         reshufflingGateway.sendToCrossChainContainer(
             address(containerPrincipal),
             new address[](1),
@@ -662,7 +679,7 @@ contract ReshufflingGatewayTest is L1Base {
 
     function test_RevertIf_SendToLocalContainer_NotReshufflingMode() public {
         vm.prank(roles.reshufflingExecutor);
-        vm.expectRevert(IReshufflingGateway.VaultNotInReshufflingMode.selector);
+        vm.expectRevert(Errors.ReshufflingModeDisabled.selector);
         reshufflingGateway.sendToLocalContainer(address(containerLocal), new address[](1), new uint256[](1));
     }
 

@@ -11,6 +11,7 @@ import {Container} from "./Container.sol";
 
 import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
 import {IStrategyTemplate} from "./interfaces/IStrategyTemplate.sol";
+import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
 
 import {EnumerableAddressSetExtended} from "./libraries/EnumerableAddressSetExtended.sol";
 import {Errors} from "./libraries/Errors.sol";
@@ -165,6 +166,13 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         require(_getCurrentBatchType() == CurrentBatchType.NoBatch, Errors.IncorrectContainerStatus());
         isReshuffling = false;
         emit ReshufflingModeDisabled();
+    }
+
+    function prepareLiquidityInReshufflingMode(
+        ISwapRouter.SwapInstruction[] calldata instructions
+    ) external onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+        require(instructions.length > 0, Errors.ZeroArrayLength());
+        _prepareLiquidity(instructions);
     }
 
     // ---- Strategies management logic ----

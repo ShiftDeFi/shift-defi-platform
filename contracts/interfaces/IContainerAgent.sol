@@ -18,6 +18,7 @@ interface IContainerAgent is ICrossChainContainer, IStrategyContainer {
     }
 
     struct ReportDepositLocalVars {
+        uint256 remoteChainIdCached;
         address peerContainerCached;
         uint256 nativeBalanceCached;
         address[] tokens;
@@ -27,6 +28,7 @@ interface IContainerAgent is ICrossChainContainer, IStrategyContainer {
     }
 
     struct ReportWithdrawalLocalVars {
+        uint256 remoteChainIdCached;
         address peerContainerCached;
         address[] tokens;
         uint256[] minAmounts;
@@ -69,33 +71,12 @@ interface IContainerAgent is ICrossChainContainer, IStrategyContainer {
     function enterStrategy(address strategy, uint256[] calldata inputAmounts, uint256 minNavDelta) external;
 
     /**
-     * @notice Enters multiple strategies.
-     * @dev Can only be called by accounts with OPERATOR_ROLE. Requires appropriate container status.
-     * @param strategies Array of strategy addresses to enter
-     * @param inputAmounts Array of arrays, where each inner array contains input token amounts for the corresponding strategy
-     * @param minNavDelta Array of minimum NAV deltas for each strategy
-     */
-    function enterStrategyMultiple(
-        address[] calldata strategies,
-        uint256[][] calldata inputAmounts,
-        uint256[] calldata minNavDelta
-    ) external;
-
-    /**
      * @notice Exits a single strategy.
      * @dev Can only be called by accounts with OPERATOR_ROLE. Requires appropriate container status.
      * @param strategy The address of the strategy to exit
      * @param minNavDelta The minimum NAV delta required
      */
     function exitStrategy(address strategy, uint256 minNavDelta) external;
-
-    /**
-     * @notice Exits multiple strategies.
-     * @dev Can only be called by accounts with OPERATOR_ROLE. Requires appropriate container status.
-     * @param strategies Array of strategy addresses to exit
-     * @param minNavDeltas Array of minimum NAV deltas for each strategy
-     */
-    function exitStrategyMultiple(address[] calldata strategies, uint256[] calldata minNavDeltas) external;
 
     /**
      * @notice Reports deposit results to the peer container.
@@ -138,14 +119,6 @@ interface IContainerAgent is ICrossChainContainer, IStrategyContainer {
      * @param token The address of the token to claim
      */
     function claimInReshufflingMode(address bridgeAdapter, address token) external;
-
-    /**
-     * @notice Claims tokens from multiple bridge adapters.
-     * @dev Can only be called by accounts with OPERATOR_ROLE.
-     * @param bridgeAdapters Array of bridge adapter addresses
-     * @param tokens Array of token addresses to claim
-     */
-    function claimMultiple(address[] calldata bridgeAdapters, address[] calldata tokens) external;
 
     /**
      * @notice Withdraws tokens to the reshuffling gateway.

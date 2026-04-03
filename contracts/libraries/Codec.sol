@@ -87,7 +87,7 @@ library Codec {
      * @param request The deposit request to encode.
      * @return Encoded byte array containing message type, token count, addresses, and amounts.
      */
-    function encode(DepositRequest memory request) internal pure returns (bytes memory) {
+    function encode(DepositRequest memory request) external pure returns (bytes memory) {
         uint256 numTokens = request.tokens.length;
         require(numTokens > 0, Errors.ZeroArrayLength());
         require(numTokens < MAX_TOKENS, Errors.IncorrectAmount());
@@ -112,7 +112,7 @@ library Codec {
      * @param response The deposit response to encode.
      * @return Encoded byte array containing message type, token count, addresses, amounts, and NAV values.
      */
-    function encode(DepositResponse memory response) internal pure returns (bytes memory) {
+    function encode(DepositResponse memory response) external pure returns (bytes memory) {
         uint256 numTokens = response.tokens.length;
         require(numTokens < MAX_TOKENS, Errors.IncorrectAmount());
         require(numTokens == response.amounts.length, Errors.ArrayLengthMismatch());
@@ -145,7 +145,7 @@ library Codec {
      * @param request The withdrawal request to encode.
      * @return Encoded byte array containing message type and share amount.
      */
-    function encode(WithdrawalRequest memory request) internal pure returns (bytes memory) {
+    function encode(WithdrawalRequest memory request) external pure returns (bytes memory) {
         require(request.share <= type(uint128).max, Errors.IncorrectAmount());
         uint256 packageSize = UINT8_SIZE + UINT128_SIZE;
         bytes memory buffer = new bytes(packageSize);
@@ -162,7 +162,7 @@ library Codec {
      * @param response The withdrawal response to encode.
      * @return Encoded byte array containing message type, token count, addresses, and amounts.
      */
-    function encode(WithdrawalResponse memory response) internal pure returns (bytes memory) {
+    function encode(WithdrawalResponse memory response) external pure returns (bytes memory) {
         uint256 numTokens = response.tokens.length;
         require(numTokens > 0, Errors.ZeroArrayLength());
         require(numTokens < MAX_TOKENS, Errors.IncorrectAmount());
@@ -189,7 +189,7 @@ library Codec {
      * @param data The encoded byte array to decode.
      * @return request Decoded deposit request structure.
      */
-    function decodeDepositRequest(bytes memory data) internal pure returns (DepositRequest memory) {
+    function decodeDepositRequest(bytes memory data) external pure returns (DepositRequest memory) {
         uint8 messageType = fetchMessageType(data);
         uint8 numTokens = fetchNumTokens(data);
 
@@ -206,7 +206,7 @@ library Codec {
      * @param data The encoded byte array to decode.
      * @return response Decoded deposit response structure.
      */
-    function decodeDepositResponse(bytes memory data) internal pure returns (DepositResponse memory) {
+    function decodeDepositResponse(bytes memory data) external pure returns (DepositResponse memory) {
         uint8 messageType = fetchMessageType(data);
         uint8 numTokens = fetchNumTokens(data);
         uint256 navAHPosition = ADDRESS_ARRAY_START_POSITION + numTokens * ADDRESS_SIZE + numTokens * UINT128_SIZE;
@@ -232,7 +232,7 @@ library Codec {
      * @param data The encoded byte array to decode.
      * @return request Decoded withdrawal request structure.
      */
-    function decodeWithdrawalRequest(bytes memory data) internal pure returns (WithdrawalRequest memory) {
+    function decodeWithdrawalRequest(bytes memory data) external pure returns (WithdrawalRequest memory) {
         uint8 messageType = fetchMessageType(data);
         require(messageType == WITHDRAWAL_REQUEST_TYPE, IncorrectMessageType(messageType));
         uint256 expectedLength = UINT8_SIZE + UINT128_SIZE;
@@ -246,7 +246,7 @@ library Codec {
      * @param data The encoded byte array to decode.
      * @return response Decoded withdrawal response structure.
      */
-    function decodeWithdrawalResponse(bytes memory data) internal pure returns (WithdrawalResponse memory) {
+    function decodeWithdrawalResponse(bytes memory data) external pure returns (WithdrawalResponse memory) {
         uint8 messageType = fetchMessageType(data);
         uint8 numTokens = fetchNumTokens(data);
         uint256 expectedLength = 2 * UINT8_SIZE + numTokens * (ADDRESS_SIZE + UINT128_SIZE);

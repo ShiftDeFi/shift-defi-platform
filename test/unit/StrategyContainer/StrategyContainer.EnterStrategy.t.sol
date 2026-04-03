@@ -165,7 +165,11 @@ contract StrategyContainerEnterStrategyTest is StrategyContainerBaseTest {
     }
 
     function test_RevertIf_IncorrectArrayLength() public {
-        nonNotionTokenStrategy.setInputTokens(new address[](2));
+        address[] memory inputTokens = new address[](2);
+        inputTokens[0] = address(notion);
+        inputTokens[1] = address(notion);
+        _whitelistTokensIfNeeded(address(strategyContainer), inputTokens);
+        nonNotionTokenStrategy.setInputTokens(inputTokens);
 
         vm.prank(roles.operator);
         vm.expectRevert(Errors.ArrayLengthMismatch.selector);

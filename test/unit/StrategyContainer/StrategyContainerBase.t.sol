@@ -34,7 +34,7 @@ contract StrategyContainerBaseTest is Base {
         uint256 outputTokenCount,
         bool isNotionArray
     ) internal returns (MockStrategyInterfaceBased, address[] memory, address[] memory) {
-        MockStrategyInterfaceBased strategy = new MockStrategyInterfaceBased();
+        MockStrategyInterfaceBased strategy = new MockStrategyInterfaceBased(address(strategyContainer));
         address[] memory _strategyInputTokens;
         address[] memory _strategyOutputTokens;
         if (isNotionArray) {

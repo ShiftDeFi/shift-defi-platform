@@ -78,29 +78,6 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     }
 
     /// @inheritdoc IContainerAgent
-    function enterStrategyMultiple(
-        address[] calldata strategies,
-        uint256[][] calldata inputAmounts,
-        uint256[] calldata minNavDelta
-    ) external whenNotPaused nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
-        require(status == ContainerAgentStatus.BridgeClaimed, Errors.IncorrectContainerStatus());
-
-        uint256 length = strategies.length;
-        require(length > 0 && length <= getStrategiesNumber(), Errors.InvalidArrayLength());
-        require(length == inputAmounts.length, Errors.ArrayLengthMismatch());
-        require(length == minNavDelta.length, Errors.ArrayLengthMismatch());
-
-        for (uint256 i = 0; i < length; ++i) {
-            _enterStrategy(strategies[i], inputAmounts[i], minNavDelta[i]);
-        }
-
-        if (_allStrategiesEntered()) {
-            status = ContainerAgentStatus.AllStrategiesEntered;
-            emit AllStrategiesEntered();
-        }
-    }
-
-    /// @inheritdoc IContainerAgent
     function exitStrategy(
         address strategy,
         uint256 minNavDelta
@@ -118,40 +95,17 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     }
 
     /// @inheritdoc IContainerAgent
-    function exitStrategyMultiple(
-        address[] calldata strategies,
-        uint256[] calldata minNavDeltas
-    ) external whenNotPaused nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
-        require(status == ContainerAgentStatus.WithdrawalRequestReceived, Errors.IncorrectContainerStatus());
-
-        uint256 length = strategies.length;
-        require(length > 0 && length <= getStrategiesNumber(), Errors.InvalidArrayLength());
-        require(length == minNavDeltas.length, Errors.ArrayLengthMismatch());
-
-        uint256 registeredShareAmountCached = registeredWithdrawShareAmount;
-        require(registeredShareAmountCached > 0, NoSharesRegisteredForExit());
-
-        for (uint256 i = 0; i < length; ++i) {
-            _exitStrategy(strategies[i], registeredShareAmountCached, minNavDeltas[i]);
-        }
-
-        if (_allStrategiesExited()) {
-            status = ContainerAgentStatus.AllStrategiesExited;
-            emit AllStrategiesExited();
-        }
-    }
-
-    /// @inheritdoc IContainerAgent
     function reportDeposit(
         MessageInstruction calldata messageInstruction,
         address[] calldata bridgeAdapters,
         IBridgeAdapter.BridgeInstruction[] calldata bridgeInstructions
     ) external payable whenNotPaused nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerAgentStatus.AllStrategiesEntered, Errors.IncorrectContainerStatus());
-        require(remoteChainId > 0, RemoteChainIdNotSet());
         require(bridgeAdapters.length == bridgeInstructions.length, Errors.ArrayLengthMismatch());
 
         ReportDepositLocalVars memory vars;
+        vars.remoteChainIdCached = remoteChainId;
+        require(vars.remoteChainIdCached > 0, RemoteChainIdNotSet());
         vars.peerContainerCached = peerContainer;
         require(vars.peerContainerCached != address(0), PeerContainerNotSet());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
@@ -184,7 +138,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
             vars.peerContainerCached,
             IMessageRouter.SendParams({
                 adapter: messageInstruction.adapter,
-                chainTo: remoteChainId,
+                chainTo: vars.remoteChainIdCached,
                 adapterParameters: messageInstruction.parameters,
                 message: Codec.encode(
                     Codec.DepositResponse({
@@ -208,11 +162,14 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
     ) external payable whenNotPaused nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerAgentStatus.AllStrategiesExited, Errors.IncorrectContainerStatus());
         require(messageInstruction.adapter != address(0), Errors.ZeroAddress());
-        require(remoteChainId > 0, RemoteChainIdNotSet());
         require(bridgeAdapters.length > 0, Errors.ZeroArrayLength());
         require(bridgeAdapters.length == bridgeInstructions.length, Errors.ArrayLengthMismatch());
 
         ReportWithdrawalLocalVars memory vars;
+
+        vars.remoteChainIdCached = remoteChainId;
+        require(vars.remoteChainIdCached > 0, RemoteChainIdNotSet());
+
         vars.peerContainerCached = peerContainer;
         require(vars.peerContainerCached != address(0), PeerContainerNotSet());
 
@@ -246,7 +203,7 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
             vars.peerContainerCached,
             IMessageRouter.SendParams({
                 adapter: messageInstruction.adapter,
-                chainTo: remoteChainId,
+                chainTo: vars.remoteChainIdCached,
                 adapterParameters: messageInstruction.parameters,
                 message: Codec.encode(Codec.WithdrawalResponse({tokens: vars.tokens, amounts: vars.minAmounts}))
             })
@@ -310,25 +267,6 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         _validateBridgeAdapter(bridgeAdapter);
         require(_isTokenWhitelisted(token), NotWhitelistedToken(token));
         IBridgeAdapter(bridgeAdapter).claim(token);
-    }
-
-    /// @inheritdoc IContainerAgent
-    function claimMultiple(
-        address[] calldata bridgeAdapters,
-        address[] calldata tokens
-    ) external whenNotPaused nonReentrant notResolvingEmergency notInReshufflingMode onlyRole(OPERATOR_ROLE) {
-        require(status == ContainerAgentStatus.DepositRequestReceived, Errors.IncorrectContainerStatus());
-
-        uint256 length = bridgeAdapters.length;
-        require(length == tokens.length, Errors.ArrayLengthMismatch());
-
-        for (uint256 i = 0; i < length; i++) {
-            _claimExpectedToken(bridgeAdapters[i], tokens[i]);
-        }
-
-        if (claimCounter == 0) {
-            status = ContainerAgentStatus.BridgeClaimed;
-        }
     }
 
     /// @inheritdoc IContainerAgent

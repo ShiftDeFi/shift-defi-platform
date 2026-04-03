@@ -19,6 +19,7 @@ contract CrossChainContainerBridgeTest is CrossChainContainerBaseTest {
 
     address internal bridgeReceiver;
     uint256 internal constant BRIDGE_AMOUNT = 1_000_000 * NOTION_PRECISION;
+    uint256 internal constant MAX_BRIDGE_SLIPPAGE = 0.9e18; // 10%
 
     function setUp() public virtual override {
         super.setUp();
@@ -260,8 +261,8 @@ contract CrossChainContainerBridgeTest is CrossChainContainerBaseTest {
         crossChainContainer.setBridgeAdapter(address(bridgeAdapter), true);
 
         IBridgeAdapter.BridgeInstruction memory instruction = _craftBridgeInstruction(address(notion), BRIDGE_AMOUNT);
-        instruction.minTokenAmount = BRIDGE_AMOUNT.mulDiv(crossChainContainer.MAX_BRIDGE_SLIPPAGE() - 1, MAX_BPS);
-        uint256 minAllowedAmount = BRIDGE_AMOUNT.mulDiv(crossChainContainer.MAX_BRIDGE_SLIPPAGE(), MAX_BPS);
+        instruction.minTokenAmount = BRIDGE_AMOUNT.mulDiv(MAX_BRIDGE_SLIPPAGE - 1, MAX_BPS);
+        uint256 minAllowedAmount = BRIDGE_AMOUNT.mulDiv(MAX_BRIDGE_SLIPPAGE, MAX_BPS);
 
         notion.mint(address(crossChainContainer), BRIDGE_AMOUNT);
 

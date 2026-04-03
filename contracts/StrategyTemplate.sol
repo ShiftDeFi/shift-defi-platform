@@ -133,8 +133,14 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         while (_inputTokens.length() > 0) {
             _inputTokens.remove(_inputTokens.at(0));
         }
+
+        address strategyContainerCached = _strategyContainer;
+
         for (uint256 i = 0; i < inputTokens.length; ++i) {
-            require(inputTokens[i] != address(0), Errors.ZeroAddress());
+            require(
+                IStrategyContainer(strategyContainerCached).isTokenWhitelisted(inputTokens[i]),
+                NotWhitelistedToken(inputTokens[i])
+            );
             require(_inputTokens.add(inputTokens[i]), Errors.TokenAlreadySet(inputTokens[i]));
             emit InputTokenSet(inputTokens[i]);
         }
@@ -146,8 +152,13 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         while (_outputTokens.length() > 0) {
             _outputTokens.remove(_outputTokens.at(0));
         }
+
+        address strategyContainerCached = _strategyContainer;
         for (uint256 i = 0; i < outputTokens.length; ++i) {
-            require(outputTokens[i] != address(0), Errors.ZeroAddress());
+            require(
+                IStrategyContainer(strategyContainerCached).isTokenWhitelisted(outputTokens[i]),
+                NotWhitelistedToken(outputTokens[i])
+            );
             require(_outputTokens.add(outputTokens[i]), Errors.TokenAlreadySet(outputTokens[i]));
             emit OutputTokenSet(outputTokens[i]);
         }

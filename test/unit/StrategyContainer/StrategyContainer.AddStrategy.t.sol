@@ -42,7 +42,7 @@ contract StrategyContainerAddStrategyTest is StrategyContainerBaseTest {
             _createAndAddStrategyWithTokens(1, 1, true);
         }
 
-        address strategy = address(new MockStrategyInterfaceBased());
+        address strategy = address(new MockStrategyInterfaceBased(address(strategyContainer)));
         address[] memory strategyInputTokens = _createTokensArray(address(notion));
         address[] memory strategyOutputTokens = _createTokensArray(address(notion));
 
@@ -61,38 +61,26 @@ contract StrategyContainerAddStrategyTest is StrategyContainerBaseTest {
     }
 
     function test_RevertIf_InputTokensIsEmpty() public {
-        address strategy = address(new MockStrategyInterfaceBased());
+        address strategy = address(new MockStrategyInterfaceBased(address(strategyContainer)));
         vm.expectRevert(Errors.ZeroArrayLength.selector);
         strategyContainer.addStrategy(strategy, new address[](0), _createTokensArray(address(notion)));
     }
 
     function test_RevertIf_OutputTokensIsEmpty() public {
-        address strategy = address(new MockStrategyInterfaceBased());
+        address strategy = address(new MockStrategyInterfaceBased(address(strategyContainer)));
         vm.expectRevert(Errors.ZeroArrayLength.selector);
         strategyContainer.addStrategy(strategy, _createTokensArray(address(notion)), new address[](0));
     }
 
-    function test_RevertIf_InputTokensIsZeroAddress() public {
-        address strategy = address(new MockStrategyInterfaceBased());
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        strategyContainer.addStrategy(strategy, new address[](1), _createTokensArray(address(notion)));
-    }
-
-    function test_RevertIf_OutputTokensIsZeroAddress() public {
-        address strategy = address(new MockStrategyInterfaceBased());
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        strategyContainer.addStrategy(strategy, _createTokensArray(address(notion)), new address[](1));
-    }
-
     function test_RevertIf_InputTokensIsNotWhitelisted() public {
-        address strategy = address(new MockStrategyInterfaceBased());
+        address strategy = address(new MockStrategyInterfaceBased(address(strategyContainer)));
         address[] memory inputTokens = _createRandomTokensArray(1);
         vm.expectRevert(abi.encodeWithSelector(IContainer.NotWhitelistedToken.selector, inputTokens[0]));
         strategyContainer.addStrategy(address(strategy), inputTokens, _createTokensArray(address(notion)));
     }
 
     function test_RevertIf_OutputTokensIsNotWhitelisted() public {
-        address strategy = address(new MockStrategyInterfaceBased());
+        address strategy = address(new MockStrategyInterfaceBased(address(strategyContainer)));
         address[] memory outputTokens = _createRandomTokensArray(1);
         vm.expectRevert(abi.encodeWithSelector(IContainer.NotWhitelistedToken.selector, outputTokens[0]));
         strategyContainer.addStrategy(address(strategy), _createTokensArray(address(notion)), outputTokens);

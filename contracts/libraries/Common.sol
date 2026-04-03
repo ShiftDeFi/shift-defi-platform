@@ -20,7 +20,7 @@ library Common {
      * @param amount Amount in token-native decimals.
      * @return Amount scaled to 18 decimals.
      */
-    function toUnifiedDecimalsUint8(address token, uint256 amount) internal view returns (uint256) {
+    function toUnifiedDecimalsUint8(address token, uint256 amount) external view returns (uint256) {
         uint8 decimals = IERC20Metadata(token).decimals();
         require(decimals <= UNIFIED_DECIMALS, DecimalsGt18(decimals));
         if (decimals == UNIFIED_DECIMALS) {
@@ -35,7 +35,7 @@ library Common {
      * @param amount Amount in unified 18 decimals.
      * @return Amount scaled to token-native decimals.
      */
-    function fromUnifiedDecimalsUint8(address token, uint256 amount) internal view returns (uint256) {
+    function fromUnifiedDecimalsUint8(address token, uint256 amount) external view returns (uint256) {
         uint8 decimals = IERC20Metadata(token).decimals();
         require(decimals <= UNIFIED_DECIMALS, DecimalsGt18(decimals));
         if (decimals == UNIFIED_DECIMALS) {

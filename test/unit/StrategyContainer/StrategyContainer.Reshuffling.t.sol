@@ -227,35 +227,6 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
         strategyContainer.enterInReshufflingMode(address(mockStrategy), new uint256[](2), 0);
     }
 
-    function test_RevertIf_InputTokenNotWhitelistedInEnterInReshufflingMode() public {
-        address[] memory inputTokens = new address[](1);
-        inputTokens[0] = address(_deployMockERC20("Token", "TKN", 18));
-        MockERC20(inputTokens[0]).mint(address(strategyContainer), 1000e18);
-
-        mockStrategy.setInputTokens(inputTokens);
-
-        uint256[] memory inputAmounts = new uint256[](1);
-        inputAmounts[0] = 1000e18;
-        uint256[] memory remainingAmounts = new uint256[](1);
-        uint256 nav1Response = 999e18;
-
-        for (uint256 i = 0; i < inputTokens.length; i++) {
-            mockStrategy.approveToken(inputTokens[i], type(uint256).max, address(strategyContainer));
-            uint256 remainingShare = vm.randomUint(1, MAX_BPS);
-            uint256 remainingAmount = (inputAmounts[i] * remainingShare) / MAX_BPS;
-            remainingAmounts[i] = remainingAmount;
-        }
-
-        mockStrategy.craftNav1(nav1Response);
-        mockStrategy.craftRemainingAmounts(remainingAmounts);
-
-        vm.prank(roles.reshufflingManager);
-        strategyContainer.enableReshufflingMode();
-        vm.prank(roles.reshufflingExecutor);
-        vm.expectRevert(abi.encodeWithSelector(IContainer.NotWhitelistedToken.selector, inputTokens[0]));
-        strategyContainer.enterInReshufflingMode(address(mockStrategy), inputAmounts, 0);
-    }
-
     function test_ExitInReshufflingMode_Success() public {
         uint256 share = vm.randomUint(1, MAX_BPS);
 
@@ -286,53 +257,6 @@ contract StrategyContainerReshufflingTest is StrategyContainerBaseTest {
                 "test_ExitInReshufflingMode_Success: Strategy should have remaining amount"
             );
         }
-    }
-
-    function test_ExitInReshufflingMode_WithNonWhitelistedTokens_Success() public {
-        uint256 share = vm.randomUint(1, MAX_BPS);
-
-        address nonWhitelistedToken = address(_deployMockERC20("NonWhitelisted", "NW", 18));
-        address[] memory newOutputTokens = new address[](2);
-        newOutputTokens[0] = address(notion);
-        newOutputTokens[1] = nonWhitelistedToken;
-
-        mockStrategy.setOutputTokens(newOutputTokens);
-
-        uint256[] memory outputAmounts = new uint256[](newOutputTokens.length);
-
-        for (uint256 i = 0; i < newOutputTokens.length; i++) {
-            outputAmounts[i] = vm.randomUint(MIN_AMOUNT, MAX_AMOUNT);
-            MockERC20(newOutputTokens[i]).mint(address(mockStrategy), outputAmounts[i]);
-            mockStrategy.approveToken(newOutputTokens[i], outputAmounts[i], address(strategyContainer));
-        }
-
-        vm.prank(roles.reshufflingManager);
-        strategyContainer.enableReshufflingMode();
-        vm.prank(roles.reshufflingExecutor);
-        strategyContainer.exitInReshufflingMode(address(mockStrategy), share, type(uint256).max);
-
-        uint256 expectedAmountToken0 = (outputAmounts[0] * share) / MAX_BPS;
-        assertEq(
-            IERC20(newOutputTokens[0]).balanceOf(address(strategyContainer)),
-            expectedAmountToken0,
-            "test_ExitInReshufflingMode_WithNonWhitelistedTokens_Success: Whitelisted token should be transferred"
-        );
-        assertEq(
-            IERC20(newOutputTokens[0]).balanceOf(address(mockStrategy)),
-            outputAmounts[0] - expectedAmountToken0,
-            "test_ExitInReshufflingMode_WithNonWhitelistedTokens_Success: Whitelisted token remaining in strategy"
-        );
-
-        assertEq(
-            IERC20(newOutputTokens[1]).balanceOf(address(strategyContainer)),
-            0,
-            "test_ExitInReshufflingMode_WithNonWhitelistedTokens_Success: Non-whitelisted token should not be in container"
-        );
-        assertEq(
-            IERC20(newOutputTokens[1]).balanceOf(address(mockStrategy)),
-            outputAmounts[1],
-            "test_ExitInReshufflingMode_WithNonWhitelistedTokens_Success: Non-whitelisted token should remain in strategy"
-        );
     }
 
     function test_RevertIf_NotReshufflingManagerCallsExitInReshufflingMode() public {

@@ -29,8 +29,8 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
     mapping(address => uint256) private _expectedTokenAmounts;
     mapping(address => bool) private _isBridgeAdapterSupported;
 
-    uint256 public constant MAX_BRIDGE_SLIPPAGE = 0.9e18; // 10%
-    uint256 public constant MAX_BPS = 1e18;
+    uint256 internal constant MAX_BRIDGE_SLIPPAGE = 0.9e18; // 10%
+    uint256 internal constant MAX_BPS = 1e18;
 
     modifier onlyMessageRouter() {
         require(msg.sender == messageRouter, Errors.Unauthorized());

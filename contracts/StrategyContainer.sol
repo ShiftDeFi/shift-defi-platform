@@ -198,7 +198,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         address[] calldata inputTokens
     ) external onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(_isStrategy(strategy), StrategyNotFound());
-        _setStrategyInputTokens(strategy, inputTokens);
+        IStrategyTemplate(strategy).setInputTokens(inputTokens);
     }
 
     /// @inheritdoc IStrategyContainer
@@ -207,41 +207,15 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         address[] calldata outputTokens
     ) external onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(_isStrategy(strategy), StrategyNotFound());
-        _setStrategyOutputTokens(strategy, outputTokens);
-    }
-
-    function _setStrategyInputTokens(address strategy, address[] calldata inputTokens) internal {
-        uint256 inputTokenNumber = inputTokens.length;
-        require(inputTokenNumber > 0, Errors.ZeroArrayLength());
-
-        for (uint256 i = 0; i < inputTokenNumber; ++i) {
-            address inputToken = inputTokens[i];
-            require(inputToken != address(0), Errors.ZeroAddress());
-            require(_isTokenWhitelisted(inputToken), NotWhitelistedToken(inputToken));
-        }
-        IStrategyTemplate(strategy).setInputTokens(inputTokens);
-        emit StrategyInputTokensUpdated(strategy);
-    }
-
-    function _setStrategyOutputTokens(address strategy, address[] calldata outputTokens) internal {
-        uint256 outputTokenNumber = outputTokens.length;
-        require(outputTokenNumber > 0, Errors.ZeroArrayLength());
-
-        for (uint256 i = 0; i < outputTokenNumber; ++i) {
-            address outputToken = outputTokens[i];
-            require(outputToken != address(0), Errors.ZeroAddress());
-            require(_isTokenWhitelisted(outputToken), NotWhitelistedToken(outputToken));
-        }
         IStrategyTemplate(strategy).setOutputTokens(outputTokens);
-        emit StrategyOutputTokensUpdated(strategy);
     }
 
     function _addStrategy(address strategy, address[] calldata inputTokens, address[] calldata outputTokens) internal {
         require(strategy != address(0), Errors.ZeroAddress());
         require(_strategies.length() < MAX_STRATEGIES, MaxStrategiesReached());
 
-        _setStrategyInputTokens(strategy, inputTokens);
-        _setStrategyOutputTokens(strategy, outputTokens);
+        IStrategyTemplate(strategy).setInputTokens(inputTokens);
+        IStrategyTemplate(strategy).setOutputTokens(outputTokens);
         require(_strategies.add(strategy), StrategyAlreadyExists());
 
         emit StrategyAdded(strategy);

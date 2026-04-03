@@ -112,6 +112,7 @@ interface IStrategyTemplate {
     error AlreadyInState(bytes32 stateId);
     error TreasuryNotSet();
     error TokenNotFound(address token);
+    error NotWhitelistedToken(address token);
 
     // ---- Functions ----
 

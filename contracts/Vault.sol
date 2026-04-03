@@ -37,7 +37,7 @@ contract Vault is
     bytes32 private constant CONFIGURATOR_ROLE = keccak256("CONFIGURATOR_ROLE");
     bytes32 private constant RESHUFFLING_MANAGER_ROLE = keccak256("RESHUFFLING_MANAGER_ROLE");
     bytes32 private constant RESHUFFLING_EXECUTOR_ROLE = keccak256("RESHUFFLING_EXECUTOR_ROLE");
-    bytes32 public constant EMERGENCY_PAUSER_ROLE = keccak256("EMERGENCY_PAUSER_ROLE");
+    bytes32 internal constant EMERGENCY_PAUSER_ROLE = keccak256("EMERGENCY_PAUSER_ROLE");
 
     uint256 private constant MAX_CONTAINERS = 255;
     uint256 private constant TOTAL_CONTAINER_WEIGHT = 10_000;

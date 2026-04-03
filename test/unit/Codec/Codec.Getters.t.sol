@@ -6,8 +6,6 @@ import {Errors} from "contracts/libraries/Errors.sol";
 
 import {CodecBaseTest} from "test/unit/Codec/CodecBase.t.sol";
 
-import {console2 as console} from "forge-std/console2.sol";
-
 contract CodecGettersTest is CodecBaseTest {
     function setUp() public override {
         super.setUp();

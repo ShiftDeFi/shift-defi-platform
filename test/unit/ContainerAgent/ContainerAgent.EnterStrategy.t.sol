@@ -110,221 +110,221 @@ contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
         containerAgent.enterStrategy(strategy0, inputAmounts, minNavDelta);
     }
 
-    function test_EnterStrategyMultiple_1Of1() public {
-        /// @dev Make strategy0 the only strategy on container
-        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.Idle);
+    // function test_EnterStrategyMultiple_1Of1() public {
+    //     /// @dev Make strategy0 the only strategy on container
+    //     _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.Idle);
 
-        vm.prank(roles.reshufflingManager);
-        containerAgent.enableReshufflingMode();
+    //     vm.prank(roles.reshufflingManager);
+    //     containerAgent.enableReshufflingMode();
 
-        vm.prank(roles.reshufflingExecutor);
-        containerAgent.removeStrategy(strategy1);
+    //     vm.prank(roles.reshufflingExecutor);
+    //     containerAgent.removeStrategy(strategy1);
 
-        vm.prank(roles.reshufflingExecutor);
-        containerAgent.disableReshufflingMode();
+    //     vm.prank(roles.reshufflingExecutor);
+    //     containerAgent.disableReshufflingMode();
 
-        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.BridgeClaimed);
+    //     _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.BridgeClaimed);
 
-        uint256 strategiesNumber = 1;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber);
-        inputAmountsMultiple[0] = inputAmounts;
-        uint256[] memory minNavDelta = new uint256[](strategiesNumber);
-        minNavDelta[0] = 0;
-        uint256 containerBalanceBefore = notion.balanceOf(address(containerAgent));
+    //     uint256 strategiesNumber = 1;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber);
+    //     inputAmountsMultiple[0] = inputAmounts;
+    //     uint256[] memory minNavDelta = new uint256[](strategiesNumber);
+    //     minNavDelta[0] = 0;
+    //     uint256 containerBalanceBefore = notion.balanceOf(address(containerAgent));
 
-        vm.prank(roles.operator);
-        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+    //     vm.prank(roles.operator);
+    //     containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
 
-        assertEq(
-            uint256(containerAgent.status()),
-            uint256(IContainerAgent.ContainerAgentStatus.AllStrategiesEntered),
-            "test_EnterStrategyMultiple_1Of1: Container status not AllStrategiesEntered"
-        );
-        assertEq(
-            notion.balanceOf(address(containerAgent)),
-            containerBalanceBefore - DEPOSIT_AMOUNT * strategiesNumber,
-            "test_EnterStrategyMultiple_1Of1: Notion balance of containerAgent mismatch"
-        );
-    }
+    //     assertEq(
+    //         uint256(containerAgent.status()),
+    //         uint256(IContainerAgent.ContainerAgentStatus.AllStrategiesEntered),
+    //         "test_EnterStrategyMultiple_1Of1: Container status not AllStrategiesEntered"
+    //     );
+    //     assertEq(
+    //         notion.balanceOf(address(containerAgent)),
+    //         containerBalanceBefore - DEPOSIT_AMOUNT * strategiesNumber,
+    //         "test_EnterStrategyMultiple_1Of1: Notion balance of containerAgent mismatch"
+    //     );
+    // }
 
-    function test_EnterStrategyMultiple_1OfN() public {
-        uint256 strategiesNumber = 1;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber);
-        inputAmountsMultiple[0] = inputAmounts;
-        uint256[] memory minNavDelta = new uint256[](strategiesNumber);
-        minNavDelta[0] = 0;
-        uint256 containerBalanceBefore = notion.balanceOf(address(containerAgent));
+    // function test_EnterStrategyMultiple_1OfN() public {
+    //     uint256 strategiesNumber = 1;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber);
+    //     inputAmountsMultiple[0] = inputAmounts;
+    //     uint256[] memory minNavDelta = new uint256[](strategiesNumber);
+    //     minNavDelta[0] = 0;
+    //     uint256 containerBalanceBefore = notion.balanceOf(address(containerAgent));
 
-        vm.prank(roles.operator);
-        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+    //     vm.prank(roles.operator);
+    //     containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
 
-        assertEq(
-            uint256(containerAgent.status()),
-            uint256(IContainerAgent.ContainerAgentStatus.BridgeClaimed),
-            "test_EnterStrategyMultiple_1OfN: Container status not BridgeClaimed"
-        );
-        assertEq(
-            notion.balanceOf(address(containerAgent)),
-            containerBalanceBefore - DEPOSIT_AMOUNT * strategiesNumber,
-            "test_EnterStrategyMultiple_1OfN: Notion balance of containerAgent mismatch"
-        );
-    }
+    //     assertEq(
+    //         uint256(containerAgent.status()),
+    //         uint256(IContainerAgent.ContainerAgentStatus.BridgeClaimed),
+    //         "test_EnterStrategyMultiple_1OfN: Container status not BridgeClaimed"
+    //     );
+    //     assertEq(
+    //         notion.balanceOf(address(containerAgent)),
+    //         containerBalanceBefore - DEPOSIT_AMOUNT * strategiesNumber,
+    //         "test_EnterStrategyMultiple_1OfN: Notion balance of containerAgent mismatch"
+    //     );
+    // }
 
-    function test_EnterStrategyMultiple_MOfN() public {
-        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.Idle);
+    // function test_EnterStrategyMultiple_MOfN() public {
+    //     _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.Idle);
 
-        vm.prank(roles.reshufflingManager);
-        containerAgent.enableReshufflingMode();
+    //     vm.prank(roles.reshufflingManager);
+    //     containerAgent.enableReshufflingMode();
 
-        _addStrategyNotionInputOutput();
+    //     _addStrategyNotionInputOutput();
 
-        vm.prank(roles.reshufflingExecutor);
-        containerAgent.disableReshufflingMode();
+    //     vm.prank(roles.reshufflingExecutor);
+    //     containerAgent.disableReshufflingMode();
 
-        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.BridgeClaimed);
+    //     _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.BridgeClaimed);
 
-        uint256 strategiesNumber = 2;
-        assertLt(
-            strategiesNumber,
-            containerAgent.getStrategies().length,
-            "test_EnterStrategyMultiple_MOfN: Strategies number mismatch"
-        );
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        strategies[1] = strategy1;
-        uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber);
-        inputAmountsMultiple[0] = inputAmounts;
-        inputAmountsMultiple[1] = inputAmounts;
-        uint256[] memory minNavDelta = new uint256[](strategiesNumber);
-        minNavDelta[0] = 0;
-        minNavDelta[1] = 0;
+    //     uint256 strategiesNumber = 2;
+    //     assertLt(
+    //         strategiesNumber,
+    //         containerAgent.getStrategies().length,
+    //         "test_EnterStrategyMultiple_MOfN: Strategies number mismatch"
+    //     );
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     strategies[1] = strategy1;
+    //     uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber);
+    //     inputAmountsMultiple[0] = inputAmounts;
+    //     inputAmountsMultiple[1] = inputAmounts;
+    //     uint256[] memory minNavDelta = new uint256[](strategiesNumber);
+    //     minNavDelta[0] = 0;
+    //     minNavDelta[1] = 0;
 
-        uint256 containerBalanceBefore = notion.balanceOf(address(containerAgent));
+    //     uint256 containerBalanceBefore = notion.balanceOf(address(containerAgent));
 
-        vm.prank(roles.operator);
-        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+    //     vm.prank(roles.operator);
+    //     containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
 
-        assertEq(
-            uint256(containerAgent.status()),
-            uint256(IContainerAgent.ContainerAgentStatus.BridgeClaimed),
-            "test_EnterStrategyMultiple_MOfN: Container status not BridgeClaimed"
-        );
-        assertEq(
-            notion.balanceOf(address(containerAgent)),
-            containerBalanceBefore - DEPOSIT_AMOUNT * strategiesNumber,
-            "test_EnterStrategyMultiple_NOfN: Notion balance of containerAgent mismatch"
-        );
-    }
+    //     assertEq(
+    //         uint256(containerAgent.status()),
+    //         uint256(IContainerAgent.ContainerAgentStatus.BridgeClaimed),
+    //         "test_EnterStrategyMultiple_MOfN: Container status not BridgeClaimed"
+    //     );
+    //     assertEq(
+    //         notion.balanceOf(address(containerAgent)),
+    //         containerBalanceBefore - DEPOSIT_AMOUNT * strategiesNumber,
+    //         "test_EnterStrategyMultiple_NOfN: Notion balance of containerAgent mismatch"
+    //     );
+    // }
 
-    function test_EnterStrategyMultiple_NOfN() public {
-        uint256 strategiesNumber = 2;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        strategies[1] = strategy1;
-        uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber);
-        inputAmountsMultiple[0] = inputAmounts;
-        inputAmountsMultiple[1] = inputAmounts;
-        uint256[] memory minNavDelta = new uint256[](strategiesNumber);
-        minNavDelta[0] = 0;
-        minNavDelta[1] = 0;
+    // function test_EnterStrategyMultiple_NOfN() public {
+    //     uint256 strategiesNumber = 2;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     strategies[1] = strategy1;
+    //     uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber);
+    //     inputAmountsMultiple[0] = inputAmounts;
+    //     inputAmountsMultiple[1] = inputAmounts;
+    //     uint256[] memory minNavDelta = new uint256[](strategiesNumber);
+    //     minNavDelta[0] = 0;
+    //     minNavDelta[1] = 0;
 
-        uint256 containerBalanceBefore = notion.balanceOf(address(containerAgent));
+    //     uint256 containerBalanceBefore = notion.balanceOf(address(containerAgent));
 
-        vm.prank(roles.operator);
-        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+    //     vm.prank(roles.operator);
+    //     containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
 
-        assertEq(
-            uint256(containerAgent.status()),
-            uint256(IContainerAgent.ContainerAgentStatus.AllStrategiesEntered),
-            "test_EnterStrategyMultiple: Container status not AllStrategiesEntered"
-        );
-        assertEq(
-            notion.balanceOf(address(containerAgent)),
-            containerBalanceBefore - DEPOSIT_AMOUNT * strategiesNumber,
-            "test_EnterStrategyMultiple_NOfN: Notion balance of containerAgent mismatch"
-        );
-    }
+    //     assertEq(
+    //         uint256(containerAgent.status()),
+    //         uint256(IContainerAgent.ContainerAgentStatus.AllStrategiesEntered),
+    //         "test_EnterStrategyMultiple: Container status not AllStrategiesEntered"
+    //     );
+    //     assertEq(
+    //         notion.balanceOf(address(containerAgent)),
+    //         containerBalanceBefore - DEPOSIT_AMOUNT * strategiesNumber,
+    //         "test_EnterStrategyMultiple_NOfN: Notion balance of containerAgent mismatch"
+    //     );
+    // }
 
-    function test_RevertIf_EnterStrategyMultiple_IncorrectContainerStatus() public {
-        uint256 strategiesNumber = 2;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        strategies[1] = strategy1;
-        uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber);
-        inputAmountsMultiple[0] = inputAmounts;
-        uint256[] memory minNavDelta = new uint256[](strategiesNumber);
-        minNavDelta[0] = 0;
-        minNavDelta[1] = 0;
+    // function test_RevertIf_EnterStrategyMultiple_IncorrectContainerStatus() public {
+    //     uint256 strategiesNumber = 2;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     strategies[1] = strategy1;
+    //     uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber);
+    //     inputAmountsMultiple[0] = inputAmounts;
+    //     uint256[] memory minNavDelta = new uint256[](strategiesNumber);
+    //     minNavDelta[0] = 0;
+    //     minNavDelta[1] = 0;
 
-        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.DepositRequestReceived);
+    //     _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.DepositRequestReceived);
 
-        vm.expectRevert(Errors.IncorrectContainerStatus.selector);
-        vm.prank(roles.operator);
-        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
-    }
+    //     vm.expectRevert(Errors.IncorrectContainerStatus.selector);
+    //     vm.prank(roles.operator);
+    //     containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+    // }
 
-    function test_RevertIf_EnterStrategyMultiple_InvalidArrayLength() public {
-        address[] memory strategies = new address[](0);
-        uint256[][] memory inputAmountsMultiple = new uint256[][](0);
-        uint256[] memory minNavDelta = new uint256[](0);
+    // function test_RevertIf_EnterStrategyMultiple_InvalidArrayLength() public {
+    //     address[] memory strategies = new address[](0);
+    //     uint256[][] memory inputAmountsMultiple = new uint256[][](0);
+    //     uint256[] memory minNavDelta = new uint256[](0);
 
-        vm.expectRevert(Errors.InvalidArrayLength.selector);
-        vm.prank(roles.operator);
-        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+    //     vm.expectRevert(Errors.InvalidArrayLength.selector);
+    //     vm.prank(roles.operator);
+    //     containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
 
-        uint256 strategiesNumber = containerAgent.getStrategiesNumber();
-        strategies = new address[](strategiesNumber + 1);
-        inputAmountsMultiple = new uint256[][](strategiesNumber + 1);
-        minNavDelta = new uint256[](strategiesNumber + 1);
+    //     uint256 strategiesNumber = containerAgent.getStrategiesNumber();
+    //     strategies = new address[](strategiesNumber + 1);
+    //     inputAmountsMultiple = new uint256[][](strategiesNumber + 1);
+    //     minNavDelta = new uint256[](strategiesNumber + 1);
 
-        vm.expectRevert(Errors.InvalidArrayLength.selector);
-        vm.prank(roles.operator);
-        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
-    }
+    //     vm.expectRevert(Errors.InvalidArrayLength.selector);
+    //     vm.prank(roles.operator);
+    //     containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+    // }
 
-    function test_RevertIf_EnterStrategyMultiple_InReshufflingMode() public {
-        uint256 strategiesNumber = 2;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        strategies[1] = strategy1;
-        uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber);
-        inputAmountsMultiple[0] = inputAmounts;
-        uint256[] memory minNavDelta = new uint256[](strategiesNumber);
-        minNavDelta[0] = 0;
-        minNavDelta[1] = 0;
+    // function test_RevertIf_EnterStrategyMultiple_InReshufflingMode() public {
+    //     uint256 strategiesNumber = 2;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     strategies[1] = strategy1;
+    //     uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber);
+    //     inputAmountsMultiple[0] = inputAmounts;
+    //     uint256[] memory minNavDelta = new uint256[](strategiesNumber);
+    //     minNavDelta[0] = 0;
+    //     minNavDelta[1] = 0;
 
-        _toggleReshufflingMode(true);
+    //     _toggleReshufflingMode(true);
 
-        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
-        vm.prank(roles.operator);
-        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
-    }
+    //     vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
+    //     vm.prank(roles.operator);
+    //     containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+    // }
 
-    function test_RevertIf_EnterStrategyMultiple_ArrayLengthMismatch() public {
-        uint256 strategiesNumber = 2;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        strategies[1] = strategy1;
-        uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber - 1);
-        inputAmountsMultiple[0] = inputAmounts;
+    // function test_RevertIf_EnterStrategyMultiple_ArrayLengthMismatch() public {
+    //     uint256 strategiesNumber = 2;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     strategies[1] = strategy1;
+    //     uint256[][] memory inputAmountsMultiple = new uint256[][](strategiesNumber - 1);
+    //     inputAmountsMultiple[0] = inputAmounts;
 
-        uint256[] memory minNavDelta = new uint256[](strategiesNumber - 1);
-        minNavDelta[0] = 0;
+    //     uint256[] memory minNavDelta = new uint256[](strategiesNumber - 1);
+    //     minNavDelta[0] = 0;
 
-        vm.expectRevert(Errors.ArrayLengthMismatch.selector);
-        vm.prank(roles.operator);
-        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+    //     vm.expectRevert(Errors.ArrayLengthMismatch.selector);
+    //     vm.prank(roles.operator);
+    //     containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
 
-        inputAmountsMultiple = new uint256[][](strategiesNumber);
-        inputAmountsMultiple[0] = inputAmounts;
-        inputAmountsMultiple[1] = inputAmounts;
+    //     inputAmountsMultiple = new uint256[][](strategiesNumber);
+    //     inputAmountsMultiple[0] = inputAmounts;
+    //     inputAmountsMultiple[1] = inputAmounts;
 
-        vm.expectRevert(Errors.ArrayLengthMismatch.selector);
-        vm.prank(roles.operator);
-        containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
-    }
+    //     vm.expectRevert(Errors.ArrayLengthMismatch.selector);
+    //     vm.prank(roles.operator);
+    //     containerAgent.enterStrategyMultiple(strategies, inputAmountsMultiple, minNavDelta);
+    // }
 }

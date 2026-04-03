@@ -309,7 +309,7 @@ abstract contract L1Base is Base {
                 token: token,
                 amount: amount,
                 chainTo: REMOTE_CHAIN_ID,
-                minTokenAmount: Utils.calculateMinBridgeAmount(address(containerPrincipal), amount),
+                minTokenAmount: Utils.calculateMinBridgeAmount(amount),
                 payload: ""
             });
     }

@@ -79,7 +79,7 @@ contract ContainerPrincipalBaseTest is L1Base {
             value: 0,
             chainTo: REMOTE_CHAIN_ID,
             amount: depositAmount,
-            minTokenAmount: Utils.calculateMinBridgeAmount(address(containerPrincipal), depositAmount),
+            minTokenAmount: Utils.calculateMinBridgeAmount(depositAmount),
             token: address(notion),
             payload: ""
         });

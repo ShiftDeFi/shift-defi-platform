@@ -146,7 +146,7 @@ abstract contract L2Base is Base {
                 token: token,
                 amount: amount,
                 chainTo: REMOTE_CHAIN_ID,
-                minTokenAmount: Utils.calculateMinBridgeAmount(address(containerAgent), amount),
+                minTokenAmount: Utils.calculateMinBridgeAmount(amount),
                 payload: ""
             });
     }

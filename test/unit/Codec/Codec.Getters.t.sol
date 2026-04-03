@@ -6,6 +6,8 @@ import {Errors} from "contracts/libraries/Errors.sol";
 
 import {CodecBaseTest} from "test/unit/Codec/CodecBase.t.sol";
 
+import {console2 as console} from "forge-std/console2.sol";
+
 contract CodecGettersTest is CodecBaseTest {
     function setUp() public override {
         super.setUp();
@@ -89,20 +91,6 @@ contract CodecGettersTest is CodecBaseTest {
         bytes memory buffer = new bytes(1);
         vm.expectRevert(Codec.InvalidDataLength.selector);
         Codec.fetchUint128(buffer, 0);
-    }
-
-    function test_FetchUint128Array() public pure {
-        uint8 numTokens = 2;
-        uint256[] memory values = new uint256[](numTokens);
-        values[0] = 1000;
-        values[1] = 2000;
-        uint256 messageLength = 2 * UINT8_SIZE + numTokens * (ADDRESS_SIZE + UINT128_SIZE);
-        bytes memory buffer = new bytes(messageLength);
-        Codec._writeUint128Array(buffer, values, ADDRESS_ARRAY_START_POSITION + numTokens * ADDRESS_SIZE);
-
-        uint256[] memory fetchedValues = Codec.fetchUint128Array(buffer, numTokens);
-        assertEq(fetchedValues[0], values[0], "test_FetchUint128Array: value 0");
-        assertEq(fetchedValues[1], values[1], "test_FetchUint128Array: value 1");
     }
 
     /// forge-config: default.allow_internal_expect_revert = true

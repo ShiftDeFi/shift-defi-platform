@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
+import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
+
+import {Errors} from "contracts/libraries/Errors.sol";
 
 contract MockStrategyInterfaceBased is IStrategyTemplate {
     uint256 internal constant MAX_BPS = 1e18;
+
+    address public strategyContainer;
 
     // Enter return values
     uint256 nav1;
@@ -21,6 +27,10 @@ contract MockStrategyInterfaceBased is IStrategyTemplate {
     address[] outputTokens;
 
     bool _navResolutionMode;
+
+    constructor(address _strategyContainer) {
+        strategyContainer = _strategyContainer;
+    }
 
     function approveToken(address token, uint256 amount, address spender) public {
         IERC20(token).approve(spender, amount);
@@ -66,15 +76,25 @@ contract MockStrategyInterfaceBased is IStrategyTemplate {
     function tryEmergencyExit(bytes32 toStateId, uint256 share) external {}
 
     function setInputTokens(address[] memory inputTokens_) external {
+        require(inputTokens_.length > 0, Errors.ZeroArrayLength());
         inputTokens = new address[](inputTokens_.length);
         for (uint256 i = 0; i < inputTokens_.length; i++) {
+            require(
+                IStrategyContainer(strategyContainer).isTokenWhitelisted(inputTokens_[i]),
+                NotWhitelistedToken(inputTokens_[i])
+            );
             inputTokens[i] = inputTokens_[i];
         }
     }
 
     function setOutputTokens(address[] memory outputTokens_) external {
+        require(outputTokens_.length > 0, Errors.ZeroArrayLength());
         outputTokens = new address[](outputTokens_.length);
         for (uint256 i = 0; i < outputTokens_.length; i++) {
+            require(
+                IStrategyContainer(strategyContainer).isTokenWhitelisted(outputTokens_[i]),
+                NotWhitelistedToken(outputTokens_[i])
+            );
             outputTokens[i] = outputTokens_[i];
         }
     }

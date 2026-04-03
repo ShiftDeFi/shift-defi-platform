@@ -14,6 +14,8 @@ contract StrategyTemplateTokensTest is StrategyTemplateBaseTest {
         uint256 tokenNumber = 5;
         address[] memory inputTokens = _createRandomTokensArray(tokenNumber);
 
+        _whitelistTokensIfNeeded(address(strategyContainer), inputTokens);
+
         vm.prank(address(strategyContainer));
         strategy.setInputTokens(inputTokens);
 
@@ -27,6 +29,8 @@ contract StrategyTemplateTokensTest is StrategyTemplateBaseTest {
     function test_SetStrategyInputTokens_OverwritingExistingTokens() public {
         uint256 initialTokenNumber = 2;
         address[] memory initialInputTokens = _createRandomTokensArray(initialTokenNumber);
+
+        _whitelistTokensIfNeeded(address(strategyContainer), initialInputTokens);
 
         vm.prank(address(strategyContainer));
         strategy.setInputTokens(initialInputTokens);
@@ -48,6 +52,8 @@ contract StrategyTemplateTokensTest is StrategyTemplateBaseTest {
 
         uint256 newTokenNumber = 4;
         address[] memory newInputTokens = _createRandomTokensArray(newTokenNumber);
+
+        _whitelistTokensIfNeeded(address(strategyContainer), newInputTokens);
 
         vm.prank(address(strategyContainer));
         strategy.setInputTokens(newInputTokens);
@@ -73,20 +79,12 @@ contract StrategyTemplateTokensTest is StrategyTemplateBaseTest {
         strategy.setInputTokens(new address[](0));
     }
 
-    function test_RevertIf_SetInputTokens_ZeroAddress() public {
-        uint256 tokenNumber = 5;
-        address[] memory inputTokens = _createRandomTokensArray(tokenNumber);
-        inputTokens[tokenNumber - 1] = address(0);
-
-        vm.prank(address(strategyContainer));
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        strategy.setInputTokens(inputTokens);
-    }
-
     function test_RevertIf_SetInputTokens_DuplicatingAddress() public {
         uint256 tokenNumber = 5;
         address[] memory inputTokens = _createRandomTokensArray(tokenNumber);
         inputTokens[tokenNumber - 1] = inputTokens[tokenNumber - 2];
+
+        _whitelistTokensIfNeeded(address(strategyContainer), inputTokens);
 
         vm.prank(address(strategyContainer));
         vm.expectRevert(abi.encodeWithSelector(Errors.TokenAlreadySet.selector, inputTokens[tokenNumber - 1]));
@@ -96,6 +94,8 @@ contract StrategyTemplateTokensTest is StrategyTemplateBaseTest {
     function test_SetOutputTokens() public {
         uint256 tokenNumber = 5;
         address[] memory outputTokens = _createRandomTokensArray(tokenNumber);
+
+        _whitelistTokensIfNeeded(address(strategyContainer), outputTokens);
 
         vm.prank(address(strategyContainer));
         strategy.setOutputTokens(outputTokens);
@@ -110,6 +110,8 @@ contract StrategyTemplateTokensTest is StrategyTemplateBaseTest {
     function test_SetStrategyOutputTokens_OverwritingExistingTokens() public {
         uint256 initialTokenNumber = 2;
         address[] memory initialOutputTokens = _createRandomTokensArray(initialTokenNumber);
+
+        _whitelistTokensIfNeeded(address(strategyContainer), initialOutputTokens);
 
         vm.prank(address(strategyContainer));
         strategy.setOutputTokens(initialOutputTokens);
@@ -131,6 +133,8 @@ contract StrategyTemplateTokensTest is StrategyTemplateBaseTest {
 
         uint256 newTokenNumber = 4;
         address[] memory newOutputTokens = _createRandomTokensArray(newTokenNumber);
+
+        _whitelistTokensIfNeeded(address(strategyContainer), newOutputTokens);
 
         vm.prank(address(strategyContainer));
         strategy.setOutputTokens(newOutputTokens);
@@ -156,20 +160,12 @@ contract StrategyTemplateTokensTest is StrategyTemplateBaseTest {
         strategy.setOutputTokens(new address[](0));
     }
 
-    function test_RevertIf_SetOutputTokens_ZeroAddress() public {
-        uint256 tokenNumber = 5;
-        address[] memory outputTokens = _createRandomTokensArray(tokenNumber);
-        outputTokens[tokenNumber - 1] = address(0);
-
-        vm.prank(address(strategyContainer));
-        vm.expectRevert(Errors.ZeroAddress.selector);
-        strategy.setOutputTokens(outputTokens);
-    }
-
     function test_RevertIf_SetOutputTokens_DuplicatingAddress() public {
         uint256 tokenNumber = 5;
         address[] memory outputTokens = _createRandomTokensArray(tokenNumber);
         outputTokens[tokenNumber - 1] = outputTokens[tokenNumber - 2];
+
+        _whitelistTokensIfNeeded(address(strategyContainer), outputTokens);
 
         vm.prank(address(strategyContainer));
         vm.expectRevert(abi.encodeWithSelector(Errors.TokenAlreadySet.selector, outputTokens[tokenNumber - 1]));

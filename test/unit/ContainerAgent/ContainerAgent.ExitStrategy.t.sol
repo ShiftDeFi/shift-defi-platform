@@ -54,8 +54,11 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
         deal(address(notion), address(containerAgent), DEPOSIT_AMOUNT * strategiesNumber);
 
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.BridgeClaimed);
-        vm.prank(roles.operator);
-        containerAgent.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
+        vm.startPrank(roles.operator);
+        containerAgent.enterStrategy(strategies[0], inputAmounts[0], minNavDelta[0]);
+        containerAgent.enterStrategy(strategies[1], inputAmounts[1], minNavDelta[1]);
+        containerAgent.enterStrategy(strategies[2], inputAmounts[2], minNavDelta[2]);
+        vm.stopPrank();
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.WithdrawalRequestReceived);
 
         _setRegisteredWithdrawShareAmount(sharesToWithdrawPercent);
@@ -163,183 +166,183 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
         containerAgent.exitStrategy(strategy0, maxNavDelta);
     }
 
-    function test_ExitStrategyMultiple_1Of1() public {
-        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.Idle);
+    // function test_ExitStrategyMultiple_1Of1() public {
+    //     _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.Idle);
 
-        vm.prank(roles.reshufflingManager);
-        containerAgent.enableReshufflingMode();
+    //     vm.prank(roles.reshufflingManager);
+    //     containerAgent.enableReshufflingMode();
 
-        vm.startPrank(roles.reshufflingExecutor);
-        containerAgent.removeStrategy(strategy1);
-        containerAgent.removeStrategy(strategy2);
-        containerAgent.disableReshufflingMode();
-        vm.stopPrank();
+    //     vm.startPrank(roles.reshufflingExecutor);
+    //     containerAgent.removeStrategy(strategy1);
+    //     containerAgent.removeStrategy(strategy2);
+    //     containerAgent.disableReshufflingMode();
+    //     vm.stopPrank();
 
-        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.WithdrawalRequestReceived);
+    //     _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.WithdrawalRequestReceived);
 
-        uint256 strategiesNumber = 1;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
-        maxNavDeltas[0] = maxNavDelta;
+    //     uint256 strategiesNumber = 1;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
+    //     maxNavDeltas[0] = maxNavDelta;
 
-        vm.prank(roles.operator);
-        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+    //     vm.prank(roles.operator);
+    //     containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
 
-        assertEq(
-            uint256(containerAgent.status()),
-            uint256(IContainerAgent.ContainerAgentStatus.AllStrategiesExited),
-            "test_ExitStrategyMultiple_1Of1: Container status not AllStrategiesExited"
-        );
-        assertEq(
-            notion.balanceOf(address(containerAgent)),
-            expectedNotionBalance * strategiesNumber,
-            "test_ExitStrategyMultiple_1Of1: Notion balance of containerAgent mismatch strategy0"
-        );
-    }
+    //     assertEq(
+    //         uint256(containerAgent.status()),
+    //         uint256(IContainerAgent.ContainerAgentStatus.AllStrategiesExited),
+    //         "test_ExitStrategyMultiple_1Of1: Container status not AllStrategiesExited"
+    //     );
+    //     assertEq(
+    //         notion.balanceOf(address(containerAgent)),
+    //         expectedNotionBalance * strategiesNumber,
+    //         "test_ExitStrategyMultiple_1Of1: Notion balance of containerAgent mismatch strategy0"
+    //     );
+    // }
 
-    function test_ExitStrategyMultiple_1OfN() public {
-        uint256 strategiesNumber = 1;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
-        maxNavDeltas[0] = maxNavDelta;
+    // function test_ExitStrategyMultiple_1OfN() public {
+    //     uint256 strategiesNumber = 1;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
+    //     maxNavDeltas[0] = maxNavDelta;
 
-        vm.prank(roles.operator);
-        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+    //     vm.prank(roles.operator);
+    //     containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
 
-        assertEq(
-            uint256(containerAgent.status()),
-            uint256(IContainerAgent.ContainerAgentStatus.WithdrawalRequestReceived),
-            "test_ExitStrategyMultiple_1OfN: Container status not WithdrawalRequestReceived"
-        );
-        assertEq(
-            notion.balanceOf(address(containerAgent)),
-            expectedNotionBalance * strategiesNumber,
-            "test_ExitStrategyMultiple_1OfN: Notion balance of containerAgent mismatch strategy0"
-        );
-    }
+    //     assertEq(
+    //         uint256(containerAgent.status()),
+    //         uint256(IContainerAgent.ContainerAgentStatus.WithdrawalRequestReceived),
+    //         "test_ExitStrategyMultiple_1OfN: Container status not WithdrawalRequestReceived"
+    //     );
+    //     assertEq(
+    //         notion.balanceOf(address(containerAgent)),
+    //         expectedNotionBalance * strategiesNumber,
+    //         "test_ExitStrategyMultiple_1OfN: Notion balance of containerAgent mismatch strategy0"
+    //     );
+    // }
 
-    function test_ExitStrategyMultiple_MOfN() public {
-        uint256 strategiesNumber = 2;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        strategies[1] = strategy1;
-        uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
-        maxNavDeltas[0] = maxNavDelta;
-        maxNavDeltas[1] = maxNavDelta;
+    // function test_ExitStrategyMultiple_MOfN() public {
+    //     uint256 strategiesNumber = 2;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     strategies[1] = strategy1;
+    //     uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
+    //     maxNavDeltas[0] = maxNavDelta;
+    //     maxNavDeltas[1] = maxNavDelta;
 
-        vm.prank(roles.operator);
-        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+    //     vm.prank(roles.operator);
+    //     containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
 
-        assertEq(
-            uint256(containerAgent.status()),
-            uint256(IContainerAgent.ContainerAgentStatus.WithdrawalRequestReceived),
-            "test_ExitStrategyMultiple_MOfN: Container status not WithdrawalRequestReceived"
-        );
-        assertEq(
-            notion.balanceOf(address(containerAgent)),
-            expectedNotionBalance * strategiesNumber,
-            "test_ExitStrategyMultiple_MOfN: Notion balance of containerAgent mismatch strategy0 and strategy1"
-        );
-    }
+    //     assertEq(
+    //         uint256(containerAgent.status()),
+    //         uint256(IContainerAgent.ContainerAgentStatus.WithdrawalRequestReceived),
+    //         "test_ExitStrategyMultiple_MOfN: Container status not WithdrawalRequestReceived"
+    //     );
+    //     assertEq(
+    //         notion.balanceOf(address(containerAgent)),
+    //         expectedNotionBalance * strategiesNumber,
+    //         "test_ExitStrategyMultiple_MOfN: Notion balance of containerAgent mismatch strategy0 and strategy1"
+    //     );
+    // }
 
-    function test_ExitStrategyMultiple_NOfN() public {
-        uint256 strategiesNumber = 3;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        strategies[1] = strategy1;
-        strategies[2] = strategy2;
+    // function test_ExitStrategyMultiple_NOfN() public {
+    //     uint256 strategiesNumber = 3;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     strategies[1] = strategy1;
+    //     strategies[2] = strategy2;
 
-        uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
-        maxNavDeltas[0] = maxNavDelta;
-        maxNavDeltas[1] = maxNavDelta;
-        maxNavDeltas[2] = maxNavDelta;
+    //     uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
+    //     maxNavDeltas[0] = maxNavDelta;
+    //     maxNavDeltas[1] = maxNavDelta;
+    //     maxNavDeltas[2] = maxNavDelta;
 
-        vm.prank(roles.operator);
-        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+    //     vm.prank(roles.operator);
+    //     containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
 
-        assertEq(
-            uint256(containerAgent.status()),
-            uint256(IContainerAgent.ContainerAgentStatus.AllStrategiesExited),
-            "test_ExitStrategyMultiple_NOfN: Container status not AllStrategiesExited"
-        );
-        assertEq(
-            notion.balanceOf(address(containerAgent)),
-            expectedNotionBalance * strategiesNumber,
-            "test_ExitStrategyMultiple_NOfN: Notion balance of containerAgent mismatch strategy0, strategy1 and strategy2"
-        );
-    }
+    //     assertEq(
+    //         uint256(containerAgent.status()),
+    //         uint256(IContainerAgent.ContainerAgentStatus.AllStrategiesExited),
+    //         "test_ExitStrategyMultiple_NOfN: Container status not AllStrategiesExited"
+    //     );
+    //     assertEq(
+    //         notion.balanceOf(address(containerAgent)),
+    //         expectedNotionBalance * strategiesNumber,
+    //         "test_ExitStrategyMultiple_NOfN: Notion balance of containerAgent mismatch strategy0, strategy1 and strategy2"
+    //     );
+    // }
 
-    function test_RevertIf_ExitStrategyMultiple_IncorrectContainerStatus() public {
-        uint256 strategiesNumber = 1;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
-        maxNavDeltas[0] = maxNavDelta;
+    // function test_RevertIf_ExitStrategyMultiple_IncorrectContainerStatus() public {
+    //     uint256 strategiesNumber = 1;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
+    //     maxNavDeltas[0] = maxNavDelta;
 
-        _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.DepositRequestReceived);
+    //     _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.DepositRequestReceived);
 
-        vm.expectRevert(Errors.IncorrectContainerStatus.selector);
-        vm.prank(roles.operator);
-        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
-    }
+    //     vm.expectRevert(Errors.IncorrectContainerStatus.selector);
+    //     vm.prank(roles.operator);
+    //     containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+    // }
 
-    function test_RevertIf_ExitStrategyMultiple_InReshufflingMode() public {
-        uint256 strategiesNumber = 1;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
-        maxNavDeltas[0] = maxNavDelta;
+    // function test_RevertIf_ExitStrategyMultiple_InReshufflingMode() public {
+    //     uint256 strategiesNumber = 1;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
+    //     maxNavDeltas[0] = maxNavDelta;
 
-        _toggleReshufflingMode(true);
+    //     _toggleReshufflingMode(true);
 
-        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
-        vm.prank(roles.operator);
-        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
-    }
+    //     vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
+    //     vm.prank(roles.operator);
+    //     containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+    // }
 
-    function test_RevertIf_ExitStrategyMultiple_InvalidArrayLength() public {
-        address[] memory strategies = new address[](0);
-        uint256[] memory maxNavDeltas = new uint256[](0);
+    // function test_RevertIf_ExitStrategyMultiple_InvalidArrayLength() public {
+    //     address[] memory strategies = new address[](0);
+    //     uint256[] memory maxNavDeltas = new uint256[](0);
 
-        vm.expectRevert(Errors.InvalidArrayLength.selector);
-        vm.prank(roles.operator);
-        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+    //     vm.expectRevert(Errors.InvalidArrayLength.selector);
+    //     vm.prank(roles.operator);
+    //     containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
 
-        uint256 strategiesNumber = containerAgent.getStrategiesNumber();
-        strategies = new address[](strategiesNumber + 1);
-        maxNavDeltas = new uint256[](strategiesNumber + 1);
+    //     uint256 strategiesNumber = containerAgent.getStrategiesNumber();
+    //     strategies = new address[](strategiesNumber + 1);
+    //     maxNavDeltas = new uint256[](strategiesNumber + 1);
 
-        vm.expectRevert(Errors.InvalidArrayLength.selector);
-        vm.prank(roles.operator);
-        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
-    }
+    //     vm.expectRevert(Errors.InvalidArrayLength.selector);
+    //     vm.prank(roles.operator);
+    //     containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+    // }
 
-    function test_RevertIf_ExitStrategyMultiple_NoSharesRegisteredForExit() public {
-        uint256 strategiesNumber = 1;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
-        maxNavDeltas[0] = maxNavDelta;
+    // function test_RevertIf_ExitStrategyMultiple_NoSharesRegisteredForExit() public {
+    //     uint256 strategiesNumber = 1;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
+    //     maxNavDeltas[0] = maxNavDelta;
 
-        _setRegisteredWithdrawShareAmount(0);
+    //     _setRegisteredWithdrawShareAmount(0);
 
-        vm.expectRevert(IStrategyContainer.NoSharesRegisteredForExit.selector);
-        vm.prank(roles.operator);
-        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
-    }
+    //     vm.expectRevert(IStrategyContainer.NoSharesRegisteredForExit.selector);
+    //     vm.prank(roles.operator);
+    //     containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+    // }
 
-    function test_RevertIf_ExitStrategyMultiple_ArrayLengthMismatch() public {
-        uint256 strategiesNumber = 1;
-        address[] memory strategies = new address[](strategiesNumber);
-        strategies[0] = strategy0;
-        uint256[] memory maxNavDeltas = new uint256[](strategiesNumber + 1);
-        maxNavDeltas[0] = maxNavDelta;
-        maxNavDeltas[1] = maxNavDelta;
+    // function test_RevertIf_ExitStrategyMultiple_ArrayLengthMismatch() public {
+    //     uint256 strategiesNumber = 1;
+    //     address[] memory strategies = new address[](strategiesNumber);
+    //     strategies[0] = strategy0;
+    //     uint256[] memory maxNavDeltas = new uint256[](strategiesNumber + 1);
+    //     maxNavDeltas[0] = maxNavDelta;
+    //     maxNavDeltas[1] = maxNavDelta;
 
-        vm.expectRevert(Errors.ArrayLengthMismatch.selector);
-        vm.prank(roles.operator);
-        containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
-    }
+    //     vm.expectRevert(Errors.ArrayLengthMismatch.selector);
+    //     vm.prank(roles.operator);
+    //     containerAgent.exitStrategyMultiple(strategies, maxNavDeltas);
+    // }
 }

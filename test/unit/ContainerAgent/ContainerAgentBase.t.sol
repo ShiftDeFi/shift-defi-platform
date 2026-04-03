@@ -147,7 +147,7 @@ contract ContainerAgentBaseTest is L2Base {
                 value: 0,
                 chainTo: REMOTE_CHAIN_ID,
                 amount: bridgedAmounts[i],
-                minTokenAmount: Utils.calculateMinBridgeAmount(address(containerAgent), bridgedAmounts[i]),
+                minTokenAmount: Utils.calculateMinBridgeAmount(bridgedAmounts[i]),
                 token: bridgedTokens[i],
                 payload: ""
             });

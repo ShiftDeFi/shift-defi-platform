@@ -7,6 +7,8 @@ import {ISwapRouter} from "contracts/interfaces/ISwapRouter.sol";
 contract MockContainerLocal is IContainerLocal {
     ContainerLocalStatus public _status;
 
+    bool public isReshuffling = true;
+
     function status() external view returns (ContainerLocalStatus) {
         return _status;
     }

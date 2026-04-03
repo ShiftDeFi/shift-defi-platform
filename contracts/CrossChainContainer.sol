@@ -42,7 +42,6 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
     function __CrossChainContainer_init(CrossChainContainerInitParams calldata params) internal onlyInitializing {
         _setMessageRouter(params.messageRouter);
 
-        require(params.remoteChainId > 0, Errors.IncorrectChainId(params.remoteChainId));
         remoteChainId = params.remoteChainId;
 
         require(params.messengerManager != address(0), Errors.ZeroAddress());

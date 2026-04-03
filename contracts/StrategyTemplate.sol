@@ -25,6 +25,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
+    bytes32 internal constant RESHUFFLING_EXECUTOR_ROLE = keccak256("RESHUFFLING_EXECUTOR_ROLE");
     bytes32 internal constant EMERGENCY_MANAGER_ROLE = keccak256("EMERGENCY_MANAGER_ROLE");
     bytes32 internal constant EMERGENCY_EXECUTOR_ROLE = keccak256("EMERGENCY_EXECUTOR_ROLE");
     bytes32 internal constant HARVEST_MANAGER_ROLE = keccak256("HARVEST_MANAGER_ROLE");
@@ -79,6 +80,17 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         _;
     }
 
+    modifier onlyReshufflingExecutorOrStrategyContainer() {
+        address strategyContainerCached = _strategyContainer;
+        if (strategyContainerCached != msg.sender) {
+            require(
+                AccessControlUpgradeable(strategyContainerCached).hasRole(RESHUFFLING_EXECUTOR_ROLE, msg.sender),
+                Errors.Unauthorized()
+            );
+        }
+        _;
+    }
+
     /* Views */
 
     /// @inheritdoc IStrategyTemplate
@@ -128,7 +140,8 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     }
 
     /// @inheritdoc IStrategyTemplate
-    function setInputTokens(address[] calldata inputTokens) external onlyStrategyContainer {
+    function setInputTokens(address[] calldata inputTokens) external onlyReshufflingExecutorOrStrategyContainer {
+        require(IStrategyContainer(_strategyContainer).isReshuffling(), Errors.ReshufflingModeDisabled());
         require(inputTokens.length > 0, Errors.ZeroArrayLength());
         while (_inputTokens.length() > 0) {
             _inputTokens.remove(_inputTokens.at(0));
@@ -147,7 +160,8 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     }
 
     /// @inheritdoc IStrategyTemplate
-    function setOutputTokens(address[] calldata outputTokens) external onlyStrategyContainer {
+    function setOutputTokens(address[] calldata outputTokens) external onlyReshufflingExecutorOrStrategyContainer {
+        require(IStrategyContainer(_strategyContainer).isReshuffling(), Errors.ReshufflingModeDisabled());
         require(outputTokens.length > 0, Errors.ZeroArrayLength());
         while (_outputTokens.length() > 0) {
             _outputTokens.remove(_outputTokens.at(0));

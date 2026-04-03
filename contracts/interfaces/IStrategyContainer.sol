@@ -186,22 +186,6 @@ interface IStrategyContainer is IContainer {
     function removeStrategy(address strategy) external;
 
     /**
-     * @notice Sets the input tokens for a strategy.
-     * @dev Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
-     * @param strategy The address of the strategy
-     * @param inputTokens Array of input token addresses
-     */
-    function setStrategyInputTokens(address strategy, address[] calldata inputTokens) external;
-
-    /**
-     * @notice Sets the output tokens for a strategy.
-     * @dev Can only be called by accounts with RESHUFFLING_EXECUTOR_ROLE.
-     * @param strategy The address of the strategy
-     * @param outputTokens Array of output token addresses
-     */
-    function setStrategyOutputTokens(address strategy, address[] calldata outputTokens) external;
-
-    /**
      * @notice Returns the total NAV values (nav0 and nav1).
      * @return nav0 The NAV value before the current batch
      * @return nav1 The NAV value after the current batch
@@ -251,4 +235,10 @@ interface IStrategyContainer is IContainer {
      * @return True if the strategy's NAV is unresolved, false otherwise
      */
     function isStrategyNavUnresolved(address strategy) external view returns (bool);
+
+    /**
+     * @notice Checks if reshuffling mode is enabled.
+     * @return True if reshuffling mode is enabled, false otherwise
+     */
+    function isReshuffling() external view returns (bool);
 }

@@ -97,13 +97,15 @@ contract StrategyContainerAddStrategyTest is StrategyContainerBaseTest {
         MockStrategy strategy = _deployMockStrategy(address(strategyContainer));
         address[] memory strategyInputTokens = _createTokensArray(address(notion));
         address[] memory strategyOutputTokens = _createTokensArray(address(notion));
-        vm.prank(roles.strategyManager);
-        strategyContainer.addStrategy(address(strategy), strategyInputTokens, strategyOutputTokens);
 
-        vm.prank(roles.strategyManager);
-        strategyContainer.removeStrategy(address(strategy));
-        vm.prank(roles.strategyManager);
+        vm.prank(roles.reshufflingManager);
+        strategyContainer.enableReshufflingMode();
+
+        vm.startPrank(roles.reshufflingExecutor);
         strategyContainer.addStrategy(address(strategy), strategyInputTokens, strategyOutputTokens);
+        strategyContainer.removeStrategy(address(strategy));
+        strategyContainer.addStrategy(address(strategy), strategyInputTokens, strategyOutputTokens);
+        vm.stopPrank();
 
         assertEq(
             strategyContainer.isStrategy(address(strategy)),

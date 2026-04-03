@@ -192,24 +192,6 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         return _isStrategy(strategy);
     }
 
-    /// @inheritdoc IStrategyContainer
-    function setStrategyInputTokens(
-        address strategy,
-        address[] calldata inputTokens
-    ) external onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
-        require(_isStrategy(strategy), StrategyNotFound());
-        IStrategyTemplate(strategy).setInputTokens(inputTokens);
-    }
-
-    /// @inheritdoc IStrategyContainer
-    function setStrategyOutputTokens(
-        address strategy,
-        address[] calldata outputTokens
-    ) external onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
-        require(_isStrategy(strategy), StrategyNotFound());
-        IStrategyTemplate(strategy).setOutputTokens(outputTokens);
-    }
-
     function _addStrategy(address strategy, address[] calldata inputTokens, address[] calldata outputTokens) internal {
         require(strategy != address(0), Errors.ZeroAddress());
         require(_strategies.length() < MAX_STRATEGIES, MaxStrategiesReached());

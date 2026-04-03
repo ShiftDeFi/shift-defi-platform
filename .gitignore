@@ -4,6 +4,7 @@ out/
 
 # general
 .env
+*.env
 
 # editors
 .idea
@@ -19,6 +20,7 @@ broadcast/
 .vscode
 
 report/
+x-ray/
 
 .DS_Store
 .venv/

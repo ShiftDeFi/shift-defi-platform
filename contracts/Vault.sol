@@ -88,6 +88,8 @@ contract Vault is
     uint256 public forcedWithdrawThreshold;
     uint256 public forcedBatchBlockLimit;
 
+    uint256 public pendingBurnShares;
+
     modifier onlyContainer() {
         require(_isContainer(msg.sender), NotContainer());
         _;
@@ -529,6 +531,7 @@ contract Vault is
         totalUnclaimedNotionForWithdraw -= vars.notionToClaim;
         require(_isNotionDecreaseAllowed(vars.notionToClaim), NotEnoughNotion());
 
+        pendingBurnShares -= vars.withdrawnShares;
         _burn(address(this), vars.withdrawnShares);
         notion.safeTransfer(onBehalfOf, vars.notionToClaim);
 
@@ -656,11 +659,11 @@ contract Vault is
 
         // NOTE: totalNav1 >= totalNav0 is enforced in `reportDeposit()`
         vars.batchDeltaNav = vars.totalNav1 - vars.totalNav0;
-        vars.totalSupplyCached = totalSupply();
-        if (vars.totalNav0 == 0 || vars.totalSupplyCached == 0) {
+        vars.effectiveTotalSupply = totalSupply() - pendingBurnShares;
+        if (vars.totalNav0 == 0 || vars.effectiveTotalSupply == 0) {
             vars.batchShares = vars.batchDeltaNav;
         } else {
-            vars.batchShares = vars.batchDeltaNav.mulDiv(vars.totalSupplyCached, vars.totalNav0);
+            vars.batchShares = vars.batchDeltaNav.mulDiv(vars.effectiveTotalSupply, vars.totalNav0);
         }
 
         depositBatchTotalShares[vars.previousBatchId] = vars.batchShares;
@@ -746,14 +749,15 @@ contract Vault is
         uint256 previousBatchId = withdrawBatchId - 1;
         lastResolvedWithdrawBatchId = previousBatchId;
         _withdrawReportBitmask = 0;
+        pendingBurnShares += withdrawBatchTotalShares[previousBatchId];
 
         emit WithdrawBatchProcessingFinished(previousBatchId, withdrawBatchTotalNotion[previousBatchId]);
     }
 
     function _calculateSharesPercent(uint256 shares) internal view returns (uint256) {
-        uint256 totalSupplyCached = totalSupply();
-        require(totalSupplyCached > 0, Errors.ZeroAmount());
-        return shares.mulDiv(MAX_BPS, totalSupplyCached);
+        uint256 effectiveTotalSupply = totalSupply() - pendingBurnShares;
+        require(effectiveTotalSupply > 0, Errors.ZeroAmount());
+        return shares.mulDiv(MAX_BPS, effectiveTotalSupply);
     }
 
     /// @inheritdoc IVault

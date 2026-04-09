@@ -59,6 +59,8 @@ abstract contract Base is Test {
         address charlie;
         address david;
         address eve;
+        address francis;
+        address george;
     }
 
     MockERC20 internal notion;
@@ -127,6 +129,8 @@ abstract contract Base is Test {
         users.charlie = makeAddr("CHARLIE");
         users.david = makeAddr("DAVID");
         users.eve = makeAddr("EVE");
+        users.francis = makeAddr("FRANCIS");
+        users.george = makeAddr("GEORGE");
 
         notion = _deployMockERC20("Notion", "NTN", NOTION_DECIMALS);
         vm.label(address(notion), "NOTION");

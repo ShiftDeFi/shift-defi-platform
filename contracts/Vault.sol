@@ -644,6 +644,7 @@ contract Vault is
         status = VaultStatus.DepositBatchProcessingFinished;
         vars.previousBatchId = depositBatchId - 1;
         lastResolvedDepositBatchId = vars.previousBatchId;
+        lastResolvedDepositBatchBlock = block.number;
         _depositReportBitmask = 0;
 
         vars.containersNumber = _containers.length();
@@ -748,6 +749,7 @@ contract Vault is
         status = VaultStatus.Idle;
         uint256 previousBatchId = withdrawBatchId - 1;
         lastResolvedWithdrawBatchId = previousBatchId;
+        lastResolvedWithdrawBatchBlock = block.number;
         _withdrawReportBitmask = 0;
         pendingBurnShares += withdrawBatchTotalShares[previousBatchId];
 

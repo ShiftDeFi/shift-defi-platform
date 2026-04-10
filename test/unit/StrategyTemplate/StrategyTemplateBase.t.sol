@@ -89,4 +89,18 @@ abstract contract StrategyTemplateBaseTest is Base {
     function _getStrategyUnresolvedNavBitmask() internal view returns (uint256) {
         return uint256(vm.load(address(strategyContainer), STRATEGY_UNRESOLVED_NAV_BITMASK_STORAGE_SLOT));
     }
+
+    function _isStrategyNavUnresolved(address _strategy) internal view returns (bool) {
+        address[] memory strategies = strategyContainer.getStrategies();
+        uint256 strategyIndex = 0;
+        for (uint256 i = 0; i < strategies.length; i++) {
+            if (strategies[i] == _strategy) {
+                strategyIndex = i;
+                break;
+            }
+        }
+        uint256 strategyNavUnresolvedBitmask = _getStrategyUnresolvedNavBitmask();
+        uint256 mask = 1 << strategyIndex;
+        return strategyNavUnresolvedBitmask & mask != 0;
+    }
 }

@@ -230,13 +230,6 @@ interface IStrategyContainer is IContainer {
     function resolveStrategyNav(uint256 resolvedNav) external;
 
     /**
-     * @notice Checks if a strategy's NAV is unresolved.
-     * @param strategy The address of the strategy to check
-     * @return True if the strategy's NAV is unresolved, false otherwise
-     */
-    function isStrategyNavUnresolved(address strategy) external view returns (bool);
-
-    /**
      * @notice Checks if reshuffling mode is enabled.
      * @return True if reshuffling mode is enabled, false otherwise
      */

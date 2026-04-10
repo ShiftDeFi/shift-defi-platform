@@ -302,7 +302,7 @@ abstract contract L1Base is Base {
     function _craftBridgeInstruction(
         address token,
         uint256 amount
-    ) internal view returns (IBridgeAdapter.BridgeInstruction memory) {
+    ) internal pure returns (IBridgeAdapter.BridgeInstruction memory) {
         return
             IBridgeAdapter.BridgeInstruction({
                 value: 0,

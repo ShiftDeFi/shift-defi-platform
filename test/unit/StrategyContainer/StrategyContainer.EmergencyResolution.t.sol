@@ -23,7 +23,7 @@ contract StrategyContainerEmergencyResolutionTest is StrategyContainerBaseTest {
             "test_StartEmergencyResolution: Emergency resolution not started"
         );
         assertTrue(
-            strategyContainer.isStrategyNavUnresolved(address(strategy)),
+            _isStrategyNavUnresolved(address(strategy)),
             "test_StartEmergencyResolution: Strategy NAV not unresolved"
         );
 
@@ -50,7 +50,7 @@ contract StrategyContainerEmergencyResolutionTest is StrategyContainerBaseTest {
             "test_MultipleCallsInStartEmergencyResolution: Emergency resolution not started"
         );
         assertTrue(
-            strategyContainer.isStrategyNavUnresolved(address(strategy)),
+            _isStrategyNavUnresolved(address(strategy)),
             "test_MultipleCallsInStartEmergencyResolution: Strategy NAV not unresolved"
         );
 
@@ -136,7 +136,7 @@ contract StrategyContainerEmergencyResolutionTest is StrategyContainerBaseTest {
         uint256 initialBitmask = strategyContainer.getStrategyUnresolvedNavBitmask();
         assertGt(initialBitmask, 0, "test_ResolveStrategyNav_Success: Initial bitmask should be greater than 0");
         assertTrue(
-            strategyContainer.isStrategyNavUnresolved(address(strategy)),
+            _isStrategyNavUnresolved(address(strategy)),
             "test_ResolveStrategyNav_Success: Strategy NAV should be unresolved"
         );
 
@@ -145,7 +145,7 @@ contract StrategyContainerEmergencyResolutionTest is StrategyContainerBaseTest {
         strategyContainer.resolveStrategyNav(resolvedNav);
 
         assertFalse(
-            strategyContainer.isStrategyNavUnresolved(address(strategy)),
+            _isStrategyNavUnresolved(address(strategy)),
             "test_ResolveStrategyNav_Success: Strategy NAV should be resolved"
         );
 
@@ -174,7 +174,7 @@ contract StrategyContainerEmergencyResolutionTest is StrategyContainerBaseTest {
         strategyContainer.resolveStrategyNav(resolvedNav);
 
         assertFalse(
-            strategyContainer.isStrategyNavUnresolved(address(strategy)),
+            _isStrategyNavUnresolved(address(strategy)),
             "test_RevertIf_AlreadyResolvedInResolveStrategyNav: Strategy NAV should be resolved"
         );
 

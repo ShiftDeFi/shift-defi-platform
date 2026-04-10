@@ -13,6 +13,8 @@ contract StrategyContainerBaseTest is Base {
     uint256 internal constant MIN_AMOUNT = 1e18;
     uint256 internal constant MAX_AMOUNT = 1000e18;
 
+    bytes32 internal constant STRATEGY_UNRESOLVED_NAV_BITMASK_STORAGE_SLOT = bytes32(uint256(62));
+
     MockStrategyContainer internal strategyContainer;
     ISwapRouter internal swapRouter;
 
@@ -70,5 +72,23 @@ contract StrategyContainerBaseTest is Base {
             MockERC20(tokens[i]).approve(strategy, amounts[i]);
         }
         return amounts;
+    }
+
+    function _getStrategyUnresolvedNavBitmask() internal view returns (uint256) {
+        return uint256(vm.load(address(strategyContainer), STRATEGY_UNRESOLVED_NAV_BITMASK_STORAGE_SLOT));
+    }
+
+    function _isStrategyNavUnresolved(address _strategy) internal view returns (bool) {
+        address[] memory strategies = strategyContainer.getStrategies();
+        uint256 strategyIndex = 0;
+        for (uint256 i = 0; i < strategies.length; i++) {
+            if (strategies[i] == _strategy) {
+                strategyIndex = i;
+                break;
+            }
+        }
+        uint256 strategyNavUnresolvedBitmask = _getStrategyUnresolvedNavBitmask();
+        uint256 mask = 1 << strategyIndex;
+        return strategyNavUnresolvedBitmask & mask != 0;
     }
 }

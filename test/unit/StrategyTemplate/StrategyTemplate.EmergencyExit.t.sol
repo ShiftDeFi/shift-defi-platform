@@ -92,7 +92,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
             "test_EmergencyExit_FromTargetState: Emergency resolution not started on StrategyContainer"
         );
         assertTrue(
-            strategyContainer.isStrategyNavUnresolved(address(strategy)),
+            _isStrategyNavUnresolved(address(strategy)),
             "test_EmergencyExit_FromTargetState: Strategy NAV not unresolved on StrategyContainer"
         );
         assertTrue(
@@ -120,7 +120,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
             "test_EmergencyExit_FromTargetState: Emergency resolution not started on StrategyContainer"
         );
         assertTrue(
-            strategyContainer.isStrategyNavUnresolved(address(strategy)),
+            _isStrategyNavUnresolved(address(strategy)),
             "test_EmergencyExit_FromTargetState: Strategy NAV not unresolved on StrategyContainer"
         );
         assertTrue(
@@ -292,7 +292,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         );
 
         assertFalse(
-            strategyContainer.isStrategyNavUnresolved(address(strategy)),
+            _isStrategyNavUnresolved(address(strategy)),
             "test_AcceptNav_FullExit: strategy NAV not resolved on StrategyContainer"
         );
     }
@@ -323,7 +323,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         );
 
         assertFalse(
-            strategyContainer.isStrategyNavUnresolved(address(strategy)),
+            _isStrategyNavUnresolved(address(strategy)),
             "test_AcceptNav_PartialExit: strategy NAV not resolved on StrategyContainer"
         );
     }

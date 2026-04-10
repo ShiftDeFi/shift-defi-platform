@@ -41,7 +41,10 @@ contract CustomOracleWrapper is AccessControl, IPriceOracle, ICustomOracleWrappe
 
     /// @inheritdoc IPriceOracle
     function getPrice(address token) external view returns (uint256, uint8) {
-        return (tokenToPrice[token], DEFAULT_PRICE_DECIMALS);
+        require(token != address(0), Errors.ZeroAddress());
+        uint256 price = tokenToPrice[token];
+        require(price > 0, ZeroPrice(token));
+        return (price, DEFAULT_PRICE_DECIMALS);
     }
 
     /// @inheritdoc IPriceOracle

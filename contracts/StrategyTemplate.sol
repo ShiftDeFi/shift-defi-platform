@@ -283,7 +283,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.stateToNavAfterEnter = stateNav(toStateId);
 
         require(
-            vars.stateToNavAfterEnter > vars.stateToNavBeforeEnter + minNavDelta,
+            vars.stateToNavAfterEnter >= vars.stateToNavBeforeEnter + minNavDelta,
             SlippageCheckFailed(vars.stateToNavBeforeEnter, vars.stateToNavAfterEnter, minNavDelta)
         );
 

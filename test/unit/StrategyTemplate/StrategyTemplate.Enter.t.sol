@@ -134,13 +134,13 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
     function test_RevertIf_EnterToState_SlippageCheckFailed() public {
         bytes32 toStateId = strategy.MOCK_SLIPPAGE_STATE_ID();
 
-        deal(address(notion), address(strategy), DEPOSIT_AMOUNT);
+        deal(address(notion), address(strategy), DEPOSIT_AMOUNT - 1);
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 IStrategyTemplate.SlippageCheckFailed.selector,
                 0,
-                DEPOSIT_AMOUNT - strategy.MOCK_SLIPPAGE_AMOUNT(),
+                DEPOSIT_AMOUNT - strategy.MOCK_SLIPPAGE_AMOUNT() - 1,
                 ENTER_MIN_NAV_DELTA
             )
         );

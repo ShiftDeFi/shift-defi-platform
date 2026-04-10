@@ -93,16 +93,18 @@ contract ChainlinkOracleWrapperTest is L1Base {
     }
 
     function test_RevertIf_GetPrice_StalePriceFeed() public {
-        vm.prank(roles.oracleManager);
+        vm.startPrank(roles.oracleManager);
         chainlinkOracleWrapper.setChainlinkFeed(address(notion), address(chainlinkFeed));
+        chainlinkOracleWrapper.setPriceFeedStalenessThreshold(address(notion), STALENESS_THRESHOLD);
+        vm.stopPrank();
 
-        vm.warp(block.timestamp + chainlinkOracleWrapper.priceFeedStalenessThreshold() + 1 seconds);
+        vm.warp(block.timestamp + chainlinkOracleWrapper.priceFeedStalenessThreshold(address(notion)) + 1 seconds);
         vm.expectRevert(
             abi.encodeWithSelector(
                 IChainlinkOracleWrapper.StalePriceFeed.selector,
                 address(notion),
                 MockChainlinkPriceFeed(chainlinkFeed).updatedAt(),
-                chainlinkOracleWrapper.priceFeedStalenessThreshold()
+                chainlinkOracleWrapper.priceFeedStalenessThreshold(address(notion))
             )
         );
         chainlinkOracleWrapper.getPrice(address(notion));
@@ -112,18 +114,24 @@ contract ChainlinkOracleWrapperTest is L1Base {
         uint256 newThreshold = STALENESS_THRESHOLD + 1 seconds;
 
         vm.prank(roles.oracleManager);
-        chainlinkOracleWrapper.setPriceFeedStalenessThreshold(newThreshold);
+        chainlinkOracleWrapper.setPriceFeedStalenessThreshold(address(notion), newThreshold);
         assertEq(
-            chainlinkOracleWrapper.priceFeedStalenessThreshold(),
+            chainlinkOracleWrapper.priceFeedStalenessThreshold(address(notion)),
             newThreshold,
             "test_SetPriceFeedStalenessThreshold: must update threshold"
         );
     }
 
+    function test_RevertIf_SetPriceFeedStalenessThreshold_ZeroAddress() public {
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        vm.prank(roles.oracleManager);
+        chainlinkOracleWrapper.setPriceFeedStalenessThreshold(address(0), 1);
+    }
+
     function test_RevertIf_SetPriceFeedStalenessThreshold_ZeroThreshold() public {
         vm.expectRevert(abi.encodeWithSelector(IChainlinkOracleWrapper.ZeroStalenessThreshold.selector));
         vm.prank(roles.oracleManager);
-        chainlinkOracleWrapper.setPriceFeedStalenessThreshold(0);
+        chainlinkOracleWrapper.setPriceFeedStalenessThreshold(address(notion), 0);
     }
 
     function test_RevertIf_NotImplementedAndDecimals() public {

@@ -12,19 +12,24 @@ import {Errors} from "../libraries/Errors.sol";
 contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracleWrapper {
     bytes32 private constant ORACLE_MANAGER_ROLE = keccak256("ORACLE_MANAGER_ROLE");
 
-    /// @inheritdoc IChainlinkOracleWrapper
-    uint256 public priceFeedStalenessThreshold;
+    uint256 public defaultPriceFeedStalenessThreshold;
+    mapping(address => uint256) public priceFeedStalenessThreshold;
 
     mapping(address => address) public tokenToChainlinkFeed;
 
-    constructor(address defaultAdmin, address oracleManager, uint256 stalenessThreshold) AccessControl() {
+    constructor(
+        address defaultAdmin,
+        address oracleManager,
+        uint256 _defaultPriceFeedStalenessThreshold
+    ) AccessControl() {
         require(defaultAdmin != address(0), Errors.ZeroAddress());
         require(oracleManager != address(0), Errors.ZeroAddress());
 
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(ORACLE_MANAGER_ROLE, oracleManager);
 
-        _setPriceFeedStalenessThreshold(stalenessThreshold);
+        require(_defaultPriceFeedStalenessThreshold > 0, ZeroStalenessThreshold());
+        defaultPriceFeedStalenessThreshold = _defaultPriceFeedStalenessThreshold;
     }
 
     /// @inheritdoc IChainlinkOracleWrapper
@@ -40,15 +45,16 @@ contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracle
     }
 
     /// @inheritdoc IChainlinkOracleWrapper
-    function setPriceFeedStalenessThreshold(uint256 threshold) external onlyRole(ORACLE_MANAGER_ROLE) {
-        _setPriceFeedStalenessThreshold(threshold);
+    function setPriceFeedStalenessThreshold(address token, uint256 threshold) external onlyRole(ORACLE_MANAGER_ROLE) {
+        _setPriceFeedStalenessThreshold(token, threshold);
     }
 
-    function _setPriceFeedStalenessThreshold(uint256 threshold) internal {
+    function _setPriceFeedStalenessThreshold(address token, uint256 threshold) internal {
+        require(token != address(0), Errors.ZeroAddress());
         require(threshold > 0, ZeroStalenessThreshold());
-        uint256 previousThreshold = priceFeedStalenessThreshold;
-        priceFeedStalenessThreshold = threshold;
-        emit PriceFeedStalenessThresholdUpdated(previousThreshold, threshold);
+        uint256 previousThreshold = priceFeedStalenessThreshold[token];
+        priceFeedStalenessThreshold[token] = threshold;
+        emit PriceFeedStalenessThresholdUpdated(token, previousThreshold, threshold);
     }
 
     /// @inheritdoc IPriceOracle
@@ -70,8 +76,12 @@ contract ChainlinkOracleWrapper is AccessControl, IPriceOracle, IChainlinkOracle
         (, int256 price, , uint256 updatedAt, ) = AggregatorV3Interface(feed).latestRoundData();
         require(price > 0, ZeroPrice(token));
 
-        uint256 threshold = priceFeedStalenessThreshold;
-        require(block.timestamp - updatedAt <= threshold, StalePriceFeed(token, updatedAt, threshold));
+        uint256 stalenessThreshold = priceFeedStalenessThreshold[token];
+        stalenessThreshold = stalenessThreshold == 0 ? defaultPriceFeedStalenessThreshold : stalenessThreshold;
+        require(
+            block.timestamp - updatedAt <= stalenessThreshold,
+            StalePriceFeed(token, updatedAt, stalenessThreshold)
+        );
 
         return uint256(price);
     }

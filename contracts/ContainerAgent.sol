@@ -223,9 +223,8 @@ contract ContainerAgent is CrossChainContainer, StrategyContainer, IContainerAge
         uint8 messageType = Codec.fetchMessageType(rawMessage);
         if (messageType == Codec.DEPOSIT_REQUEST_TYPE) {
             Codec.DepositRequest memory request = Codec.decodeDepositRequest(rawMessage);
-            if (request.tokens.length > 0) {
-                _processExpectedTokens(request.tokens, request.amounts);
-            }
+            require(request.tokens.length > 0, Errors.ZeroArrayLength());
+            _processExpectedTokens(request.tokens, request.amounts);
             status = ContainerAgentStatus.DepositRequestReceived;
             emit DepositRequestReceived(claimCounter);
             return;

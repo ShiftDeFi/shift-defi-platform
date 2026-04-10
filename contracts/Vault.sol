@@ -518,22 +518,28 @@ contract Vault is
         ClaimWithdrawLocalVars memory vars;
         vars.withdrawnShares = pendingBatchWithdrawals[batchId][onBehalfOf];
 
+        if (vars.withdrawnShares == 0) {
+            return 0;
+        }
+
         vars.notionToClaim = vars.withdrawnShares.mulDiv(
             withdrawBatchTotalNotion[batchId],
             withdrawBatchTotalShares[batchId]
         );
-        if (vars.notionToClaim == 0) {
-            return 0;
-        }
 
         pendingBatchWithdrawals[batchId][onBehalfOf] = 0;
 
-        totalUnclaimedNotionForWithdraw -= vars.notionToClaim;
-        require(_isNotionDecreaseAllowed(vars.notionToClaim), NotEnoughNotion());
+        if (vars.notionToClaim > 0) {
+            totalUnclaimedNotionForWithdraw -= vars.notionToClaim;
+            require(_isNotionDecreaseAllowed(vars.notionToClaim), NotEnoughNotion());
+        }
 
         pendingBurnShares -= vars.withdrawnShares;
         _burn(address(this), vars.withdrawnShares);
-        notion.safeTransfer(onBehalfOf, vars.notionToClaim);
+
+        if (vars.notionToClaim > 0) {
+            notion.safeTransfer(onBehalfOf, vars.notionToClaim);
+        }
 
         emit WithdrawClaimed(msg.sender, onBehalfOf, batchId, vars.notionToClaim);
         return vars.notionToClaim;

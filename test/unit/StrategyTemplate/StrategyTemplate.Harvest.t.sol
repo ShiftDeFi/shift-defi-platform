@@ -7,7 +7,7 @@ import {Errors} from "contracts/libraries/Errors.sol";
 import {StrategyTemplateBaseTest} from "./StrategyTemplateBase.t.sol";
 
 contract StrategyTemplateHarvestTest is StrategyTemplateBaseTest {
-    bytes32 internal constant TREASURY_STORAGE_SLOT = bytes32(uint256(14));
+    bytes32 internal constant TREASURY_STORAGE_SLOT = bytes32(uint256(64));
 
     function setUp() public override {
         super.setUp();

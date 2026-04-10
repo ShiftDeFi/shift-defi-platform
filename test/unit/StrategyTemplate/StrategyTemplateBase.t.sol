@@ -20,7 +20,7 @@ abstract contract StrategyTemplateBaseTest is Base {
     bytes32 internal constant CURRENT_STATE_ID_STORAGE_SLOT = bytes32(uint256(3));
     bytes32 internal constant STATE_BITMASKS_STORAGE_SLOT = bytes32(uint256(4));
     bytes32 internal constant NAV_RESOLUTION_MODE_STORAGE_SLOT = bytes32(uint256(11));
-    bytes32 internal constant STRATEGY_UNRESOLVED_NAV_BITMASK_STORAGE_SLOT = bytes32(uint256(12));
+    bytes32 internal constant STRATEGY_UNRESOLVED_NAV_BITMASK_STORAGE_SLOT = bytes32(uint256(62));
 
     bytes32 internal constant NO_ALLOCATION_STATE_ID = bytes32(uint256(0));
     bytes32 internal constant ONE_STATE_ID = bytes32(uint256(1));

@@ -45,7 +45,7 @@ contract ContainerLocalReshufflingTest is ContainerLocalBaseTest {
         address[] memory tokens = new address[](1);
         uint256[] memory amounts = new uint256[](1);
 
-        bytes32 reshufflingGatewaySlot = bytes32(uint256(13));
+        bytes32 reshufflingGatewaySlot = bytes32(uint256(63));
         vm.store(address(containerLocal), reshufflingGatewaySlot, bytes32(uint256(0)));
 
         vm.prank(roles.reshufflingExecutor);

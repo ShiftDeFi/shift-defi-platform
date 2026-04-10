@@ -19,7 +19,7 @@ import {Utils} from "test/Utils.sol";
 contract ContainerPrincipalBaseTest is L1Base {
     using stdStorage for StdStorage;
 
-    uint256 internal constant EXPECTED_TOKEN_AMOUNT_SLOT = 10;
+    uint256 internal constant EXPECTED_TOKEN_AMOUNT_SLOT = 60;
 
     function setUp() public virtual override {
         super.setUp();

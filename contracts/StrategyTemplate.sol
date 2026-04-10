@@ -546,4 +546,6 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     function _emergencyExit(bytes32 toStateId, uint256 share) internal virtual;
 
     function _harvest(bytes32 _stateId, address _treasury, uint256 _feePct) internal virtual {}
+
+    uint256[50] private __gap;
 }

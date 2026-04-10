@@ -200,4 +200,6 @@ abstract contract CrossChainContainer is Container, ICrossChainContainer {
             IERC20(token).forceApprove(bridgeAdapter, amount);
         }
     }
+
+    uint256[50] private __gap;
 }

@@ -10,7 +10,7 @@ import {L1Base} from "test/L1Base.t.sol";
 abstract contract CrossChainContainerBaseTest is L1Base {
     MockCrossChainContainer internal crossChainContainer;
 
-    uint256 internal constant EXPECTED_TOKEN_AMOUNT_SLOT = 10;
+    uint256 internal constant EXPECTED_TOKEN_AMOUNT_SLOT = 60;
 
     function setUp() public virtual override {
         super.setUp();

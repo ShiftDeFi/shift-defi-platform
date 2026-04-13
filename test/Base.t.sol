@@ -83,6 +83,8 @@ abstract contract Base is Test {
     uint256 internal constant MAX_CACHE_SIZE = 8;
     uint256 internal constant DEFAULT_SLIPPAGE_CAP_PCT = 0.95e18;
     uint256 internal constant DEFAULT_FEE_PCT = 0.01e18;
+    uint256 internal constant DEFAULT_ENTER_MAX_SLIPPAGE = 0.01e18;
+    uint256 internal constant DEFAULT_EXIT_MAX_SLIPPAGE = 0.01e18;
     uint256 internal constant DEFAULT_EMERGENCY_EXIT_MAX_SLIPPAGE = 0.01e18;
 
     bytes32 internal constant DEFAULT_ADMIN_ROLE = "0x00";
@@ -237,6 +239,8 @@ abstract contract Base is Test {
             abi.encodeWithSelector(
                 MockStrategy.initialize.selector,
                 strategyContainer,
+                DEFAULT_ENTER_MAX_SLIPPAGE,
+                DEFAULT_EXIT_MAX_SLIPPAGE,
                 DEFAULT_EMERGENCY_EXIT_MAX_SLIPPAGE
             )
         );

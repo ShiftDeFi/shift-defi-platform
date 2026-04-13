@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
 
 import {Errors} from "contracts/libraries/Errors.sol";
@@ -8,6 +10,8 @@ import {Errors} from "contracts/libraries/Errors.sol";
 import {StrategyTemplateBaseTest} from "./StrategyTemplateBase.t.sol";
 
 contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
+    using Math for uint256;
+
     function setUp() public override {
         super.setUp();
 
@@ -52,7 +56,7 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
 
         deal(address(notion), address(strategyContainer), DEPOSIT_AMOUNT);
 
-        _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
+        _enterToState(toStateId, enterMinNavDelta);
         assertEq(strategy.currentStateId(), toStateId, "test_EnterToState_TokenState: currentStateId not 1");
         assertEq(
             notion.balanceOf(address(strategyContainer)),
@@ -71,7 +75,7 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
 
         deal(address(notion), address(strategy), DEPOSIT_AMOUNT);
 
-        _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
+        _enterToState(toStateId, enterMinNavDelta);
         assertEq(strategy.currentStateId(), toStateId, "test_EnterToState_ProtocolState: currentStateId not 1");
         assertEq(
             notion.balanceOf(address(strategy)),
@@ -90,7 +94,7 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
 
         deal(address(notion), address(strategy), DEPOSIT_AMOUNT);
 
-        _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
+        _enterToState(toStateId, enterMinNavDelta);
         assertEq(strategy.currentStateId(), toStateId, "test_EnterToState_TargetState: currentStateId not 1");
         assertEq(
             notion.balanceOf(address(strategy)),
@@ -108,27 +112,27 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
         bytes32 toStateId = NO_ALLOCATION_STATE_ID;
 
         vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.IncorrectStateId.selector, toStateId));
-        _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
+        _enterToState(toStateId, enterMinNavDelta);
     }
 
     function test_RevertIf_EnterToState_StateNotFound() public {
         bytes32 toStateId = bytes32(uint256(100));
 
         vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.StateNotFound.selector, toStateId));
-        _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
+        _enterToState(toStateId, enterMinNavDelta);
     }
 
     function test_RevertIf_EnterToState_InconsistentHeight() public {
         bytes32 toStateId = TWO_STATE_ID;
 
         deal(address(notion), address(strategy), DEPOSIT_AMOUNT);
-        _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
+        _enterToState(toStateId, enterMinNavDelta);
 
         toStateId = ONE_STATE_ID;
         vm.expectRevert(
             abi.encodeWithSelector(IStrategyTemplate.CannotEnterStateWithLowerHeight.selector, toStateId, TWO_STATE_ID)
         );
-        _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
+        _enterToState(toStateId, enterMinNavDelta);
     }
 
     function test_RevertIf_EnterToState_SlippageCheckFailed() public {
@@ -140,11 +144,14 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
             abi.encodeWithSelector(
                 IStrategyTemplate.SlippageCheckFailed.selector,
                 0,
-                DEPOSIT_AMOUNT - strategy.MOCK_SLIPPAGE_AMOUNT() - 1,
-                ENTER_MIN_NAV_DELTA
+                IStrategyTemplate(address(strategy)).getTokenAmountInNotion(
+                    address(notion),
+                    DEPOSIT_AMOUNT - strategy.MOCK_SLIPPAGE_AMOUNT() - 1
+                ),
+                enterMinNavDelta
             )
         );
-        _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
+        _enterToState(toStateId, enterMinNavDelta);
     }
 
     function test_Enter_FromNoAllocationState() public {
@@ -153,7 +160,7 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
         deal(address(notion), address(strategyContainer), DEPOSIT_AMOUNT);
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         assertEq(
             strategy.currentStateId(),
@@ -183,12 +190,12 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
         deal(address(notion), address(strategyContainer), DEPOSIT_AMOUNT);
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         deal(address(notion), address(strategyContainer), DEPOSIT_AMOUNT);
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         assertEq(
             strategy.currentStateId(),
@@ -211,14 +218,14 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
         // Enter interim state
         bytes32 toStateId = TWO_STATE_ID;
         deal(address(notion), address(strategy), DEPOSIT_AMOUNT);
-        _enterToState(toStateId, ENTER_MIN_NAV_DELTA);
+        _enterToState(toStateId, enterMinNavDelta);
 
         // Enter at interim state
         uint256[] memory inputAmounts = _prepareEnterInputAmounts(address(strategy));
         deal(address(notion), address(strategyContainer), DEPOSIT_AMOUNT);
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         assertEq(strategy.currentStateId(), toStateId, "test_Enter_FromInterimState: currentStateId not interim state");
         assertEq(
@@ -245,24 +252,41 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
 
         vm.expectRevert(IStrategyTemplate.NavResolutionModeActivated.selector);
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
     }
 
-    function test_RevertIf_Enter_SlippageCheckFailed() public {
+    function test_RevertIf_Enter_IncorrectSlippage_EnterMinNavDeltaTooHigh() public {
         uint256[] memory inputAmounts = _prepareEnterInputAmounts(address(strategy));
 
         deal(address(notion), address(strategyContainer), DEPOSIT_AMOUNT);
 
+        uint256 maxNavDelta = strategy.enterMaxSlippage();
+        enterMinNavDelta = maxNavDelta + 1;
+
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IStrategyTemplate.SlippageCheckFailed.selector,
-                0,
-                DEPOSIT_AMOUNT,
-                DEPOSIT_AMOUNT + 1
-            )
+            abi.encodeWithSelector(IStrategyTemplate.IncorrectSlippage.selector, enterMinNavDelta, maxNavDelta)
         );
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, DEPOSIT_AMOUNT + 1);
+        strategy.enter(inputAmounts, enterMinNavDelta);
+    }
+
+    function test_RevertIf_Enter_IncorrectSlippage_GreaterThanMaxSlippage() public {
+        uint256[] memory inputAmounts = _prepareEnterInputAmounts(address(strategy));
+
+        deal(address(notion), address(strategyContainer), DEPOSIT_AMOUNT);
+
+        uint256 maxNavDelta = strategy.enterMaxSlippage();
+        uint256 expectedNavDelta = IStrategyTemplate(address(strategy)).getTokenAmountInNotion(
+            address(notion),
+            DEPOSIT_AMOUNT
+        );
+        enterMinNavDelta = expectedNavDelta.mulDiv(MAX_BPS - maxNavDelta, MAX_BPS) - 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IStrategyTemplate.IncorrectSlippage.selector, enterMinNavDelta, maxNavDelta)
+        );
+        vm.prank(address(strategyContainer));
+        strategy.enter(inputAmounts, enterMinNavDelta);
     }
 
     function test_Enter_WithRemainder() public {
@@ -272,10 +296,14 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
 
         _setTargetStateId(strategy.MOCK_REMAINDER_STATE_ID());
         uint256 remainderAmount = strategy.MOCK_REMAINDER_AMOUNT();
+        uint256 remainderNav = IStrategyTemplate(address(strategy)).getTokenAmountInNotion(
+            address(notion),
+            remainderAmount
+        );
         vm.prank(address(strategyContainer));
         (uint256 stateToNavAfterEnter, bool hasRemainder, uint256[] memory remainingAmounts) = strategy.enter(
             inputAmounts,
-            ENTER_MIN_NAV_DELTA - remainderAmount
+            enterMinNavDelta - remainderNav
         );
 
         assertEq(hasRemainder, true, "test_Enter_WithRemainder: hasRemainder not true");
@@ -287,7 +315,10 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
         );
         assertEq(
             stateToNavAfterEnter,
-            DEPOSIT_AMOUNT - remainderAmount,
+            IStrategyTemplate(address(strategy)).getTokenAmountInNotion(
+                address(notion),
+                DEPOSIT_AMOUNT - remainderAmount
+            ),
             "test_Enter_WithRemainder: stateToNavAfterEnter not correct"
         );
         assertEq(
@@ -305,5 +336,23 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
             DEPOSIT_AMOUNT - remainderAmount,
             "test_Enter_WithRemainder: mockBuildingBlock should hold deposit minus remainder"
         );
+    }
+
+    function test_SetEnterMaxSlippage() public {
+        uint256 newEnterMaxSlippage = strategy.enterMaxSlippage() + 1;
+        vm.prank(address(strategyContainer));
+        strategy.setEnterMaxSlippage(newEnterMaxSlippage);
+        assertEq(
+            strategy.enterMaxSlippage(),
+            newEnterMaxSlippage,
+            "test_SetEnterMaxSlippage: enterMaxSlippage not updated"
+        );
+    }
+
+    function test_RevertIf_SetEnterMaxSlippage_OutOfBounds() public {
+        uint256 newEnterMaxSlippage = MAX_BPS + 1;
+        vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectAmount.selector));
+        vm.prank(address(strategyContainer));
+        strategy.setEnterMaxSlippage(newEnterMaxSlippage);
     }
 }

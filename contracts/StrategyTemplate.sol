@@ -46,6 +46,8 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
     bool private _navResolutionMode;
 
+    uint256 public enterMaxSlippage;
+    uint256 public exitMaxSlippage;
     uint256 public emergencyExitMaxSlippage;
 
     /* Modifiers */
@@ -132,6 +134,8 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
      */
     function __StrategyTemplate_init(
         address strategyContainer,
+        uint256 _enterMaxSlippage,
+        uint256 _exitMaxSlippage,
         uint256 _emergencyExitMaxSlippage
     ) internal onlyInitializing {
         __ReentrancyGuard_init();
@@ -142,6 +146,9 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
         _strategyContainer = strategyContainer;
         _notion = notion;
+
+        _setEnterMaxSlippage(_enterMaxSlippage);
+        _setExitMaxSlippage(_exitMaxSlippage);
         _setEmergencyExitMaxSlippage(_emergencyExitMaxSlippage);
     }
 
@@ -163,6 +170,30 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
             require(_inputTokens.add(inputTokens[i]), Errors.TokenAlreadySet(inputTokens[i]));
             emit InputTokenSet(inputTokens[i]);
         }
+    }
+
+    /// @inheritdoc IStrategyTemplate
+    function setEnterMaxSlippage(uint256 _enterMaxSlippage) external onlyReshufflingExecutorOrStrategyContainer {
+        _setEnterMaxSlippage(_enterMaxSlippage);
+    }
+
+    function _setEnterMaxSlippage(uint256 _enterMaxSlippage) private {
+        require(_enterMaxSlippage >= 0 && _enterMaxSlippage <= MAX_BPS, Errors.IncorrectAmount());
+        uint256 oldEnterMaxSlippage = enterMaxSlippage;
+        enterMaxSlippage = _enterMaxSlippage;
+        emit EnterMaxSlippageUpdated(oldEnterMaxSlippage, _enterMaxSlippage);
+    }
+
+    /// @inheritdoc IStrategyTemplate
+    function setExitMaxSlippage(uint256 _exitMaxSlippage) external onlyReshufflingExecutorOrStrategyContainer {
+        _setExitMaxSlippage(_exitMaxSlippage);
+    }
+
+    function _setExitMaxSlippage(uint256 _exitMaxSlippage) private {
+        require(_exitMaxSlippage >= 0 && _exitMaxSlippage <= MAX_BPS, Errors.IncorrectAmount());
+        uint256 oldExitMaxSlippage = exitMaxSlippage;
+        exitMaxSlippage = _exitMaxSlippage;
+        emit ExitMaxSlippageUpdated(oldExitMaxSlippage, _exitMaxSlippage);
     }
 
     /// @inheritdoc IStrategyTemplate
@@ -233,6 +264,20 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.currentStateId = _currentStateId;
 
         require(!_navResolutionMode, NavResolutionModeActivated());
+
+        address[] memory inputTokens = _inputTokens.values();
+        vars.maxSlippageCached = enterMaxSlippage;
+        for (uint256 i = 0; i < amounts.length; ++i) {
+            if (amounts[i] > 0) {
+                vars.incomingNav += getTokenAmountInNotion(inputTokens[i], amounts[i]);
+            }
+        }
+
+        require(
+            vars.incomingNav >= minNavDelta &&
+                vars.incomingNav - minNavDelta <= vars.incomingNav.mulDiv(vars.maxSlippageCached, MAX_BPS),
+            IncorrectSlippage(minNavDelta, vars.maxSlippageCached)
+        );
 
         if (vars.currentStateId == NO_ALLOCATION_STATE_ID) {
             vars.enterStateId = _targetStateId;

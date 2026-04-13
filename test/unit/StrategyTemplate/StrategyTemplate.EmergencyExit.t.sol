@@ -78,7 +78,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint256 exitShare = MAX_BPS;
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         vm.expectEmit();
         emit IStrategyTemplate.EmergencyExitSucceeded(toStateId);
@@ -106,7 +106,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint256 exitShare = MAX_BPS / 2;
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         vm.expectEmit();
         emit IStrategyTemplate.EmergencyExitSucceeded(toStateId);
@@ -134,7 +134,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint256 exitShare = MAX_BPS;
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         vm.expectEmit();
         emit IStrategyTemplate.EmergencyExitSucceeded(toStateId);
@@ -157,8 +157,8 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint256 bitmaskAfterSecondExit = bitmaskAfterFirstExit | (1 << 1);
 
         vm.startPrank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
-        secondStrategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
+        secondStrategy.enter(inputAmounts, enterMinNavDelta);
         vm.stopPrank();
 
         uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
@@ -210,7 +210,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint256 exitShare = MAX_BPS;
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         bytes32 toStateId = strategy.currentStateId();
         vm.prank(roles.emergencyExecutor);
@@ -224,7 +224,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint256 minNavDelta = strategy.emergencyExitMaxSlippage() + 1;
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -242,7 +242,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint256 exitShare = MAX_BPS / 2;
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         uint256 currentStateNav = strategy.currentStateNav();
         uint256 expectedNavDelta = currentStateNav.mulDiv(exitShare, MAX_BPS);
@@ -265,7 +265,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint256 exitShare = MAX_BPS / 2;
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         uint256 toStateNavBefore = strategy.stateNav(toStateId);
         uint256 expectedNavExit = 0;
@@ -312,7 +312,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint256 exitShare = MAX_BPS;
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
 
@@ -344,7 +344,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint256 exitShare = MAX_BPS / 2;
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
         vm.prank(roles.emergencyExecutor);
@@ -382,7 +382,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         uint256 exitShare = MAX_BPS / 2;
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
         vm.prank(roles.emergencyExecutor);

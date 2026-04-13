@@ -25,7 +25,7 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
         inputAmounts[0] = new uint256[](strategiesNumber);
         inputAmounts[0][0] = DEPOSIT_AMOUNT;
         uint256[] memory minNavDelta = new uint256[](strategiesNumber);
-        minNavDelta[0] = 0;
+        minNavDelta[0] = IStrategyTemplate(strategy).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT);
 
         vm.prank(roles.operator);
         containerLocal.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
@@ -105,7 +105,7 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
 
         uint256[] memory inputAmounts = new uint256[](strategiesNumber);
         inputAmounts[0] = DEPOSIT_AMOUNT;
-        uint256 minNavDelta = 0;
+        uint256 minNavDelta = IStrategyTemplate(strategy).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT);
 
         vm.prank(roles.operator);
         containerLocal.enterStrategy(address(strategy), inputAmounts, minNavDelta);
@@ -120,7 +120,7 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
         address[] memory strategies = new address[](strategiesNumber);
         strategies[0] = address(strategy);
         uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
-        maxNavDeltas[0] = DEPOSIT_AMOUNT;
+        maxNavDeltas[0] = IStrategyTemplate(strategy).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT);
 
         vm.prank(roles.operator);
         containerLocal.exitStrategyMultiple(strategies, maxNavDeltas);
@@ -146,7 +146,7 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
         uint256 strategiesNumber = containerLocal.getStrategiesNumber();
         address[] memory strategies = new address[](0);
         uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
-        maxNavDeltas[0] = DEPOSIT_AMOUNT;
+        maxNavDeltas[0] = IStrategyTemplate(strategy).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT);
 
         vm.expectRevert(Errors.InvalidArrayLength.selector);
         vm.prank(roles.operator);
@@ -182,7 +182,7 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
         address[] memory strategies = new address[](strategiesNumber);
         strategies[0] = address(strategy);
         uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
-        maxNavDeltas[0] = DEPOSIT_AMOUNT;
+        maxNavDeltas[0] = IStrategyTemplate(strategy).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT);
 
         vm.expectRevert(IStrategyContainer.NoSharesRegisteredForExit.selector);
         vm.prank(roles.operator);
@@ -262,7 +262,7 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
 
         uint256[] memory inputAmounts = new uint256[](1);
         inputAmounts[0] = DEPOSIT_AMOUNT;
-        uint256 minNavDelta = 0;
+        uint256 minNavDelta = IStrategyTemplate(strategy).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT);
 
         vm.prank(roles.operator);
         containerLocal.enterStrategy(address(strategy), inputAmounts, minNavDelta);
@@ -278,7 +278,7 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
 
         uint256[] memory inputAmounts = new uint256[](1);
         inputAmounts[0] = DEPOSIT_AMOUNT;
-        uint256 minNavDelta = 0;
+        uint256 minNavDelta = IStrategyTemplate(strategy).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT);
 
         vm.expectRevert(Errors.IncorrectContainerStatus.selector);
         vm.prank(roles.operator);

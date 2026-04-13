@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {IContainerAgent} from "contracts/interfaces/IContainerAgent.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
+import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
 import {Errors} from "contracts/libraries/Errors.sol";
 
 import {ContainerAgentBaseTest} from "./ContainerAgentBase.t.sol";
@@ -10,6 +11,7 @@ import {ContainerAgentBaseTest} from "./ContainerAgentBase.t.sol";
 contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
     address internal strategy0;
     address internal strategy1;
+    uint256 internal minNavDelta;
 
     uint256[] internal inputAmounts = [DEPOSIT_AMOUNT];
 
@@ -27,10 +29,11 @@ contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.BridgeClaimed);
 
         deal(address(notion), address(containerAgent), DEPOSIT_AMOUNT * 2);
+
+        minNavDelta = IStrategyTemplate(strategy0).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT);
     }
 
     function test_EnterStrategy() public {
-        uint256 minNavDelta = 0;
         uint256 containerBalanceBefore = notion.balanceOf(address(containerAgent));
 
         vm.prank(roles.operator);
@@ -72,7 +75,6 @@ contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
 
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.BridgeClaimed);
 
-        uint256 minNavDelta = 0;
         uint256 containerBalanceBefore = notion.balanceOf(address(containerAgent));
 
         vm.prank(roles.operator);
@@ -91,8 +93,6 @@ contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
     }
 
     function test_RevertIf_EnterStrategy_IncorrectContainerStatus() public {
-        uint256 minNavDelta = 0;
-
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.DepositRequestReceived);
 
         vm.expectRevert(Errors.IncorrectContainerStatus.selector);
@@ -101,8 +101,6 @@ contract ContainerAgentEnterStrategyTest is ContainerAgentBaseTest {
     }
 
     function test_RevertIf_EnterStrategy_InReshufflingMode() public {
-        uint256 minNavDelta = 0;
-
         _toggleReshufflingMode(true);
 
         vm.expectRevert(Errors.ReshufflingModeEnabled.selector);

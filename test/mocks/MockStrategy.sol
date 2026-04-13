@@ -27,8 +27,13 @@ contract MockStrategy is StrategyTemplate {
 
     error NotEnoughFunds();
 
-    function initialize(address strategyContainer, uint256 _emergencyExitMaxSlippage) external initializer {
-        __StrategyTemplate_init(strategyContainer, _emergencyExitMaxSlippage);
+    function initialize(
+        address strategyContainer,
+        uint256 _enterMaxSlippage,
+        uint256 _exitMaxSlippage,
+        uint256 _emergencyExitMaxSlippage
+    ) external initializer {
+        __StrategyTemplate_init(strategyContainer, _enterMaxSlippage, _exitMaxSlippage, _emergencyExitMaxSlippage);
         _setState(MOCK_SLIPPAGE_STATE_ID, false, true, false, 1);
         stateToBuildingBlock[MOCK_SLIPPAGE_STATE_ID] = new MockBuildingBlock(address(this), address(_notion));
         _setState(MOCK_REMAINDER_STATE_ID, false, true, false, type(uint8).max - 1);
@@ -39,9 +44,13 @@ contract MockStrategy is StrategyTemplate {
         if (stateId == NO_ALLOCATION_STATE_ID) {
             return 0;
         } else if (_isTokenState[stateId]) {
-            return IERC20(_notion).balanceOf(address(this));
+            return getTokenAmountInNotion(address(_notion), IERC20(_notion).balanceOf(address(this)));
         } else {
-            return IERC20(_notion).balanceOf(address(stateToBuildingBlock[stateId]));
+            return
+                getTokenAmountInNotion(
+                    address(_notion),
+                    IERC20(_notion).balanceOf(address(stateToBuildingBlock[stateId]))
+                );
         }
     }
 

@@ -58,7 +58,7 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
 
     function test_Exit_FromTargetState_PartialExit() public {
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         uint256 share = MAX_BPS / 2;
         uint256 navDelta = _calcNavDelta(share);
@@ -72,7 +72,10 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
         );
         assertEq(
             strategy.stateNav(TWO_STATE_ID),
-            DEPOSIT_AMOUNT.mulDiv(share, MAX_BPS),
+            IStrategyTemplate(address(strategy)).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT).mulDiv(
+                share,
+                MAX_BPS
+            ),
             "test_Exit_FromTargetState_PartialExit: strategy notion balance should equal exited share from target"
         );
         assertEq(
@@ -84,7 +87,7 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
 
     function test_Exit_FromTargetState_FullExit() public {
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         uint256 share = MAX_BPS;
         uint256 navDelta = _calcNavDelta(share);
@@ -98,7 +101,7 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
         );
         assertEq(
             strategy.stateNav(TWO_STATE_ID),
-            DEPOSIT_AMOUNT,
+            IStrategyTemplate(address(strategy)).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT),
             "test_Exit_FromTargetState_FullExit: strategy notion balance should equal full deposit after exit"
         );
         assertEq(
@@ -109,7 +112,7 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
     }
 
     function test_Exit_FromTokenState_PartialExit() public {
-        _enterToState(ONE_STATE_ID, ENTER_MIN_NAV_DELTA);
+        _enterToState(ONE_STATE_ID, enterMinNavDelta);
 
         uint256 share = MAX_BPS / 2;
         uint256 navDelta = _calcNavDelta(share);
@@ -134,7 +137,7 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
     }
 
     function test_Exit_FromTokenState_FullExit() public {
-        _enterToState(ONE_STATE_ID, ENTER_MIN_NAV_DELTA);
+        _enterToState(ONE_STATE_ID, enterMinNavDelta);
 
         uint256 share = MAX_BPS;
         uint256 navDelta = _calcNavDelta(share);
@@ -161,7 +164,7 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
     function test_Exit_FromProtocolState_PartialExit() public {
         deal(address(notion), address(strategy), DEPOSIT_AMOUNT);
 
-        _enterToState(TWO_STATE_ID, ENTER_MIN_NAV_DELTA);
+        _enterToState(TWO_STATE_ID, enterMinNavDelta);
 
         uint256 share = MAX_BPS / 2;
         uint256 navDelta = _calcNavDelta(share);
@@ -193,7 +196,7 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
     function test_Exit_FromProtocolState_FullExit() public {
         deal(address(notion), address(strategy), DEPOSIT_AMOUNT);
 
-        _enterToState(TWO_STATE_ID, ENTER_MIN_NAV_DELTA);
+        _enterToState(TWO_STATE_ID, enterMinNavDelta);
 
         uint256 share = MAX_BPS;
         uint256 navDelta = _calcNavDelta(share);
@@ -212,7 +215,7 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
         );
         assertEq(
             strategy.stateNav(ONE_STATE_ID),
-            DEPOSIT_AMOUNT,
+            IStrategyTemplate(address(strategy)).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT),
             "test_Exit_FromProtocolState_FullExit: strategy notion balance should equal full deposit after exit"
         );
         assertEq(
@@ -250,10 +253,14 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
 
     function test_RevertIf_Exit_SlippageCheckFailed() public {
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
+        uint256 currentStateNav = IStrategyTemplate(address(strategy)).getTokenAmountInNotion(
+            address(notion),
+            DEPOSIT_AMOUNT
+        );
         vm.prank(address(strategyContainer));
-        vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.SlippageCheckFailed.selector, inputAmounts[0], 0, 0));
+        vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.SlippageCheckFailed.selector, currentStateNav, 0, 0));
         strategy.exit(MAX_BPS, 0);
     }
 }

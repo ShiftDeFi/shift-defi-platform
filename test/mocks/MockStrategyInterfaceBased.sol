@@ -10,6 +10,9 @@ import {Errors} from "contracts/libraries/Errors.sol";
 
 contract MockStrategyInterfaceBased is IStrategyTemplate {
     uint256 internal constant MAX_BPS = 1e18;
+    uint256 internal constant DEFAULT_ENTER_MAX_SLIPPAGE = 0.01e18;
+    uint256 internal constant DEFAULT_EXIT_MAX_SLIPPAGE = 0.01e18;
+    uint256 internal constant DEFAULT_EMERGENCY_EXIT_MAX_SLIPPAGE = 0.01e18;
 
     address public strategyContainer;
 
@@ -28,9 +31,14 @@ contract MockStrategyInterfaceBased is IStrategyTemplate {
 
     bool _navResolutionMode;
     uint256 emergencyExitMaxSlippage;
+    uint256 enterMaxSlippage;
+    uint256 exitMaxSlippage;
 
     constructor(address _strategyContainer) {
         strategyContainer = _strategyContainer;
+        enterMaxSlippage = DEFAULT_ENTER_MAX_SLIPPAGE;
+        exitMaxSlippage = DEFAULT_EXIT_MAX_SLIPPAGE;
+        emergencyExitMaxSlippage = DEFAULT_EMERGENCY_EXIT_MAX_SLIPPAGE;
     }
 
     function approveToken(address token, uint256 amount, address spender) public {
@@ -134,5 +142,13 @@ contract MockStrategyInterfaceBased is IStrategyTemplate {
 
     function setEmergencyExitMaxSlippage(uint256 _emergencyExitMaxSlippage) external {
         emergencyExitMaxSlippage = _emergencyExitMaxSlippage;
+    }
+
+    function setEnterMaxSlippage(uint256 _enterMaxSlippage) external {
+        enterMaxSlippage = _enterMaxSlippage;
+    }
+
+    function setExitMaxSlippage(uint256 _exitMaxSlippage) external {
+        exitMaxSlippage = _exitMaxSlippage;
     }
 }

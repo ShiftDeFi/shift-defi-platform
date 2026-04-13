@@ -129,6 +129,8 @@ abstract contract L2Base is Base {
             abi.encodeWithSelector(
                 MockStrategy.initialize.selector,
                 address(containerAgent),
+                DEFAULT_ENTER_MAX_SLIPPAGE,
+                DEFAULT_EXIT_MAX_SLIPPAGE,
                 DEFAULT_EMERGENCY_EXIT_MAX_SLIPPAGE
             )
         );

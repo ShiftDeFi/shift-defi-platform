@@ -16,6 +16,8 @@ abstract contract StrategyTemplateBaseTest is Base {
     MockStrategyContainer internal strategyContainer;
     MockStrategy internal strategy;
 
+    uint256 internal enterMinNavDelta;
+
     bytes32 internal constant TARGET_STATE_ID_STORAGE_SLOT = bytes32(uint256(2));
     bytes32 internal constant CURRENT_STATE_ID_STORAGE_SLOT = bytes32(uint256(3));
     bytes32 internal constant STATE_BITMASKS_STORAGE_SLOT = bytes32(uint256(4));
@@ -28,13 +30,14 @@ abstract contract StrategyTemplateBaseTest is Base {
     bytes32 internal constant THREE_STATE_ID = bytes32(uint256(3));
 
     uint256 internal constant DEPOSIT_AMOUNT = 1_000_000 * NOTION_PRECISION;
-    uint256 internal constant ENTER_MIN_NAV_DELTA = DEPOSIT_AMOUNT - 1;
 
     function setUp() public virtual override {
         super.setUp();
 
         strategyContainer = _deployMockStrategyContainer();
         strategy = _deployMockStrategy(address(strategyContainer));
+
+        enterMinNavDelta = IStrategyTemplate(address(strategy)).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT);
     }
 
     function _prepareEnterInputAmounts(address _strategy) internal view returns (uint256[] memory) {

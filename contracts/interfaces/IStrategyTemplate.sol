@@ -7,6 +7,8 @@ interface IStrategyTemplate {
     struct EnterLocalVars {
         bytes32 currentStateId;
         bytes32 enterStateId;
+        uint256 incomingNav;
+        uint256 maxSlippageCached;
         uint256 enterStateBitmask;
         uint256 stateToNavBeforeEnter;
         uint256 stateToNavAfterEnter;
@@ -93,6 +95,8 @@ interface IStrategyTemplate {
     event EmergencyModeUpdated(bool isEmergencyMode);
     event InputTokenSet(address);
     event OutputTokenSet(address);
+    event EnterMaxSlippageUpdated(uint256 oldEnterMaxSlippage, uint256 newEnterMaxSlippage);
+    event ExitMaxSlippageUpdated(uint256 oldExitMaxSlippage, uint256 newExitMaxSlippage);
     event EmergencyExitMaxSlippageUpdated(uint256 oldEmergencyExitMaxSlippage, uint256 newEmergencyExitMaxSlippage);
 
     // ---- Errors ----
@@ -116,7 +120,7 @@ interface IStrategyTemplate {
     error TreasuryNotSet();
     error TokenNotFound(address token);
     error NotWhitelistedToken(address token);
-    error IncorrectSlippage(uint256 minNavDelta, uint256 maxSlippageCached);
+    error IncorrectSlippage(uint256 navDelta, uint256 maxSlippageCached);
 
     // ---- Functions ----
 
@@ -138,9 +142,26 @@ interface IStrategyTemplate {
     function isNavResolutionMode() external view returns (bool);
 
     /**
+     * @notice Sets the maximum slippage allowed for enters.
+     * @dev Callable only by the strategy container or RESHUFFLING_EXECUTOR_ROLE.
+     * @param _enterMaxSlippage The maximum slippage allowed for enters in basis points.
+     *      Must be between 0 and 1e18.
+     */
+    function setEnterMaxSlippage(uint256 _enterMaxSlippage) external;
+
+    /**
+     * @notice Sets the maximum slippage allowed for exits.
+     * @dev Callable only by the strategy container or RESHUFFLING_EXECUTOR_ROLE.
+     * @param _exitMaxSlippage The maximum slippage allowed for exits in basis points.
+     *      Must be between 0 and 1e18.
+     */
+    function setExitMaxSlippage(uint256 _exitMaxSlippage) external;
+
+    /**
      * @notice Sets the maximum slippage allowed for emergency exits.
      * @dev Callable only by the strategy container or RESHUFFLING_EXECUTOR_ROLE.
      * @param _emergencyExitMaxSlippage The maximum slippage allowed for emergency exits in basis points.
+     *      Must be between 0 and 1e18.
      */
     function setEmergencyExitMaxSlippage(uint256 _emergencyExitMaxSlippage) external;
 

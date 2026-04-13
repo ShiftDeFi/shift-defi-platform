@@ -126,7 +126,11 @@ abstract contract L2Base is Base {
             roles.deployer,
             implementation,
             roles.defaultAdmin,
-            abi.encodeWithSelector(MockStrategy.initialize.selector, address(containerAgent))
+            abi.encodeWithSelector(
+                MockStrategy.initialize.selector,
+                address(containerAgent),
+                DEFAULT_EMERGENCY_EXIT_MAX_SLIPPAGE
+            )
         );
         vm.label(proxy, "MOCK_STRATEGY");
         return IStrategyTemplate(proxy);

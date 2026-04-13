@@ -71,6 +71,8 @@ interface IStrategyTemplate {
     struct EmergencyExitLocalVars {
         bytes32 currentStateId;
         uint256 toStateNavBeforeExit;
+        uint256 maxSlippageCached;
+        uint256 expectedNavDelta;
         uint256 toStateNavAfterExit;
         uint256 currentStateBitmask;
         uint256 toStateBitmask;
@@ -91,6 +93,7 @@ interface IStrategyTemplate {
     event EmergencyModeUpdated(bool isEmergencyMode);
     event InputTokenSet(address);
     event OutputTokenSet(address);
+    event EmergencyExitMaxSlippageUpdated(uint256 oldEmergencyExitMaxSlippage, uint256 newEmergencyExitMaxSlippage);
 
     // ---- Errors ----
 
@@ -113,6 +116,7 @@ interface IStrategyTemplate {
     error TreasuryNotSet();
     error TokenNotFound(address token);
     error NotWhitelistedToken(address token);
+    error IncorrectSlippage(uint256 minNavDelta, uint256 maxSlippageCached);
 
     // ---- Functions ----
 
@@ -132,6 +136,13 @@ interface IStrategyTemplate {
      * @return True if NAV resolution mode is active, false otherwise.
      */
     function isNavResolutionMode() external view returns (bool);
+
+    /**
+     * @notice Sets the maximum slippage allowed for emergency exits.
+     * @dev Callable only by the strategy container or RESHUFFLING_EXECUTOR_ROLE.
+     * @param _emergencyExitMaxSlippage The maximum slippage allowed for emergency exits in basis points.
+     */
+    function setEmergencyExitMaxSlippage(uint256 _emergencyExitMaxSlippage) external;
 
     /**
      * @notice Enters the strategy using the provided input token amounts.

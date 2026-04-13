@@ -27,6 +27,7 @@ contract MockStrategyInterfaceBased is IStrategyTemplate {
     address[] outputTokens;
 
     bool _navResolutionMode;
+    uint256 emergencyExitMaxSlippage;
 
     constructor(address _strategyContainer) {
         strategyContainer = _strategyContainer;
@@ -129,5 +130,9 @@ contract MockStrategyInterfaceBased is IStrategyTemplate {
 
     function getTokenAmountInNotion(address, uint256) external pure returns (uint256) {
         return 0;
+    }
+
+    function setEmergencyExitMaxSlippage(uint256 _emergencyExitMaxSlippage) external {
+        emergencyExitMaxSlippage = _emergencyExitMaxSlippage;
     }
 }

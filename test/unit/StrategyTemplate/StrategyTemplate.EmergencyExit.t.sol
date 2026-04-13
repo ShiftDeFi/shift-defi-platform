@@ -13,7 +13,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
 
     MockStrategy secondStrategy;
     uint256[] inputAmounts;
-    uint256 constant EMERGENCY_EXIT_SLIPPAGE_TOLERANCE = 0.98e18; // 2%
+    uint256 constant EMERGENCY_EXIT_SLIPPAGE_TOLERANCE = 0.99e18; // 2%
 
     function setUp() public override {
         super.setUp();
@@ -218,16 +218,58 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         strategy.emergencyExit(toStateId, exitShare, 0);
     }
 
-    function test_RevertIf_EmergencyExit_SlippageCheckFailed() public {
+    function test_RevertIf_EmergencyExit_IncorrectSlippage_MinNavDeltaGreaterThanExpectedNavDelta() public {
+        bytes32 toStateId = TWO_STATE_ID;
+        uint256 exitShare = MAX_BPS;
+        uint256 minNavDelta = strategy.emergencyExitMaxSlippage() + 1;
+
+        vm.prank(address(strategyContainer));
+        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IStrategyTemplate.IncorrectSlippage.selector,
+                minNavDelta,
+                strategy.emergencyExitMaxSlippage()
+            )
+        );
+        vm.prank(roles.emergencyExecutor);
+        strategy.emergencyExit(toStateId, exitShare, minNavDelta);
+    }
+
+    function test_RevertIf_EmergencyExit_IncorrectSlippage_GreaterThanMaxSlippages() public {
         bytes32 toStateId = TWO_STATE_ID;
         uint256 exitShare = MAX_BPS / 2;
 
         vm.prank(address(strategyContainer));
         strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
 
+        uint256 currentStateNav = strategy.currentStateNav();
+        uint256 expectedNavDelta = currentStateNav.mulDiv(exitShare, MAX_BPS);
+        uint256 minNavDelta = expectedNavDelta.mulDiv(MAX_BPS - strategy.emergencyExitMaxSlippage(), MAX_BPS) - 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IStrategyTemplate.IncorrectSlippage.selector,
+                minNavDelta,
+                strategy.emergencyExitMaxSlippage()
+            )
+        );
+
+        vm.prank(roles.emergencyExecutor);
+        strategy.emergencyExit(toStateId, exitShare, minNavDelta);
+    }
+
+    function test_RevertIf_EmergencyExit_SlippageCheckFailed() public {
+        bytes32 toStateId = strategy.MOCK_SLIPPAGE_STATE_ID();
+        uint256 exitShare = MAX_BPS / 2;
+
+        vm.prank(address(strategyContainer));
+        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+
         uint256 toStateNavBefore = strategy.stateNav(toStateId);
-        uint256 expectedNavExit = strategy.currentStateNav().mulDiv(exitShare, MAX_BPS);
-        uint256 slippageNavDelta = expectedNavExit + 1;
+        uint256 expectedNavExit = 0;
+        uint256 slippageNavDelta = strategy.currentStateNav().mulDiv(exitShare, MAX_BPS);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -355,5 +397,19 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
     function _calculateEmergencyExitMinNavDelta(uint256 share) internal view returns (uint256) {
         uint256 expectedExitAmount = strategy.currentStateNav().mulDiv(share, MAX_BPS);
         return expectedExitAmount.mulDiv(EMERGENCY_EXIT_SLIPPAGE_TOLERANCE, MAX_BPS);
+    }
+
+    function test_setEmergencyExitMaxSlippage() public {
+        uint256 newEmergencyExitMaxSlippage = 0.95e18;
+        vm.prank(roles.reshufflingExecutor);
+        strategy.setEmergencyExitMaxSlippage(newEmergencyExitMaxSlippage);
+        assertEq(strategy.emergencyExitMaxSlippage(), newEmergencyExitMaxSlippage);
+    }
+
+    function test_RevertIf_SetEmergencyExitMaxSlippage_OutOfBounds() public {
+        uint256 newEmergencyExitMaxSlippage = MAX_BPS + 1;
+        vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectAmount.selector));
+        vm.prank(roles.reshufflingExecutor);
+        strategy.setEmergencyExitMaxSlippage(newEmergencyExitMaxSlippage);
     }
 }

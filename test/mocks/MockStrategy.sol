@@ -27,9 +27,9 @@ contract MockStrategy is StrategyTemplate {
 
     error NotEnoughFunds();
 
-    function initialize(address strategyContainer) external initializer {
-        __StrategyTemplate_init(strategyContainer);
-        _setState(MOCK_SLIPPAGE_STATE_ID, false, true, false, type(uint8).max - 2);
+    function initialize(address strategyContainer, uint256 _emergencyExitMaxSlippage) external initializer {
+        __StrategyTemplate_init(strategyContainer, _emergencyExitMaxSlippage);
+        _setState(MOCK_SLIPPAGE_STATE_ID, false, true, false, 1);
         stateToBuildingBlock[MOCK_SLIPPAGE_STATE_ID] = new MockBuildingBlock(address(this), address(_notion));
         _setState(MOCK_REMAINDER_STATE_ID, false, true, false, type(uint8).max - 1);
         stateToBuildingBlock[MOCK_REMAINDER_STATE_ID] = new MockBuildingBlock(address(this), address(_notion));
@@ -122,9 +122,13 @@ contract MockStrategy is StrategyTemplate {
         }
     }
 
-    function _emergencyExit(bytes32, uint256 share) internal override {
+    function _emergencyExit(bytes32 toStateId, uint256 share) internal override {
         if (_isTargetState[currentStateId()]) {
             _exitTarget(share);
+        }
+
+        if (toStateId == MOCK_SLIPPAGE_STATE_ID) {
+            _exitFromState(toStateId, share);
         }
     }
 

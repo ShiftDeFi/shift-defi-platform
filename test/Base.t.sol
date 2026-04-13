@@ -83,6 +83,7 @@ abstract contract Base is Test {
     uint256 internal constant MAX_CACHE_SIZE = 8;
     uint256 internal constant DEFAULT_SLIPPAGE_CAP_PCT = 0.95e18;
     uint256 internal constant DEFAULT_FEE_PCT = 0.01e18;
+    uint256 internal constant DEFAULT_EMERGENCY_EXIT_MAX_SLIPPAGE = 0.01e18;
 
     bytes32 internal constant DEFAULT_ADMIN_ROLE = "0x00";
     bytes32 internal constant CONTAINER_MANAGER_ROLE = keccak256("CONTAINER_MANAGER_ROLE");
@@ -233,7 +234,11 @@ abstract contract Base is Test {
             roles.deployer,
             implementation,
             roles.defaultAdmin,
-            abi.encodeWithSelector(MockStrategy.initialize.selector, strategyContainer)
+            abi.encodeWithSelector(
+                MockStrategy.initialize.selector,
+                strategyContainer,
+                DEFAULT_EMERGENCY_EXIT_MAX_SLIPPAGE
+            )
         );
         vm.label(proxy, "MOCK_STRATEGY");
         return MockStrategy(proxy);

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+
 import {IContainerLocal} from "contracts/interfaces/IContainerLocal.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
 import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
@@ -10,6 +12,10 @@ import {Errors} from "contracts/libraries/Errors.sol";
 import {ContainerLocalBaseTest} from "test/unit/ContainerLocal/ContainerLocalBase.t.sol";
 
 contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
+    using Math for uint256;
+
+    uint256 internal maxNavDeltaPercent = 0.01e18;
+
     function setUp() public override {
         super.setUp();
         deal(address(notion), address(containerLocal), DEPOSIT_AMOUNT);
@@ -120,7 +126,10 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
         address[] memory strategies = new address[](strategiesNumber);
         strategies[0] = address(strategy);
         uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
-        maxNavDeltas[0] = IStrategyTemplate(strategy).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT);
+        uint256 expectedNavDelta = IStrategyTemplate(strategy)
+            .getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT)
+            .mulDiv(amount, MAX_BPS);
+        maxNavDeltas[0] = expectedNavDelta.mulDiv(MAX_BPS + maxNavDeltaPercent, MAX_BPS);
 
         vm.prank(roles.operator);
         containerLocal.exitStrategyMultiple(strategies, maxNavDeltas);
@@ -146,7 +155,10 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
         uint256 strategiesNumber = containerLocal.getStrategiesNumber();
         address[] memory strategies = new address[](0);
         uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
-        maxNavDeltas[0] = IStrategyTemplate(strategy).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT);
+        maxNavDeltas[0] = IStrategyTemplate(strategy).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT).mulDiv(
+            MAX_BPS + maxNavDeltaPercent,
+            MAX_BPS
+        );
 
         vm.expectRevert(Errors.InvalidArrayLength.selector);
         vm.prank(roles.operator);
@@ -182,7 +194,10 @@ contract ContainerLocalStrategiesTest is ContainerLocalBaseTest {
         address[] memory strategies = new address[](strategiesNumber);
         strategies[0] = address(strategy);
         uint256[] memory maxNavDeltas = new uint256[](strategiesNumber);
-        maxNavDeltas[0] = IStrategyTemplate(strategy).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT);
+        maxNavDeltas[0] = IStrategyTemplate(strategy).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT).mulDiv(
+            MAX_BPS + maxNavDeltaPercent,
+            MAX_BPS
+        );
 
         vm.expectRevert(IStrategyContainer.NoSharesRegisteredForExit.selector);
         vm.prank(roles.operator);

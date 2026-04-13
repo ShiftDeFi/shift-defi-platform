@@ -36,6 +36,9 @@ interface IStrategyTemplate {
         bytes32 currentStateId;
         uint256 currentStateBitmask;
         uint256 currentStateNavBeforeExit;
+        uint256 expectedNavDelta;
+        uint256 maxSlippageCached;
+        uint256 maxAvailableNavDelta;
         uint256 currentStateNavAfterExit;
         uint256 exitLiquidity;
         uint256 tokenShare;

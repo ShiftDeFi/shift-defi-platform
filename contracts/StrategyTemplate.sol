@@ -395,6 +395,14 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.outputTokens = _outputTokens.values();
         vars.currentStateNavBeforeExit = stateNav(vars.currentStateId);
+        vars.expectedNavDelta = vars.currentStateNavBeforeExit.mulDiv(share, MAX_BPS);
+        vars.maxSlippageCached = exitMaxSlippage;
+        vars.maxAvailableNavDelta = vars.expectedNavDelta.mulDiv(MAX_BPS + vars.maxSlippageCached, MAX_BPS);
+
+        require(
+            maxNavDelta >= vars.expectedNavDelta && maxNavDelta <= vars.maxAvailableNavDelta,
+            IncorrectSlippage(maxNavDelta, vars.maxSlippageCached)
+        );
         vars.amountsBeforeExit = _tokensAmountsDump(vars.outputTokens, MAX_BPS);
         require(vars.currentStateId != NO_ALLOCATION_STATE_ID, CannotExitFromNoAllocationState());
 

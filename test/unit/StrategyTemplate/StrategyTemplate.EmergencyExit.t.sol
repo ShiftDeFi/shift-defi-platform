@@ -237,7 +237,7 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         strategy.emergencyExit(toStateId, exitShare, minNavDelta);
     }
 
-    function test_RevertIf_EmergencyExit_IncorrectSlippage_GreaterThanMaxSlippages() public {
+    function test_RevertIf_EmergencyExit_IncorrectSlippage_GreaterThanMaxSlippage() public {
         bytes32 toStateId = TWO_STATE_ID;
         uint256 exitShare = MAX_BPS / 2;
 

@@ -251,6 +251,44 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
         strategy.exit(MAX_BPS, 0);
     }
 
+    function test_RevertIf_Exit_IncorrectSlippage_MaxNavDeltaLessThanExpectedNavDelta() public {
+        vm.prank(address(strategyContainer));
+        strategy.enter(inputAmounts, enterMinNavDelta);
+
+        uint256 currentStateNav = IStrategyTemplate(address(strategy)).getTokenAmountInNotion(
+            address(notion),
+            DEPOSIT_AMOUNT
+        );
+
+        uint256 maxSlippage = strategy.exitMaxSlippage();
+        uint256 sharesToWithdraw = MAX_BPS / 2;
+        uint256 expectedNavDelta = currentStateNav.mulDiv(sharesToWithdraw, MAX_BPS);
+        uint256 maxNavDelta = expectedNavDelta - 1;
+
+        vm.prank(address(strategyContainer));
+        vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.IncorrectSlippage.selector, maxNavDelta, maxSlippage));
+        strategy.exit(sharesToWithdraw, maxNavDelta);
+    }
+
+    function test_RevertIf_Exit_IncorrectSlippage_GreaterThanMaxSlippage() public {
+        vm.prank(address(strategyContainer));
+        strategy.enter(inputAmounts, enterMinNavDelta);
+
+        uint256 currentStateNav = IStrategyTemplate(address(strategy)).getTokenAmountInNotion(
+            address(notion),
+            DEPOSIT_AMOUNT
+        );
+
+        uint256 maxSlippage = strategy.exitMaxSlippage();
+        uint256 sharesToWithdraw = MAX_BPS / 2;
+        uint256 expectedNavDelta = currentStateNav.mulDiv(sharesToWithdraw, MAX_BPS);
+        uint256 maxNavDelta = expectedNavDelta.mulDiv(MAX_BPS + maxSlippage, MAX_BPS) + 1;
+
+        vm.prank(address(strategyContainer));
+        vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.IncorrectSlippage.selector, maxNavDelta, maxSlippage));
+        strategy.exit(sharesToWithdraw, maxNavDelta);
+    }
+
     function test_RevertIf_Exit_SlippageCheckFailed() public {
         vm.prank(address(strategyContainer));
         strategy.enter(inputAmounts, enterMinNavDelta);
@@ -259,8 +297,39 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
             address(notion),
             DEPOSIT_AMOUNT
         );
+
+        uint256 maxSlippage = strategy.exitMaxSlippage();
+        uint256 sharesToWithdraw = MAX_BPS / 2;
+        uint256 expectedNavDelta = currentStateNav.mulDiv(sharesToWithdraw, MAX_BPS);
+        uint256 maxNavDelta = expectedNavDelta.mulDiv(MAX_BPS + maxSlippage, MAX_BPS);
+
+        uint256 navAfterExitWithSlippage = expectedNavDelta.mulDiv(MAX_BPS - strategy.MOCK_SLIPPAGE_PERCENT(), MAX_BPS);
+
+        strategy.setExitWithSlippage(true);
+
         vm.prank(address(strategyContainer));
-        vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.SlippageCheckFailed.selector, currentStateNav, 0, 0));
-        strategy.exit(MAX_BPS, 0);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IStrategyTemplate.SlippageCheckFailed.selector,
+                currentStateNav,
+                navAfterExitWithSlippage,
+                maxNavDelta
+            )
+        );
+        strategy.exit(sharesToWithdraw, maxNavDelta);
+    }
+
+    function test_setExitMaxSlippage() public {
+        uint256 newExitMaxSlippage = 0.95e18;
+        vm.prank(roles.reshufflingExecutor);
+        strategy.setExitMaxSlippage(newExitMaxSlippage);
+        assertEq(strategy.exitMaxSlippage(), newExitMaxSlippage);
+    }
+
+    function test_RevertIf_SetExitMaxSlippage_OutOfBounds() public {
+        uint256 newExitMaxSlippage = MAX_BPS + 1;
+        vm.expectRevert(abi.encodeWithSelector(Errors.IncorrectAmount.selector));
+        vm.prank(roles.reshufflingExecutor);
+        strategy.setExitMaxSlippage(newExitMaxSlippage);
     }
 }

@@ -16,6 +16,7 @@ contract MockStrategy is StrategyTemplate {
     bytes32 public constant MOCK_REMAINDER_STATE_ID = bytes32(uint256(456456));
     uint256 public constant MOCK_REMAINDER_AMOUNT = 1;
     uint256 public constant MOCK_SLIPPAGE_AMOUNT = 1;
+    uint256 public constant MOCK_SLIPPAGE_PERCENT = 0.1e18;
 
     bytes32 public targetStateId;
 
@@ -24,6 +25,8 @@ contract MockStrategy is StrategyTemplate {
     mapping(bytes32 => MockBuildingBlock) public stateToBuildingBlock;
     mapping(bytes32 => uint256) public _stateIdToHeight;
     mapping(uint256 => bytes32) public _heightToStateId;
+
+    bool public exitWithSlippage;
 
     error NotEnoughFunds();
 
@@ -38,6 +41,10 @@ contract MockStrategy is StrategyTemplate {
         stateToBuildingBlock[MOCK_SLIPPAGE_STATE_ID] = new MockBuildingBlock(address(this), address(_notion));
         _setState(MOCK_REMAINDER_STATE_ID, false, true, false, type(uint8).max - 1);
         stateToBuildingBlock[MOCK_REMAINDER_STATE_ID] = new MockBuildingBlock(address(this), address(_notion));
+    }
+
+    function setExitWithSlippage(bool _exitWithSlippage) external {
+        exitWithSlippage = _exitWithSlippage;
     }
 
     function stateNav(bytes32 stateId) public view override returns (uint256) {
@@ -120,6 +127,10 @@ contract MockStrategy is StrategyTemplate {
         }
         uint256 amount = IERC20(_notion).balanceOf(address(stateToBuildingBlock[stateId])).mulDiv(share, MAX_BPS);
         require(amount > 0, NotEnoughFunds());
+
+        if (exitWithSlippage) {
+            amount = amount.mulDiv(MAX_BPS + MOCK_SLIPPAGE_PERCENT, MAX_BPS);
+        }
 
         stateToBuildingBlock[stateId].returnNotionToStrategy(amount);
 

@@ -58,10 +58,9 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
         _setRegisteredWithdrawShareAmount(sharesToWithdrawPercent);
 
         expectedNotionBalance = DEPOSIT_AMOUNT.mulDiv(sharesToWithdrawPercent, MAX_BPS);
-        expectedNavAfterExit =
-            IStrategyTemplate(strategy0).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT) -
-            expectedNotionBalance;
-        maxNavDelta = expectedNavAfterExit.mulDiv(MAX_BPS + maxNavDeltaPercent, MAX_BPS);
+        maxNavDelta = IStrategyTemplate(strategy0)
+            .getTokenAmountInNotion(address(notion), expectedNotionBalance)
+            .mulDiv(MAX_BPS + maxNavDeltaPercent, MAX_BPS);
     }
 
     function test_ExitStrategy() public {

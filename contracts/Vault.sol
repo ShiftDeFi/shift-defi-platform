@@ -600,7 +600,7 @@ contract Vault is
     /// @inheritdoc IVault
     function skipDepositBatch() external whenNotPaused onlyRole(OPERATOR_ROLE) notInReshufflingMode {
         require(status == VaultStatus.Idle, IncorrectVaultStatus(status));
-        require(totalSupply() > 0, CannotSkipBatchInEmptyVault());
+        require(totalSupply() - pendingBurnShares > 0, CannotSkipBatchInEmptyVault());
         uint256 bufferedDepositsCached = bufferedDeposits;
         require(bufferedDepositsCached < minDepositBatchSize, CannotSkipBatch());
 

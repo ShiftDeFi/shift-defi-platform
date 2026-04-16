@@ -275,7 +275,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
         require(
             vars.incomingNav >= minNavDelta &&
-                vars.incomingNav - minNavDelta <= vars.incomingNav.mulDiv(vars.maxSlippageCached, MAX_BPS),
+                (vars.incomingNav - minNavDelta) * MAX_BPS <= vars.incomingNav * vars.maxSlippageCached,
             IncorrectSlippage(minNavDelta, vars.maxSlippageCached)
         );
 
@@ -397,10 +397,10 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.currentStateNavBeforeExit = stateNav(vars.currentStateId);
         vars.expectedNavDelta = vars.currentStateNavBeforeExit.mulDiv(share, MAX_BPS);
         vars.maxSlippageCached = exitMaxSlippage;
-        vars.maxAvailableNavDelta = vars.expectedNavDelta.mulDiv(MAX_BPS + vars.maxSlippageCached, MAX_BPS);
+        vars.maxAvailableNavDelta = vars.expectedNavDelta * (MAX_BPS + vars.maxSlippageCached);
 
         require(
-            maxNavDelta >= vars.expectedNavDelta && maxNavDelta <= vars.maxAvailableNavDelta,
+            maxNavDelta >= vars.expectedNavDelta && maxNavDelta * MAX_BPS <= vars.maxAvailableNavDelta,
             IncorrectSlippage(maxNavDelta, vars.maxSlippageCached)
         );
         vars.amountsBeforeExit = _tokensAmountsDump(vars.outputTokens, MAX_BPS);
@@ -471,7 +471,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
         require(
             minNavDelta <= vars.expectedNavDelta &&
-                vars.expectedNavDelta - minNavDelta <= vars.expectedNavDelta.mulDiv(vars.maxSlippageCached, MAX_BPS),
+                (vars.expectedNavDelta - minNavDelta) * MAX_BPS <= vars.expectedNavDelta * vars.maxSlippageCached,
             IncorrectSlippage(minNavDelta, vars.maxSlippageCached)
         );
 

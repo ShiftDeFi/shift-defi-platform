@@ -265,11 +265,11 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
         require(!_navResolutionMode, NavResolutionModeActivated());
 
-        address[] memory inputTokens = _inputTokens.values();
+        vars.inputTokensCached = _inputTokens.values();
         vars.maxSlippageCached = enterMaxSlippage;
         for (uint256 i = 0; i < amounts.length; ++i) {
             if (amounts[i] > 0) {
-                vars.incomingNav += getTokenAmountInNotion(inputTokens[i], amounts[i]);
+                vars.incomingNav += getTokenAmountInNotion(vars.inputTokensCached[i], amounts[i]);
             }
         }
 

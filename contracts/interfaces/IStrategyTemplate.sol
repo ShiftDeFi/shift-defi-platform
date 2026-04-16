@@ -6,6 +6,7 @@ interface IStrategyTemplate {
 
     struct EnterLocalVars {
         bytes32 currentStateId;
+        address[] inputTokensCached;
         bytes32 enterStateId;
         uint256 incomingNav;
         uint256 maxSlippageCached;

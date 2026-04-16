@@ -178,7 +178,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     }
 
     function _setEnterMaxSlippage(uint256 _enterMaxSlippage) private {
-        require(_enterMaxSlippage >= 0 && _enterMaxSlippage <= MAX_BPS, Errors.IncorrectAmount());
+        require(_enterMaxSlippage <= MAX_BPS, Errors.IncorrectAmount());
         uint256 oldEnterMaxSlippage = enterMaxSlippage;
         enterMaxSlippage = _enterMaxSlippage;
         emit EnterMaxSlippageUpdated(oldEnterMaxSlippage, _enterMaxSlippage);
@@ -190,7 +190,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     }
 
     function _setExitMaxSlippage(uint256 _exitMaxSlippage) private {
-        require(_exitMaxSlippage >= 0 && _exitMaxSlippage <= MAX_BPS, Errors.IncorrectAmount());
+        require(_exitMaxSlippage <= MAX_BPS, Errors.IncorrectAmount());
         uint256 oldExitMaxSlippage = exitMaxSlippage;
         exitMaxSlippage = _exitMaxSlippage;
         emit ExitMaxSlippageUpdated(oldExitMaxSlippage, _exitMaxSlippage);
@@ -204,7 +204,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     }
 
     function _setEmergencyExitMaxSlippage(uint256 _emergencyExitMaxSlippage) private {
-        require(_emergencyExitMaxSlippage >= 0 && _emergencyExitMaxSlippage <= MAX_BPS, Errors.IncorrectAmount());
+        require(_emergencyExitMaxSlippage <= MAX_BPS, Errors.IncorrectAmount());
         uint256 oldEmergencyExitMaxSlippage = emergencyExitMaxSlippage;
         emergencyExitMaxSlippage = _emergencyExitMaxSlippage;
         emit EmergencyExitMaxSlippageUpdated(oldEmergencyExitMaxSlippage, _emergencyExitMaxSlippage);

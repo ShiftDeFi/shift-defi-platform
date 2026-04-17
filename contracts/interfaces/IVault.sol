@@ -71,7 +71,7 @@ interface IVault {
         uint256 totalNav0;
         uint256 totalNav1;
         uint256 batchDeltaNav;
-        uint256 totalSupplyCached;
+        uint256 effectiveTotalSupply;
         uint256 batchShares;
     }
 
@@ -600,4 +600,10 @@ interface IVault {
      * @return The number of blocks after which a forced batch must be processed
      */
     function forcedBatchBlockLimit() external view returns (uint256);
+
+    /**
+     * @notice Returns the pending burn shares.
+     * @return The amount of vault shares that are pending to be burned
+     */
+    function pendingBurnShares() external view returns (uint256);
 }

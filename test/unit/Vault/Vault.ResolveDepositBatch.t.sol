@@ -130,4 +130,118 @@ contract VaultResolveDepositBatchTest is VaultBaseTest {
         vm.prank(roles.operator);
         vault.resolveDepositBatch();
     }
+
+    function test_ResolveDepositBatch_PendingBurnShares() public {
+        uint256 _depositAmount = 1_000 * 1e6;
+
+        vm.prank(roles.configurator);
+        vault.setMinDepositAmount(_depositAmount);
+        vm.prank(roles.configurator);
+        vault.setMinDepositBatchSize(_depositAmount);
+
+        _deposit(users.alice, _depositAmount);
+        _deposit(users.bob, _depositAmount);
+        _deposit(users.charlie, _depositAmount);
+        _deposit(users.david, _depositAmount);
+        _deposit(users.eve, _depositAmount);
+        _deposit(users.francis, 5 * _depositAmount);
+
+        uint256 totalDeposit = 10 * _depositAmount;
+
+        vm.prank(roles.operator);
+        vault.startDepositBatchProcessing();
+
+        (address[] memory containers, uint256[] memory weights) = vault.getContainers();
+        for (uint256 i = 0; i < N_CONTAINERS; i++) {
+            uint256 amount = (totalDeposit * weights[i]) / TOTAL_CONTAINER_WEIGHT;
+            _reportDepositBatch(containers[i], 0, amount, 0);
+        }
+        vm.prank(roles.operator);
+        vault.resolveDepositBatch();
+
+        vm.prank(users.alice);
+        vault.claimDeposit(1, users.alice);
+
+        vm.prank(users.bob);
+        vault.claimDeposit(1, users.bob);
+
+        vm.prank(users.charlie);
+        vault.claimDeposit(1, users.charlie);
+
+        vm.prank(users.david);
+        vault.claimDeposit(1, users.david);
+
+        vm.prank(users.eve);
+        vault.claimDeposit(1, users.eve);
+
+        vm.prank(users.francis);
+        vault.claimDeposit(1, users.francis);
+
+        vm.startPrank(users.alice);
+        IERC20(address(vault)).approve(address(vault), _depositAmount);
+        vault.withdraw(MAX_BPS);
+        vm.stopPrank();
+
+        vm.startPrank(users.bob);
+        IERC20(address(vault)).approve(address(vault), _depositAmount);
+        vault.withdraw(MAX_BPS);
+        vm.stopPrank();
+
+        vm.startPrank(users.charlie);
+        IERC20(address(vault)).approve(address(vault), _depositAmount);
+        vault.withdraw(MAX_BPS);
+        vm.stopPrank();
+
+        vm.startPrank(users.david);
+        IERC20(address(vault)).approve(address(vault), _depositAmount);
+        vault.withdraw(MAX_BPS);
+        vm.stopPrank();
+
+        vm.startPrank(users.eve);
+        IERC20(address(vault)).approve(address(vault), _depositAmount);
+        vault.withdraw(MAX_BPS);
+        vm.stopPrank();
+
+        uint256 totalWithdrawnAmount = 5 * _depositAmount;
+
+        vm.prank(roles.operator);
+        vault.startWithdrawBatchProcessing();
+
+        for (uint256 i = 0; i < containers.length; ++i) {
+            uint256 containerReportedNotionAmount = totalWithdrawnAmount.mulDiv(weights[i], TOTAL_CONTAINER_WEIGHT);
+            notion.mint(containers[i], containerReportedNotionAmount);
+            vm.startPrank(containers[i]);
+            IERC20(address(notion)).approve(address(vault), containerReportedNotionAmount);
+            vault.reportWithdraw(containerReportedNotionAmount);
+            vm.stopPrank();
+        }
+
+        vm.prank(roles.operator);
+        vault.resolveWithdrawBatch();
+
+        uint256 georgeDeposit = 5 * _depositAmount;
+
+        vm.prank(roles.configurator);
+        vault.setMaxDepositAmount(georgeDeposit);
+
+        _deposit(users.george, georgeDeposit);
+
+        vm.prank(roles.operator);
+        vault.startDepositBatchProcessing();
+
+        uint256 totalNav0 = totalDeposit - totalWithdrawnAmount;
+
+        for (uint256 i = 0; i < N_CONTAINERS; i++) {
+            uint256 amount = (totalDeposit * weights[i]) / TOTAL_CONTAINER_WEIGHT;
+            _reportDepositBatch(containers[i], totalNav0.mulDiv(weights[i], TOTAL_CONTAINER_WEIGHT), amount, 0);
+        }
+
+        vm.prank(roles.operator);
+        vault.resolveDepositBatch();
+
+        vm.prank(users.george);
+        vault.claimDeposit(2, users.george);
+
+        assertEq(IERC20(address(vault)).balanceOf(users.george), georgeDeposit);
+    }
 }

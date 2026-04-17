@@ -15,12 +15,12 @@ import {Utils} from "test/Utils.sol";
 
 contract ContainerAgentBaseTest is L2Base {
     uint256 internal constant MAX_STRATEGIES = 255;
-    bytes32 internal constant PEER_CONTAINER_SLOT = bytes32(uint256(7));
-    bytes32 internal constant REMOTE_CHAIN_ID_SLOT = bytes32(uint256(8));
-    bytes32 internal constant STRATEGY_ENTER_BITMASK_SLOT = bytes32(uint256(16));
-    bytes32 internal constant STRATEGY_EXIT_BITMASK_SLOT = bytes32(uint256(17));
-    bytes32 internal constant IS_RESOLVING_EMERGENCY_AND_RESHUFFLING_MODE_SLOT = bytes32(uint256(22));
-    bytes32 internal constant REGISTERED_WITHDRAW_SHARE_AMOUNT_SLOT = bytes32(uint256(74));
+    bytes32 internal constant PEER_CONTAINER_SLOT = bytes32(uint256(57));
+    bytes32 internal constant REMOTE_CHAIN_ID_SLOT = bytes32(uint256(58));
+    bytes32 internal constant STRATEGY_ENTER_BITMASK_SLOT = bytes32(uint256(116));
+    bytes32 internal constant STRATEGY_EXIT_BITMASK_SLOT = bytes32(uint256(117));
+    bytes32 internal constant IS_RESOLVING_EMERGENCY_AND_RESHUFFLING_MODE_SLOT = bytes32(uint256(122));
+    bytes32 internal constant REGISTERED_WITHDRAW_SHARE_AMOUNT_SLOT = bytes32(uint256(174));
 
     uint256 internal constant RESHUFFLING_MODE_OFFSET = 160;
     uint256 internal constant IS_RESOLVING_EMERGENCY_OFFSET = 168;

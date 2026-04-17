@@ -4,6 +4,8 @@ pragma solidity ^0.8.28;
 interface ICustomOracleWrapper {
     event PriceSubmitted(address indexed token, uint256 price);
 
+    error ZeroPrice(address token);
+
     /**
      * @notice Submits a price for a token.
      * @dev Can only be called by accounts with FEEDER_ROLE.

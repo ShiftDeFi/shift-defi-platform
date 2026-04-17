@@ -16,6 +16,7 @@ contract MockStrategy is StrategyTemplate {
     bytes32 public constant MOCK_REMAINDER_STATE_ID = bytes32(uint256(456456));
     uint256 public constant MOCK_REMAINDER_AMOUNT = 1;
     uint256 public constant MOCK_SLIPPAGE_AMOUNT = 1;
+    uint256 public constant MOCK_SLIPPAGE_PERCENT = 0.1e18;
 
     bytes32 public targetStateId;
 
@@ -25,23 +26,38 @@ contract MockStrategy is StrategyTemplate {
     mapping(bytes32 => uint256) public _stateIdToHeight;
     mapping(uint256 => bytes32) public _heightToStateId;
 
+    bool public exitWithSlippage;
+
     error NotEnoughFunds();
 
-    function initialize(address strategyContainer) external initializer {
-        __StrategyTemplate_init(strategyContainer);
-        _setState(MOCK_SLIPPAGE_STATE_ID, false, true, false, type(uint8).max - 2);
+    function initialize(
+        address strategyContainer,
+        uint256 _enterMaxSlippage,
+        uint256 _exitMaxSlippage,
+        uint256 _emergencyExitMaxSlippage
+    ) external initializer {
+        __StrategyTemplate_init(strategyContainer, _enterMaxSlippage, _exitMaxSlippage, _emergencyExitMaxSlippage);
+        _setState(MOCK_SLIPPAGE_STATE_ID, false, true, false, 1);
         stateToBuildingBlock[MOCK_SLIPPAGE_STATE_ID] = new MockBuildingBlock(address(this), address(_notion));
         _setState(MOCK_REMAINDER_STATE_ID, false, true, false, type(uint8).max - 1);
         stateToBuildingBlock[MOCK_REMAINDER_STATE_ID] = new MockBuildingBlock(address(this), address(_notion));
+    }
+
+    function setExitWithSlippage(bool _exitWithSlippage) external {
+        exitWithSlippage = _exitWithSlippage;
     }
 
     function stateNav(bytes32 stateId) public view override returns (uint256) {
         if (stateId == NO_ALLOCATION_STATE_ID) {
             return 0;
         } else if (_isTokenState[stateId]) {
-            return IERC20(_notion).balanceOf(address(this));
+            return getTokenAmountInNotion(address(_notion), IERC20(_notion).balanceOf(address(this)));
         } else {
-            return IERC20(_notion).balanceOf(address(stateToBuildingBlock[stateId]));
+            return
+                getTokenAmountInNotion(
+                    address(_notion),
+                    IERC20(_notion).balanceOf(address(stateToBuildingBlock[stateId]))
+                );
         }
     }
 
@@ -112,6 +128,10 @@ contract MockStrategy is StrategyTemplate {
         uint256 amount = IERC20(_notion).balanceOf(address(stateToBuildingBlock[stateId])).mulDiv(share, MAX_BPS);
         require(amount > 0, NotEnoughFunds());
 
+        if (exitWithSlippage) {
+            amount = amount.mulDiv(MAX_BPS + MOCK_SLIPPAGE_PERCENT, MAX_BPS);
+        }
+
         stateToBuildingBlock[stateId].returnNotionToStrategy(amount);
 
         uint256 currentHeight = _stateIdToHeight[stateId];
@@ -122,9 +142,13 @@ contract MockStrategy is StrategyTemplate {
         }
     }
 
-    function _emergencyExit(bytes32, uint256 share) internal override {
+    function _emergencyExit(bytes32 toStateId, uint256 share) internal override {
         if (_isTargetState[currentStateId()]) {
             _exitTarget(share);
+        }
+
+        if (toStateId == MOCK_SLIPPAGE_STATE_ID) {
+            _exitFromState(toStateId, share);
         }
     }
 

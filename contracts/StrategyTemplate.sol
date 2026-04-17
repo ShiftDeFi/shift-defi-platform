@@ -46,6 +46,10 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
     bool private _navResolutionMode;
 
+    uint256 public enterMaxSlippage;
+    uint256 public exitMaxSlippage;
+    uint256 public emergencyExitMaxSlippage;
+
     /* Modifiers */
 
     modifier onlyStrategyContainer() {
@@ -128,7 +132,12 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
      * @dev Callable only during initialization. Reverts on zero addresses.
      * @param strategyContainer Address of the strategy container.
      */
-    function __StrategyTemplate_init(address strategyContainer) internal onlyInitializing {
+    function __StrategyTemplate_init(
+        address strategyContainer,
+        uint256 _enterMaxSlippage,
+        uint256 _exitMaxSlippage,
+        uint256 _emergencyExitMaxSlippage
+    ) internal onlyInitializing {
         __ReentrancyGuard_init();
 
         require(strategyContainer != address(0), Errors.ZeroAddress());
@@ -137,6 +146,10 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
         _strategyContainer = strategyContainer;
         _notion = notion;
+
+        _setEnterMaxSlippage(_enterMaxSlippage);
+        _setExitMaxSlippage(_exitMaxSlippage);
+        _setEmergencyExitMaxSlippage(_emergencyExitMaxSlippage);
     }
 
     /// @inheritdoc IStrategyTemplate
@@ -157,6 +170,44 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
             require(_inputTokens.add(inputTokens[i]), Errors.TokenAlreadySet(inputTokens[i]));
             emit InputTokenSet(inputTokens[i]);
         }
+    }
+
+    /// @inheritdoc IStrategyTemplate
+    function setEnterMaxSlippage(uint256 _enterMaxSlippage) external onlyReshufflingExecutorOrStrategyContainer {
+        _setEnterMaxSlippage(_enterMaxSlippage);
+    }
+
+    function _setEnterMaxSlippage(uint256 _enterMaxSlippage) private {
+        require(_enterMaxSlippage <= MAX_BPS, Errors.IncorrectAmount());
+        uint256 oldEnterMaxSlippage = enterMaxSlippage;
+        enterMaxSlippage = _enterMaxSlippage;
+        emit EnterMaxSlippageUpdated(oldEnterMaxSlippage, _enterMaxSlippage);
+    }
+
+    /// @inheritdoc IStrategyTemplate
+    function setExitMaxSlippage(uint256 _exitMaxSlippage) external onlyReshufflingExecutorOrStrategyContainer {
+        _setExitMaxSlippage(_exitMaxSlippage);
+    }
+
+    function _setExitMaxSlippage(uint256 _exitMaxSlippage) private {
+        require(_exitMaxSlippage <= MAX_BPS, Errors.IncorrectAmount());
+        uint256 oldExitMaxSlippage = exitMaxSlippage;
+        exitMaxSlippage = _exitMaxSlippage;
+        emit ExitMaxSlippageUpdated(oldExitMaxSlippage, _exitMaxSlippage);
+    }
+
+    /// @inheritdoc IStrategyTemplate
+    function setEmergencyExitMaxSlippage(
+        uint256 _emergencyExitMaxSlippage
+    ) external onlyReshufflingExecutorOrStrategyContainer {
+        _setEmergencyExitMaxSlippage(_emergencyExitMaxSlippage);
+    }
+
+    function _setEmergencyExitMaxSlippage(uint256 _emergencyExitMaxSlippage) private {
+        require(_emergencyExitMaxSlippage <= MAX_BPS, Errors.IncorrectAmount());
+        uint256 oldEmergencyExitMaxSlippage = emergencyExitMaxSlippage;
+        emergencyExitMaxSlippage = _emergencyExitMaxSlippage;
+        emit EmergencyExitMaxSlippageUpdated(oldEmergencyExitMaxSlippage, _emergencyExitMaxSlippage);
     }
 
     /// @inheritdoc IStrategyTemplate
@@ -213,6 +264,20 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.currentStateId = _currentStateId;
 
         require(!_navResolutionMode, NavResolutionModeActivated());
+
+        vars.inputTokensCached = _inputTokens.values();
+        vars.maxSlippageCached = enterMaxSlippage;
+        for (uint256 i = 0; i < amounts.length; ++i) {
+            if (amounts[i] > 0) {
+                vars.incomingNav += getTokenAmountInNotion(vars.inputTokensCached[i], amounts[i]);
+            }
+        }
+
+        require(
+            vars.incomingNav >= minNavDelta &&
+                (vars.incomingNav - minNavDelta) * MAX_BPS <= vars.incomingNav * vars.maxSlippageCached,
+            IncorrectSlippage(minNavDelta, vars.maxSlippageCached)
+        );
 
         if (vars.currentStateId == NO_ALLOCATION_STATE_ID) {
             vars.enterStateId = _targetStateId;
@@ -283,7 +348,7 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.stateToNavAfterEnter = stateNav(toStateId);
 
         require(
-            vars.stateToNavAfterEnter > vars.stateToNavBeforeEnter + minNavDelta,
+            vars.stateToNavAfterEnter >= vars.stateToNavBeforeEnter + minNavDelta,
             SlippageCheckFailed(vars.stateToNavBeforeEnter, vars.stateToNavAfterEnter, minNavDelta)
         );
 
@@ -330,6 +395,14 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.outputTokens = _outputTokens.values();
         vars.currentStateNavBeforeExit = stateNav(vars.currentStateId);
+        vars.expectedNavDelta = vars.currentStateNavBeforeExit.mulDiv(share, MAX_BPS);
+        vars.maxSlippageCached = exitMaxSlippage;
+        vars.maxAvailableNavDelta = vars.expectedNavDelta * (MAX_BPS + vars.maxSlippageCached);
+
+        require(
+            maxNavDelta >= vars.expectedNavDelta && maxNavDelta * MAX_BPS <= vars.maxAvailableNavDelta,
+            IncorrectSlippage(maxNavDelta, vars.maxSlippageCached)
+        );
         vars.amountsBeforeExit = _tokensAmountsDump(vars.outputTokens, MAX_BPS);
         require(vars.currentStateId != NO_ALLOCATION_STATE_ID, CannotExitFromNoAllocationState());
 
@@ -392,6 +465,16 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         require(vars.currentStateId != toStateId, AlreadyInState(toStateId));
 
         vars.toStateNavBeforeExit = stateNav(toStateId);
+
+        vars.expectedNavDelta = stateNav(vars.currentStateId).mulDiv(share, MAX_BPS);
+        vars.maxSlippageCached = emergencyExitMaxSlippage;
+
+        require(
+            minNavDelta <= vars.expectedNavDelta &&
+                (vars.expectedNavDelta - minNavDelta) * MAX_BPS <= vars.expectedNavDelta * vars.maxSlippageCached,
+            IncorrectSlippage(minNavDelta, vars.maxSlippageCached)
+        );
+
         vars.currentStateBitmask = _stateBitmasks[vars.currentStateId];
         vars.toStateBitmask = _stateBitmasks[toStateId];
 
@@ -546,4 +629,6 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     function _emergencyExit(bytes32 toStateId, uint256 share) internal virtual;
 
     function _harvest(bytes32 _stateId, address _treasury, uint256 _feePct) internal virtual {}
+
+    uint256[50] private __gap;
 }

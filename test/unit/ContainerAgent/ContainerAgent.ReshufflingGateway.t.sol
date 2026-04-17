@@ -98,7 +98,7 @@ contract ContainerAgentReshufflingGatewayTest is ContainerAgentBaseTest {
         IBridgeAdapter.BridgeInstruction[] memory instructions = new IBridgeAdapter.BridgeInstruction[](tokenNumber);
         instructions[0] = _craftBridgeInstruction(address(notion), DEPOSIT_AMOUNT);
 
-        bytes32 reshufflingGatewaySlot = bytes32(uint256(19));
+        bytes32 reshufflingGatewaySlot = bytes32(uint256(119));
         vm.store(address(containerAgent), reshufflingGatewaySlot, bytes32(uint256(0)));
 
         vm.prank(roles.reshufflingExecutor);

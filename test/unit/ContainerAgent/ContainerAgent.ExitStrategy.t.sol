@@ -5,6 +5,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {IContainerAgent} from "contracts/interfaces/IContainerAgent.sol";
 import {IStrategyContainer} from "contracts/interfaces/IStrategyContainer.sol";
+import {IStrategyTemplate} from "contracts/interfaces/IStrategyTemplate.sol";
 
 import {Errors} from "contracts/libraries/Errors.sol";
 
@@ -15,6 +16,7 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
 
     uint256 internal sharesToWithdrawPercent = 0.05e18;
     uint256 internal expectedNotionBalance;
+    uint256 internal expectedNavAfterExit;
     address internal strategy0;
     address internal strategy1;
     address internal strategy2;
@@ -39,32 +41,26 @@ contract ContainerAgentExitStrategyTest is ContainerAgentBaseTest {
         strategies[0] = strategy0;
         strategies[1] = strategy1;
         strategies[2] = strategy2;
-        uint256[][] memory inputAmounts = new uint256[][](strategiesNumber);
-        inputAmounts[0] = new uint256[](1);
-        inputAmounts[0][0] = DEPOSIT_AMOUNT;
-        inputAmounts[1] = new uint256[](1);
-        inputAmounts[1][0] = DEPOSIT_AMOUNT;
-        inputAmounts[2] = new uint256[](1);
-        inputAmounts[2][0] = DEPOSIT_AMOUNT;
-        uint256[] memory minNavDelta = new uint256[](strategiesNumber);
-        minNavDelta[0] = 0;
-        minNavDelta[1] = 0;
-        minNavDelta[2] = 0;
+        uint256[] memory inputAmounts = new uint256[](1);
+        inputAmounts[0] = DEPOSIT_AMOUNT;
+        uint256 minNavDelta = IStrategyTemplate(strategy0).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT);
 
         deal(address(notion), address(containerAgent), DEPOSIT_AMOUNT * strategiesNumber);
 
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.BridgeClaimed);
         vm.startPrank(roles.operator);
-        containerAgent.enterStrategy(strategies[0], inputAmounts[0], minNavDelta[0]);
-        containerAgent.enterStrategy(strategies[1], inputAmounts[1], minNavDelta[1]);
-        containerAgent.enterStrategy(strategies[2], inputAmounts[2], minNavDelta[2]);
+        containerAgent.enterStrategy(strategies[0], inputAmounts, minNavDelta);
+        containerAgent.enterStrategy(strategies[1], inputAmounts, minNavDelta);
+        containerAgent.enterStrategy(strategies[2], inputAmounts, minNavDelta);
         vm.stopPrank();
         _setContainerAgentStatus(IContainerAgent.ContainerAgentStatus.WithdrawalRequestReceived);
 
         _setRegisteredWithdrawShareAmount(sharesToWithdrawPercent);
 
         expectedNotionBalance = DEPOSIT_AMOUNT.mulDiv(sharesToWithdrawPercent, MAX_BPS);
-        maxNavDelta = expectedNotionBalance.mulDiv(MAX_BPS + maxNavDeltaPercent, MAX_BPS);
+        maxNavDelta = IStrategyTemplate(strategy0)
+            .getTokenAmountInNotion(address(notion), expectedNotionBalance)
+            .mulDiv(MAX_BPS + maxNavDeltaPercent, MAX_BPS);
     }
 
     function test_ExitStrategy() public {

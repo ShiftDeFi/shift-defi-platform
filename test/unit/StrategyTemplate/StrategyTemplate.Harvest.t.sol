@@ -7,7 +7,7 @@ import {Errors} from "contracts/libraries/Errors.sol";
 import {StrategyTemplateBaseTest} from "./StrategyTemplateBase.t.sol";
 
 contract StrategyTemplateHarvestTest is StrategyTemplateBaseTest {
-    bytes32 internal constant TREASURY_STORAGE_SLOT = bytes32(uint256(14));
+    bytes32 internal constant TREASURY_STORAGE_SLOT = bytes32(uint256(64));
 
     function setUp() public override {
         super.setUp();
@@ -32,7 +32,7 @@ contract StrategyTemplateHarvestTest is StrategyTemplateBaseTest {
         notion.approve(address(strategy), type(uint256).max);
 
         vm.prank(address(strategyContainer));
-        strategy.enter(inputAmounts, ENTER_MIN_NAV_DELTA);
+        strategy.enter(inputAmounts, enterMinNavDelta);
 
         vm.prank(roles.strategyManager);
         strategyContainer.setTreasury(treasury);
@@ -41,7 +41,11 @@ contract StrategyTemplateHarvestTest is StrategyTemplateBaseTest {
     function test_Harvest() public {
         vm.prank(address(strategyContainer));
         uint256 navAfterHarvest = strategy.harvest();
-        assertEq(navAfterHarvest, DEPOSIT_AMOUNT, "test_Harvest: nav after harvest not correct");
+        assertEq(
+            navAfterHarvest,
+            IStrategyTemplate(address(strategy)).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT),
+            "test_Harvest: nav after harvest not correct"
+        );
     }
 
     function test_RevertIf_Harvest_NavResolutionMode() public {

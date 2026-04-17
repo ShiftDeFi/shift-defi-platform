@@ -9,7 +9,7 @@ library Utils {
     uint256 private constant MAX_BPS = 1e18;
     uint256 private constant MAX_BRIDGE_SLIPPAGE = 0.9e18; // 10%
 
-    function calculateMinBridgeAmount(uint256 amount) external view returns (uint256) {
+    function calculateMinBridgeAmount(uint256 amount) external pure returns (uint256) {
         return amount.mulDiv(MAX_BRIDGE_SLIPPAGE, MAX_BPS);
     }
 }

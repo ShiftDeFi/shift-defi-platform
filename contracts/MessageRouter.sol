@@ -26,6 +26,10 @@ contract MessageRouter is Initializable, AccessControlUpgradeable, ReentrancyGua
 
     RingCacheLib.RingCache private _sendMessagesCache;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(
         address defaultAdmin,
         address whitelistManager,

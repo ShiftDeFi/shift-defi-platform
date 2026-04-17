@@ -244,7 +244,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     function _enterStrategy(address strategy, uint256[] calldata inputAmounts, uint256 minNavDelta) internal {
         require(_isStrategy(strategy), StrategyNotFound());
-        require(!isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
+        require(!_isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
 
         EnterStrategyLocalVars memory vars;
 
@@ -297,7 +297,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         uint256 minNavDelta
     ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
         require(_isStrategy(strategy), StrategyNotFound());
-        require(!isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
+        require(!_isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
 
         address[] memory inputTokens = IStrategyTemplate(strategy).getInputTokens();
         uint256 tokenNumber = inputTokens.length;
@@ -337,7 +337,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         require(share > 0, Errors.ZeroAmount());
         require(share <= MAX_BPS, Errors.IncorrectAmount());
         require(_isStrategy(strategy), StrategyNotFound());
-        require(!isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
+        require(!_isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
 
         IStrategyTemplate(strategy).harvest();
         (address[] memory tokens, uint256[] memory amounts) = IStrategyTemplate(strategy).exit(share, maxNavDelta);
@@ -359,7 +359,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
 
     function _exitStrategy(address strategy, uint256 share, uint256 maxNavDelta) internal {
         require(_isStrategy(strategy), StrategyNotFound());
-        require(!isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
+        require(!_isStrategyNavUnresolved(strategy), StrategyNavUnresolved(strategy));
 
         (, uint256 strategyIndex) = _strategies.indexOf(strategy);
         uint256 mask = 1 << strategyIndex;
@@ -410,7 +410,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     /// @inheritdoc IStrategyContainer
     function resolveStrategyNav(uint256 resolvedNav) external {
         require(_isStrategy(msg.sender), StrategyNotFound());
-        require(isStrategyNavUnresolved(msg.sender), StrategyNavAlreadyResolved(msg.sender));
+        require(_isStrategyNavUnresolved(msg.sender), StrategyNavAlreadyResolved(msg.sender));
 
         (, uint256 strategyIndex) = _strategies.indexOf(msg.sender);
         uint256 mask = 1 << strategyIndex;
@@ -419,8 +419,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         emit StrategyNavResolved(msg.sender, resolvedNav);
     }
 
-    /// @inheritdoc IStrategyContainer
-    function isStrategyNavUnresolved(address strategy) public view returns (bool) {
+    function _isStrategyNavUnresolved(address strategy) internal view returns (bool) {
         (, uint256 strategyIndex) = _strategies.indexOf(strategy);
         uint256 mask = 1 << strategyIndex;
         return _strategyUnresolvedNavBitmask & mask != 0;

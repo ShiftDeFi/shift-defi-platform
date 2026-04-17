@@ -187,4 +187,6 @@ abstract contract Container is
     function unpause() external whenPaused onlyRole(EMERGENCY_PAUSER_ROLE) {
         _unpause();
     }
+
+    uint256[50] private __gap;
 }

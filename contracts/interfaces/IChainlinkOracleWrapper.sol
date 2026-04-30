@@ -6,6 +6,7 @@ interface IChainlinkOracleWrapper {
 
     event ChainlinkFeedSet(address indexed token, address indexed feed);
     event PriceFeedStalenessThresholdUpdated(address indexed token, uint256 previousThreshold, uint256 newThreshold);
+    event DefaultPriceFeedStalenessThresholdUpdated(uint256 previousThreshold, uint256 newThreshold);
 
     // ---- Errors ----
 
@@ -43,4 +44,11 @@ interface IChainlinkOracleWrapper {
      * @param threshold Maximum age in seconds
      */
     function setPriceFeedStalenessThreshold(address token, uint256 threshold) external;
+
+    /**
+     * @notice Sets the default maximum age a Chainlink price update may have before it is considered stale.
+     * @dev Can only be called by accounts with ORACLE_MANAGER_ROLE.
+     * @param threshold Maximum age in seconds
+     */
+    function setDefaultPriceFeedStalenessThreshold(uint256 threshold) external;
 }

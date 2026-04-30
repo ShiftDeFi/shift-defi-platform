@@ -138,4 +138,22 @@ contract ChainlinkOracleWrapperTest is L1Base {
         vm.expectRevert(Errors.NotImplemented.selector);
         chainlinkOracleWrapper.decimals();
     }
+
+    function test_SetDefaultPriceFeedStalenessThreshold() public {
+        uint256 newThreshold = STALENESS_THRESHOLD + 1 seconds;
+
+        vm.prank(roles.oracleManager);
+        chainlinkOracleWrapper.setDefaultPriceFeedStalenessThreshold(newThreshold);
+        assertEq(
+            chainlinkOracleWrapper.defaultPriceFeedStalenessThreshold(),
+            newThreshold,
+            "test_SetDefaultPriceFeedStalenessThreshold: must update threshold"
+        );
+    }
+
+    function test_RevertIf_SetDefaultPriceFeedStalenessThreshold_ZeroThreshold() public {
+        vm.expectRevert(abi.encodeWithSelector(IChainlinkOracleWrapper.ZeroStalenessThreshold.selector));
+        vm.prank(roles.oracleManager);
+        chainlinkOracleWrapper.setDefaultPriceFeedStalenessThreshold(0);
+    }
 }

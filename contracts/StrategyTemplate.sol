@@ -358,6 +358,10 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     /* Emergency functions */
 
     function acceptNav(bytes32 acceptedStateId) public onlyEmergencyManager returns (uint256) {
+        return _acceptNav(acceptedStateId);
+    }
+
+    function _acceptNav(bytes32 acceptedStateId) private returns (uint256) {
         require(_navResolutionMode, NavResolutionModeNotActivated());
         _setCurrentStateId(acceptedStateId);
         _setNavResolutionMode(false);
@@ -502,6 +506,9 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
         // Silently ignore return data - emergency exit failure is handled by isExitSuccess flag
         if (vars.isExitSuccess) {
+            if (share == MAX_BPS) {
+                _acceptNav(toStateId);
+            }
             emit EmergencyExitSucceeded(toStateId);
         } else {
             emit EmergencyExitFailed(toStateId);

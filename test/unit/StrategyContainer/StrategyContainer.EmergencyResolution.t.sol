@@ -70,7 +70,7 @@ contract StrategyContainerEmergencyResolutionTest is StrategyContainerBaseTest {
         vm.prank(address(strategy));
         strategyContainer.resolveStrategyNav(resolvedNav);
 
-        vm.prank(roles.emergencyManager);
+        vm.prank(roles.emergencyExecutor);
         strategyContainer.completeEmergencyResolution();
 
         assertFalse(
@@ -86,9 +86,9 @@ contract StrategyContainerEmergencyResolutionTest is StrategyContainerBaseTest {
         uint256 resolvedNav = vm.randomUint(1e18, 1000e18);
         vm.prank(address(strategy));
         strategyContainer.resolveStrategyNav(resolvedNav);
-        vm.prank(roles.emergencyManager);
+        vm.prank(roles.emergencyExecutor);
         strategyContainer.completeEmergencyResolution();
-        vm.prank(roles.emergencyManager);
+        vm.prank(roles.emergencyExecutor);
         vm.expectRevert(IStrategyContainer.NotResolvingEmergency.selector);
         strategyContainer.completeEmergencyResolution();
     }
@@ -103,7 +103,7 @@ contract StrategyContainerEmergencyResolutionTest is StrategyContainerBaseTest {
                 strategyContainer.getStrategyUnresolvedNavBitmask()
             )
         );
-        vm.prank(roles.emergencyManager);
+        vm.prank(roles.emergencyExecutor);
         strategyContainer.completeEmergencyResolution();
     }
 
@@ -120,7 +120,7 @@ contract StrategyContainerEmergencyResolutionTest is StrategyContainerBaseTest {
             abi.encodeWithSelector(
                 IAccessControl.AccessControlUnauthorizedAccount.selector,
                 randomAddress,
-                EMERGENCY_MANAGER_ROLE
+                EMERGENCY_EXECUTOR_ROLE
             )
         );
         vm.prank(randomAddress);

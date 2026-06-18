@@ -89,15 +89,15 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
 
         assertTrue(
             strategyContainer.isResolvingEmergency(),
-            "test_EmergencyExit_FromTargetState: Emergency resolution not started on StrategyContainer"
+            "test_EmergencyExit_FullExit: Emergency resolution not started on StrategyContainer"
         );
-        assertTrue(
+        assertFalse(
             _isStrategyNavUnresolved(address(strategy)),
-            "test_EmergencyExit_FromTargetState: Strategy NAV not unresolved on StrategyContainer"
+            "test_EmergencyExit_FullExit: Strategy NAV not resolved on StrategyContainer"
         );
-        assertTrue(
+        assertFalse(
             strategy.isNavResolutionMode(),
-            "test_EmergencyExit_FromTargetState: Nav resolution mode not activated on Strategy"
+            "test_EmergencyExit_FullExit: Nav resolution mode not deactivated on Strategy"
         );
     }
 
@@ -129,30 +129,36 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         );
     }
 
-    function test_EmergencyExit_FullExit_Twice() public {
+    function test_EmergencyExit_Full_MultipleStrategies() public {
         bytes32 toStateId = TWO_STATE_ID;
         uint256 exitShare = MAX_BPS;
 
-        vm.prank(address(strategyContainer));
+        vm.startPrank(address(strategyContainer));
         strategy.enter(inputAmounts, enterMinNavDelta);
-
-        vm.expectEmit();
-        emit IStrategyTemplate.EmergencyExitSucceeded(toStateId);
+        secondStrategy.enter(inputAmounts, enterMinNavDelta);
+        vm.stopPrank();
 
         uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
         vm.prank(roles.emergencyExecutor);
         strategy.emergencyExit(toStateId, exitShare, minNavDelta);
 
-        vm.expectEmit();
-        emit IStrategyTemplate.EmergencyExitFailed(toStateId);
+        uint256 unresolvedNavBitmask = _getStrategyUnresolvedNavBitmask();
+        assertEq(unresolvedNavBitmask, 0, "test_EmergencyExit_MultipleStrategies: First strategy should be unresolved");
 
         vm.prank(roles.emergencyExecutor);
-        strategy.emergencyExit(toStateId, exitShare, 0);
+        secondStrategy.emergencyExit(toStateId, exitShare, minNavDelta);
+
+        unresolvedNavBitmask = _getStrategyUnresolvedNavBitmask();
+        assertEq(
+            unresolvedNavBitmask,
+            0,
+            "test_EmergencyExit_MultipleStrategies: Second strategy should be unresolved"
+        );
     }
 
-    function test_EmergencyExit_MultipleStrategies() public {
+    function test_EmergencyExit_Partial_MultipleStrategies() public {
         bytes32 toStateId = TWO_STATE_ID;
-        uint256 exitShare = MAX_BPS;
+        uint256 exitShare = MAX_BPS / 2;
         uint256 bitmaskAfterFirstExit = 1 << 0;
         uint256 bitmaskAfterSecondExit = bitmaskAfterFirstExit | (1 << 1);
 
@@ -215,6 +221,26 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         bytes32 toStateId = strategy.currentStateId();
         vm.prank(roles.emergencyExecutor);
         vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.AlreadyInState.selector, toStateId));
+        strategy.emergencyExit(toStateId, exitShare, 0);
+    }
+
+    function testRevertIf_EmergencyExit_FullExit_Twice() public {
+        bytes32 toStateId = TWO_STATE_ID;
+        uint256 exitShare = MAX_BPS;
+
+        vm.prank(address(strategyContainer));
+        strategy.enter(inputAmounts, enterMinNavDelta);
+
+        vm.expectEmit();
+        emit IStrategyTemplate.EmergencyExitSucceeded(toStateId);
+
+        uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
+        vm.prank(roles.emergencyExecutor);
+        strategy.emergencyExit(toStateId, exitShare, minNavDelta);
+
+        vm.expectRevert(abi.encodeWithSelector(IStrategyTemplate.AlreadyInState.selector, toStateId));
+
+        vm.prank(roles.emergencyExecutor);
         strategy.emergencyExit(toStateId, exitShare, 0);
     }
 
@@ -318,9 +344,6 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
 
         vm.prank(roles.emergencyExecutor);
         strategy.emergencyExit(toStateId, exitShare, minNavDelta);
-
-        vm.prank(roles.emergencyManager);
-        strategy.acceptNav(toStateId);
 
         assertEq(
             strategy.currentStateId(),

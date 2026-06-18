@@ -400,7 +400,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     }
 
     /// @inheritdoc IStrategyContainer
-    function completeEmergencyResolution() external onlyRole(EMERGENCY_MANAGER_ROLE) {
+    function completeEmergencyResolution() external onlyRole(EMERGENCY_EXECUTOR_ROLE) {
         require(isResolvingEmergency, NotResolvingEmergency());
         isResolvingEmergency = false;
         require(_strategyUnresolvedNavBitmask == 0, EmergencyResolutionNotCompleted(_strategyUnresolvedNavBitmask));

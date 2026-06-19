@@ -116,6 +116,10 @@ contract MockStrategyInterfaceBased is IStrategyTemplate {
         return 0;
     }
 
+    function stateBitmask(bytes32) external pure returns (uint256) {
+        return 0;
+    }
+
     function currentStateId() external pure returns (bytes32) {
         return bytes32(0);
     }

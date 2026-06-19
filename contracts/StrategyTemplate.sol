@@ -130,6 +130,11 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     /// @inheritdoc IStrategyTemplate
     function stateNav(bytes32 stateId) public view virtual returns (uint256);
 
+    /// @inheritdoc IStrategyTemplate
+    function stateBitmask(bytes32 stateId) external view returns (uint256) {
+        return _stateBitmasks[stateId];
+    }
+
     /* Configuration functions */
 
     /**

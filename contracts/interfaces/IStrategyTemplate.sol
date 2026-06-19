@@ -242,6 +242,13 @@ interface IStrategyTemplate {
     function stateNav(bytes32 stateId) external view returns (uint256);
 
     /**
+     * @notice Returns the bitmask for a specific state.
+     * @param stateId State identifier.
+     * @return State bitmask encoding target, protocol, token flags and height.
+     */
+    function stateBitmask(bytes32 stateId) external view returns (uint256);
+
+    /**
      * @notice Returns the currently configured input tokens.
      */
     function getInputTokens() external view returns (address[] memory);

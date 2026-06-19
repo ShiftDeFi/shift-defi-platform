@@ -252,6 +252,11 @@ interface IStrategyTemplate {
     function getOutputTokens() external view returns (address[] memory);
 
     /**
+     * @notice Returns the registered state identifiers.
+     */
+    function getStateIds() external view returns (bytes32[] memory);
+
+    /**
      * @notice Converts a token amount into notion denomination using the oracle aggregator.
      * @dev Uses the price oracle from the strategy container to get relative value.
      * @param token Token address to convert.

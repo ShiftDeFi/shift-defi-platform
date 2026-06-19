@@ -118,6 +118,11 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     }
 
     /// @inheritdoc IStrategyTemplate
+    function getStateIds() external view returns (bytes32[] memory) {
+        return _stateIds.values();
+    }
+
+    /// @inheritdoc IStrategyTemplate
     function isNavResolutionMode() public view returns (bool) {
         return _navResolutionMode;
     }

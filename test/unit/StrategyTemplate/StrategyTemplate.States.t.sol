@@ -90,6 +90,56 @@ contract StrategyTemplateStatesTest is StrategyTemplateBaseTest {
         assertEq(StrategyStateLib.height(stateBitmask), STARTING_HEIGHT, "test_setState_TargetState: height");
     }
 
+    function test_GetStateIds() public {
+        bytes32[] memory stateIds = strategy.getStateIds();
+        assertEq(stateIds.length, 2, "test_GetStateIds: initial state ids length mismatch");
+        assertEq(
+            stateIds[0],
+            strategy.MOCK_SLIPPAGE_STATE_ID(),
+            "test_GetStateIds: initial slippage state id mismatch"
+        );
+        assertEq(
+            stateIds[1],
+            strategy.MOCK_REMAINDER_STATE_ID(),
+            "test_GetStateIds: initial remainder state id mismatch"
+        );
+
+        strategy.setState(ONE_STATE_ID, false, false, true, STARTING_HEIGHT);
+        strategy.setState(TWO_STATE_ID, false, true, false, STARTING_HEIGHT + 1);
+
+        stateIds = strategy.getStateIds();
+        assertEq(stateIds.length, 4, "test_GetStateIds: state ids length mismatch after setState");
+        assertEq(stateIds[2], ONE_STATE_ID, "test_GetStateIds: first added state id mismatch");
+        assertEq(stateIds[3], TWO_STATE_ID, "test_GetStateIds: second added state id mismatch");
+    }
+
+    function test_StateBitmask() public {
+        assertEq(strategy.stateBitmask(THREE_STATE_ID), 0, "test_StateBitmask: unregistered state bitmask mismatch");
+
+        assertEq(
+            strategy.stateBitmask(strategy.MOCK_SLIPPAGE_STATE_ID()),
+            StrategyStateLib.createState(false, true, false, 1),
+            "test_StateBitmask: slippage state bitmask mismatch"
+        );
+        assertEq(
+            strategy.stateBitmask(strategy.MOCK_REMAINDER_STATE_ID()),
+            StrategyStateLib.createState(false, true, false, type(uint8).max - 1),
+            "test_StateBitmask: remainder state bitmask mismatch"
+        );
+
+        bool isTargetState = false;
+        bool isProtocolState = false;
+        bool isTokenState = true;
+
+        strategy.setState(ONE_STATE_ID, isTargetState, isProtocolState, isTokenState, STARTING_HEIGHT);
+
+        assertEq(
+            strategy.stateBitmask(ONE_STATE_ID),
+            StrategyStateLib.createState(isTargetState, isProtocolState, isTokenState, STARTING_HEIGHT),
+            "test_StateBitmask: token state bitmask mismatch"
+        );
+    }
+
     function test_RevertIf_setState_NoAllocationStateId() public {
         bool isTargetState = false;
         bool isProtocolState = false;

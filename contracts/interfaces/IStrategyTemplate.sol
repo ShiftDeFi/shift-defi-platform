@@ -242,6 +242,13 @@ interface IStrategyTemplate {
     function stateNav(bytes32 stateId) external view returns (uint256);
 
     /**
+     * @notice Returns the bitmask for a specific state.
+     * @param stateId State identifier.
+     * @return State bitmask encoding target, protocol, token flags and height.
+     */
+    function stateBitmask(bytes32 stateId) external view returns (uint256);
+
+    /**
      * @notice Returns the currently configured input tokens.
      */
     function getInputTokens() external view returns (address[] memory);
@@ -250,6 +257,11 @@ interface IStrategyTemplate {
      * @notice Returns the currently configured output tokens.
      */
     function getOutputTokens() external view returns (address[] memory);
+
+    /**
+     * @notice Returns the registered state identifiers.
+     */
+    function getStateIds() external view returns (bytes32[] memory);
 
     /**
      * @notice Converts a token amount into notion denomination using the oracle aggregator.

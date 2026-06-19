@@ -116,6 +116,10 @@ contract MockStrategyInterfaceBased is IStrategyTemplate {
         return 0;
     }
 
+    function stateBitmask(bytes32) external pure returns (uint256) {
+        return 0;
+    }
+
     function currentStateId() external pure returns (bytes32) {
         return bytes32(0);
     }
@@ -134,6 +138,10 @@ contract MockStrategyInterfaceBased is IStrategyTemplate {
 
     function getOutputTokens() external view returns (address[] memory) {
         return outputTokens;
+    }
+
+    function getStateIds() external pure returns (bytes32[] memory) {
+        return new bytes32[](0);
     }
 
     function getTokenAmountInNotion(address, uint256) external pure returns (uint256) {

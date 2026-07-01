@@ -503,22 +503,24 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         if (!_navResolutionMode) {
             _setNavResolutionMode(true);
         }
+
         bytes memory returnData;
         (vars.isExitSuccess, returnData) = address(this).call(
             abi.encodeWithSelector(this.tryEmergencyExit.selector, toStateId, share)
         );
 
-        vars.toStateNavAfterExit = stateNav(toStateId);
-        require(
-            vars.toStateNavAfterExit >= vars.toStateNavBeforeExit + minNavDelta,
-            SlippageCheckFailed(vars.toStateNavBeforeExit, vars.toStateNavAfterExit, minNavDelta)
-        );
-
         // Silently ignore return data - emergency exit failure is handled by isExitSuccess flag
         if (vars.isExitSuccess) {
+            vars.toStateNavAfterExit = stateNav(toStateId);
+            require(
+                vars.toStateNavAfterExit >= vars.toStateNavBeforeExit + minNavDelta,
+                SlippageCheckFailed(vars.toStateNavBeforeExit, vars.toStateNavAfterExit, minNavDelta)
+            );
+
             if (share == MAX_BPS) {
                 _acceptNav(toStateId);
             }
+
             emit EmergencyExitSucceeded(toStateId);
         } else {
             emit EmergencyExitFailed(toStateId);

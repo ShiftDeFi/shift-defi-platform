@@ -628,13 +628,18 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     ) internal virtual {
         require(_inputTokens.contains(tokenOut), TokenNotFound(tokenOut));
         uint256 amountIn = IERC20(tokenIn).balanceOf(address(this));
+
         if (amountIn == 0) {
             return;
         }
+
         address swapRouter = IContainer(_strategyContainer).swapRouter();
         IERC20(tokenIn).forceApprove(swapRouter, amountIn);
+
         (bool success, ) = ISwapRouter(swapRouter).tryPredefinedSwap(tokenIn, tokenOut, amountIn, minAmountOut);
         if (mustSucceed && !success) revert Errors.SwapFailed(tokenIn, tokenOut, amountIn, minAmountOut);
+
+        IERC20(tokenIn).forceApprove(swapRouter, 0);
     }
 
     function _enterTarget() internal virtual;

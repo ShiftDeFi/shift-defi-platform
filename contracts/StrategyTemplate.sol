@@ -503,22 +503,24 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
         if (!_navResolutionMode) {
             _setNavResolutionMode(true);
         }
+
         bytes memory returnData;
         (vars.isExitSuccess, returnData) = address(this).call(
             abi.encodeWithSelector(this.tryEmergencyExit.selector, toStateId, share)
         );
 
-        vars.toStateNavAfterExit = stateNav(toStateId);
-        require(
-            vars.toStateNavAfterExit >= vars.toStateNavBeforeExit + minNavDelta,
-            SlippageCheckFailed(vars.toStateNavBeforeExit, vars.toStateNavAfterExit, minNavDelta)
-        );
-
         // Silently ignore return data - emergency exit failure is handled by isExitSuccess flag
         if (vars.isExitSuccess) {
+            vars.toStateNavAfterExit = stateNav(toStateId);
+            require(
+                vars.toStateNavAfterExit >= vars.toStateNavBeforeExit + minNavDelta,
+                SlippageCheckFailed(vars.toStateNavBeforeExit, vars.toStateNavAfterExit, minNavDelta)
+            );
+
             if (share == MAX_BPS) {
                 _acceptNav(toStateId);
             }
+
             emit EmergencyExitSucceeded(toStateId);
         } else {
             emit EmergencyExitFailed(toStateId);
@@ -626,13 +628,18 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
     ) internal virtual {
         require(_inputTokens.contains(tokenOut), TokenNotFound(tokenOut));
         uint256 amountIn = IERC20(tokenIn).balanceOf(address(this));
+
         if (amountIn == 0) {
             return;
         }
+
         address swapRouter = IContainer(_strategyContainer).swapRouter();
         IERC20(tokenIn).forceApprove(swapRouter, amountIn);
+
         (bool success, ) = ISwapRouter(swapRouter).tryPredefinedSwap(tokenIn, tokenOut, amountIn, minAmountOut);
         if (mustSucceed && !success) revert Errors.SwapFailed(tokenIn, tokenOut, amountIn, minAmountOut);
+
+        IERC20(tokenIn).forceApprove(swapRouter, 0);
     }
 
     function _enterTarget() internal virtual;

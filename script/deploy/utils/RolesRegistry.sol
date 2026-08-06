@@ -16,7 +16,9 @@ abstract contract RolesRegistry {
         address whitelistManager;
         address oracleManager;
         address tokenManager;
+        address messengerManager;
         address bridgeAdapterManager;
+        address cacheManager;
         address emergencyManager;
         address emergencyExecutor;
         address strategyManager;
@@ -39,7 +41,9 @@ abstract contract RolesRegistry {
             whitelistManager: vm.envAddress("WHITELIST_MANAGER_ROLE"),
             oracleManager: vm.envAddress("ORACLE_MANAGER_ROLE"),
             tokenManager: vm.envAddress("TOKEN_MANAGER_ROLE"),
+            messengerManager: vm.envAddress("MESSENGER_MANAGER_ROLE"),
             bridgeAdapterManager: vm.envAddress("BRIDGE_ADAPTER_MANAGER_ROLE"),
+            cacheManager: vm.envAddress("CACHE_MANAGER_ROLE"),
             emergencyManager: vm.envAddress("EMERGENCY_MANAGER_ROLE"),
             emergencyExecutor: vm.envAddress("EMERGENCY_EXECUTOR_ROLE"),
             strategyManager: vm.envAddress("STRATEGY_MANAGER_ROLE"),

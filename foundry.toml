@@ -14,5 +14,6 @@ lint_on_build = false
 [rpc_endpoints]
 ethereum = "${ETH_RPC_URL}"
 arbitrum = "${ARB_RPC_URL}"
+base = "${BASE_RPC_URL}"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

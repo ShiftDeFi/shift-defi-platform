@@ -7,7 +7,7 @@ import {console2 as console} from "forge-std/console2.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-import {Vault} from "../../contracts/Vault.sol";
+import {Vault} from "contracts/Vault.sol";
 
 contract UpgradeVault is Script {
     address private vaultProxy = vm.envAddress("VAULT_PROXY");

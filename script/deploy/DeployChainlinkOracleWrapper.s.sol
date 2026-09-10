@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import {Script} from "forge-std/Script.sol";
 
-import {ChainlinkOracleWrapper} from "../../contracts/priceOracles/ChainlinkOracleWrapper.sol";
+import {ChainlinkOracleWrapper} from "contracts/priceOracles/ChainlinkOracleWrapper.sol";
 
 contract DeployChainlinkOracleWrapper is Script {
     uint256 private constant DEFAULT_PRICE_FEED_STALENESS_THRESHOLD = 1 days;

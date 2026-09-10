@@ -2,11 +2,28 @@
 src = "contracts"
 out = "out"
 libs = ["lib"]
+
+solc = "0.8.28"
 optimizer = true
 optimizer_runs = 5
 
 [profile.test]
 optimizer = false
+
+# Deployment profile for Base. Pins already-deployed external libraries so scripts
+# link against them instead of auto-deploying a fresh CREATE2 copy.
+# Usage: FOUNDRY_PROFILE=network forge script ...
+[profile.ethereum]
+libraries = [
+    "contracts/libraries/Common.sol:Common:0x111e48f7D68fbbE1d9110be082d900e4eab1Bd5b",
+    "contracts/libraries/Codec.sol:Codec:0x4efBDFd9148031DbCA1aAB0DD1Cb66548d6660b6",
+]
+
+[profile.base]
+libraries = [
+    "contracts/libraries/Common.sol:Common:0x2Dff179007E602148C6e92ea6eBAA7A04Ab9Aef3",
+    "contracts/libraries/Codec.sol:Codec:0x3a1a55F48eD46b1Ac017804c99E84a3799F2677b",
+]
 
 [lint]
 lint_on_build = false
@@ -14,5 +31,6 @@ lint_on_build = false
 [rpc_endpoints]
 ethereum = "${ETH_RPC_URL}"
 arbitrum = "${ARB_RPC_URL}"
+base = "${BASE_RPC_URL}"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

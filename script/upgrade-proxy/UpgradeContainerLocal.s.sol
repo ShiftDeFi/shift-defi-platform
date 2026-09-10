@@ -7,7 +7,7 @@ import {console2 as console} from "forge-std/console2.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-import {ContainerLocal} from "../../contracts/ContainerLocal.sol";
+import {ContainerLocal} from "contracts/ContainerLocal.sol";
 
 contract UpgradeContainerLocal is Script {
     address private containerLocalProxy = vm.envAddress("CONTAINER_LOCAL_PROXY");

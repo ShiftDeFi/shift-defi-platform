@@ -35,16 +35,7 @@
     "@commitlint/cli": "^20.2.0",
     "@commitlint/config-conventional": "^20.2.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.2.7",
     "prettier": "^3.7.4",
     "prettier-plugin-solidity": "^2.2.1"
-  },
-  "lint-staged": {
-    "*.sol": [
-      "prettier --write --plugin=prettier-plugin-solidity"
-    ],
-    "*.{ts,json,md,yml,yaml}": [
-      "prettier . --write"
-    ]
   }
 }

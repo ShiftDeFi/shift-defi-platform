@@ -68,7 +68,7 @@ library StrategyStateLib {
         bool _isTokenState,
         uint8 _height
     ) internal pure returns (uint256) {
-        if (_isTargetState && _isTokenState) {
+        if (_isTokenState && (_isTargetState || _isProtocolState)) {
             revert InconsistentState();
         }
         if (!_isTargetState && !_isProtocolState && !_isTokenState) {

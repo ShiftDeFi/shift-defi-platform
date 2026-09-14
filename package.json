@@ -37,5 +37,8 @@
     "husky": "^9.1.7",
     "prettier": "^3.7.4",
     "prettier-plugin-solidity": "^2.2.1"
+  },
+  "dependencies": {
+    "@shift-defi/cow-protocol-adapter": "0.1.1"
   }
 }

@@ -7,8 +7,6 @@ solc = "0.8.28"
 optimizer = true
 optimizer_runs = 5
 
-[profile.test]
-optimizer = false
 
 # Deployment profile for Base. Pins already-deployed external libraries so scripts
 # link against them instead of auto-deploying a fresh CREATE2 copy.

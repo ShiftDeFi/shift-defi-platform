@@ -1,0 +1,23 @@
+# Aderyn triage — acknowledged finding instances, one key per line.
+#
+# Covers every high-severity finding, plus the low-severity detectors promoted
+# to gating in wall/script/gate_aderyn.py.
+#
+# Key format: detector_name|contract_path|line_no|anchor
+#
+# The anchor is a digest of the source line the finding sits on, with
+# whitespace collapsed. It records the text the finding was accepted against,
+# so a key that only moved can be told apart from a key whose code changed.
+#
+# This file records review decisions: a finding is read, judged a false positive
+# or an accepted risk, and the key committed here with the reasoning above it.
+#
+# Stability: aderyn anchors an instance at the offending statement, so any
+# insertion or deletion above it — inside the function body or above the
+# function itself — shifts the line number. `make retriage` re-anchors those,
+# pairing on the digest and never on the number. A key whose digest no longer
+# appears is a finding whose code changed, and is re-reviewed rather than
+# silently inherited.
+#
+# Empty: the aderyn lane is staged off in wall/wall.mk while its backlog is
+# reviewed. Nothing has been accepted yet.

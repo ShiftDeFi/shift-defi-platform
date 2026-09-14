@@ -1,0 +1,16 @@
+{
+  "note": "Two profiles. `default` is the fast build used for edit-time regression checks; `viaIr` matches deployment and is the only one whose absolute margins are meaningful. Libraries are not linked in either, so deployed ContainerAgent is smaller than recorded here.",
+  "limit": 24576,
+  "default": {
+    "ContainerLocal": 20502,
+    "ContainerPrincipal": 18030,
+    "ContainerAgent": 27302,
+    "Vault": 19934
+  },
+  "viaIr": {
+    "ContainerLocal": 19304,
+    "ContainerPrincipal": 16621,
+    "ContainerAgent": 24501,
+    "Vault": 20283
+  }
+}

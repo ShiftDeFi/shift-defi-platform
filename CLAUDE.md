@@ -121,8 +121,3 @@ Solidity.
 
 Never add a `Co-Authored-By` trailer, and never attribute a commit to the tooling
 used to write it.
-
-## CoW Protocol integration
-
-`docs/cow-integration.md` carries the design — where the adapter attaches, the
-gate points on each container's state machine, and the decisions behind them.

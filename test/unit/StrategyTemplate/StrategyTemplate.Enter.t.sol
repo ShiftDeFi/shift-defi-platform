@@ -54,15 +54,10 @@ contract StrategyTemplateEnterTest is StrategyTemplateBaseTest {
     function test_EnterToState_TokenState() public {
         bytes32 toStateId = ONE_STATE_ID;
 
-        deal(address(notion), address(strategyContainer), DEPOSIT_AMOUNT);
+        deal(address(notion), address(strategy), DEPOSIT_AMOUNT);
 
-        _enterToState(toStateId, enterMinNavDelta);
+        _enterToState(toStateId, 0);
         assertEq(strategy.currentStateId(), toStateId, "test_EnterToState_TokenState: currentStateId not 1");
-        assertEq(
-            notion.balanceOf(address(strategyContainer)),
-            0,
-            "test_EnterToState_TokenState: strategyContainer notion balance should be 0 after enter"
-        );
         assertEq(
             notion.balanceOf(address(strategy)),
             DEPOSIT_AMOUNT,

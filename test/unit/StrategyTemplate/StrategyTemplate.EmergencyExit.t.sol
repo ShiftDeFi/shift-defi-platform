@@ -101,6 +101,63 @@ contract StrategyTemplateEmergencyExitTest is StrategyTemplateBaseTest {
         );
     }
 
+    function test_Enter_AfterEmergencyExitToTokenState() public {
+        bytes32 toStateId = ONE_STATE_ID;
+        uint256 exitShare = MAX_BPS;
+
+        vm.prank(address(strategyContainer));
+        strategy.enter(inputAmounts, enterMinNavDelta);
+
+        uint256 minNavDelta = _calculateEmergencyExitMinNavDelta(exitShare);
+        vm.prank(roles.emergencyExecutor);
+        strategy.emergencyExit(toStateId, exitShare, minNavDelta);
+
+        assertEq(
+            strategy.currentStateId(),
+            toStateId,
+            "test_Enter_AfterEmergencyExitToTokenState: currentStateId not token state"
+        );
+        assertFalse(
+            strategy.isNavResolutionMode(),
+            "test_Enter_AfterEmergencyExitToTokenState: nav resolution mode should be deactivated"
+        );
+        assertEq(
+            notion.balanceOf(address(strategy)),
+            DEPOSIT_AMOUNT,
+            "test_Enter_AfterEmergencyExitToTokenState: strategy should hold funds after emergency exit to token state"
+        );
+
+        deal(address(notion), address(strategyContainer), DEPOSIT_AMOUNT);
+
+        vm.prank(address(strategyContainer));
+        (uint256 stateToNavAfterEnter, bool hasRemainder, ) = strategy.enter(inputAmounts, enterMinNavDelta);
+
+        assertEq(
+            strategy.currentStateId(),
+            toStateId,
+            "test_Enter_AfterEmergencyExitToTokenState: currentStateId should remain token state"
+        );
+        assertEq(
+            notion.balanceOf(address(strategyContainer)),
+            0,
+            "test_Enter_AfterEmergencyExitToTokenState: container should transfer all funds to strategy"
+        );
+        assertEq(
+            notion.balanceOf(address(strategy)),
+            DEPOSIT_AMOUNT * 2,
+            "test_Enter_AfterEmergencyExitToTokenState: strategy should hold previous and newly entered funds"
+        );
+        assertFalse(
+            hasRemainder,
+            "test_Enter_AfterEmergencyExitToTokenState: token state enter should not report remainder"
+        );
+        assertEq(
+            stateToNavAfterEnter,
+            IStrategyTemplate(address(strategy)).getTokenAmountInNotion(address(notion), DEPOSIT_AMOUNT * 2),
+            "test_Enter_AfterEmergencyExitToTokenState: nav should equal strategy token balance"
+        );
+    }
+
     function test_EmergencyExit_PartialExit() public {
         bytes32 toStateId = TWO_STATE_ID;
         uint256 exitShare = MAX_BPS / 2;

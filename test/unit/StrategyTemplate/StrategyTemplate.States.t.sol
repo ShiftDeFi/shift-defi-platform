@@ -183,6 +183,15 @@ contract StrategyTemplateStatesTest is StrategyTemplateBaseTest {
         strategy.setState(ONE_STATE_ID, isTargetState, isProtocolState, isTokenState, STARTING_HEIGHT);
     }
 
+    function test_RevertIf_setState_ProtocolAndTokenState() public {
+        bool isTargetState = false;
+        bool isProtocolState = true;
+        bool isTokenState = true;
+
+        vm.expectRevert(StrategyStateLib.InconsistentState.selector);
+        strategy.setState(ONE_STATE_ID, isTargetState, isProtocolState, isTokenState, STARTING_HEIGHT);
+    }
+
     function test_RevertIf_setState_ZeroState() public {
         bool isTargetState = false;
         bool isProtocolState = false;

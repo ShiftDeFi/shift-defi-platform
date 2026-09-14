@@ -143,12 +143,29 @@ contract MockStrategy is StrategyTemplate {
     }
 
     function _emergencyExit(bytes32 toStateId, uint256 share) internal override {
-        if (_isTargetState[currentStateId()]) {
-            _exitTarget(share);
+        bytes32 fromStateId = currentStateId();
+
+        if (fromStateId != NO_ALLOCATION_STATE_ID && !_isTokenState[fromStateId]) {
+            if (fromStateId != MOCK_SLIPPAGE_STATE_ID) {
+                uint256 amount = IERC20(_notion).balanceOf(address(stateToBuildingBlock[fromStateId])).mulDiv(
+                    share,
+                    MAX_BPS
+                );
+                require(amount > 0, NotEnoughFunds());
+
+                if (exitWithSlippage) {
+                    amount = amount.mulDiv(MAX_BPS + MOCK_SLIPPAGE_PERCENT, MAX_BPS);
+                }
+
+                stateToBuildingBlock[fromStateId].returnNotionToStrategy(amount);
+            }
         }
 
         if (toStateId == MOCK_SLIPPAGE_STATE_ID) {
-            _exitFromState(toStateId, share);
+            return;
+        }
+        if (!_isTokenState[toStateId] && toStateId != NO_ALLOCATION_STATE_ID) {
+            _enterState(toStateId);
         }
     }
 

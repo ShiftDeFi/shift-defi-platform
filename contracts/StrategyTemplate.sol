@@ -302,10 +302,12 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
             _takeFundsFromAgent(amounts);
         }
 
-        if (vars.enterStateBitmask.isTargetState()) {
-            _enterTarget();
-        } else {
-            _enterState(vars.enterStateId);
+        if (vars.enterStateBitmask.isProtocolState()) {
+            if (vars.enterStateBitmask.isTargetState()) {
+                _enterTarget();
+            } else {
+                _enterState(vars.enterStateId);
+            }
         }
 
         vars.stateToNavAfterEnter = stateNav(vars.enterStateId);
@@ -319,7 +321,9 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
             emit StateUpdated(vars.currentStateId, vars.enterStateId, vars.enterStateBitmask);
         }
 
-        (vars.remainingAmounts, vars.hasRemainder) = _prepareFundsAfterEnter();
+        if (!vars.enterStateBitmask.isTokenState()) {
+            (vars.remainingAmounts, vars.hasRemainder) = _prepareFundsAfterEnter();
+        }
 
         emit Entered(vars.stateToNavBeforeEnter, vars.stateToNavAfterEnter, vars.hasRemainder);
 
@@ -349,10 +353,12 @@ abstract contract StrategyTemplate is Initializable, ReentrancyGuardUpgradeable,
 
         vars.stateToNavBeforeEnter = stateNav(toStateId);
 
-        if (vars.toStateBitmask.isTargetState()) {
-            _enterTarget();
-        } else {
-            _enterState(toStateId);
+        if (vars.toStateBitmask.isProtocolState()) {
+            if (vars.toStateBitmask.isTargetState()) {
+                _enterTarget();
+            } else {
+                _enterState(toStateId);
+            }
         }
 
         vars.stateToNavAfterEnter = stateNav(toStateId);

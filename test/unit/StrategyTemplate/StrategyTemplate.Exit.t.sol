@@ -112,7 +112,8 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
     }
 
     function test_Exit_FromTokenState_PartialExit() public {
-        _enterToState(ONE_STATE_ID, enterMinNavDelta);
+        deal(address(notion), address(strategy), DEPOSIT_AMOUNT);
+        _enterToState(ONE_STATE_ID, 0);
 
         uint256 share = MAX_BPS / 2;
         uint256 navDelta = _calcNavDelta(share);
@@ -137,7 +138,8 @@ contract StrategyTemplateExitTest is StrategyTemplateBaseTest {
     }
 
     function test_Exit_FromTokenState_FullExit() public {
-        _enterToState(ONE_STATE_ID, enterMinNavDelta);
+        deal(address(notion), address(strategy), DEPOSIT_AMOUNT);
+        _enterToState(ONE_STATE_ID, 0);
 
         uint256 share = MAX_BPS;
         uint256 navDelta = _calcNavDelta(share);

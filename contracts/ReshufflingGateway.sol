@@ -7,9 +7,13 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ICowProtocolAdapter} from "@shift-defi/cow-protocol-adapter/src/interfaces/ICowProtocolAdapter.sol";
+
+import {CowProtocolModule} from "./CowProtocolModule.sol";
 
 import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
 import {IContainer} from "./interfaces/IContainer.sol";
+import {ICowProtocolModule} from "./interfaces/ICowProtocolModule.sol";
 import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
 import {IReshufflingGateway} from "./interfaces/IReshufflingGateway.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
@@ -17,7 +21,12 @@ import {IVault} from "./interfaces/IVault.sol";
 
 import {Errors} from "./libraries/Errors.sol";
 
-contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradeable, IReshufflingGateway {
+contract ReshufflingGateway is
+    AccessControlUpgradeable,
+    ReentrancyGuardUpgradeable,
+    CowProtocolModule,
+    IReshufflingGateway
+{
     using Math for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -101,6 +110,9 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
     /// @inheritdoc IReshufflingGateway
     function blacklistToken(address token) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
+
+        _requireNoPendingOrders();
+
         require(_whitelistedTokens.remove(token), NotWhitelistedToken(token));
         emit TokenBlacklisted(token);
     }
@@ -257,5 +269,42 @@ contract ReshufflingGateway is AccessControlUpgradeable, ReentrancyGuardUpgradea
             IERC20(token).safeTransfer(container, amount);
             emit SentToLocalContainer(container, token, amount);
         }
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function placeCowOrder(
+        ICowProtocolAdapter.OrderParams calldata params
+    ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) returns (bytes32) {
+        return _placeCowOrder(params);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function cancelCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+        _cancelCowOrder(orderDigest);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function resolveCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(RESHUFFLING_EXECUTOR_ROLE) {
+        _resolveCowOrder(orderDigest);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function sweepCowAdapter(address token) external nonReentrant onlyRole(TOKEN_MANAGER_ROLE) {
+        _sweepCowAdapter(token);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function sweepCowLane(uint256 laneIndex, address token) external nonReentrant onlyRole(TOKEN_MANAGER_ROLE) {
+        _sweepCowLane(laneIndex, token);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function setCowAdapter(address newCowAdapter) external onlyRole(TOKEN_MANAGER_ROLE) {
+        _setCowAdapter(newCowAdapter);
+    }
+
+    /// @dev Over the whitelist this gateway already keeps.
+    function _isCowTokenWhitelisted(address token) internal view override returns (bool) {
+        return _whitelistedTokens.contains(token);
     }
 }

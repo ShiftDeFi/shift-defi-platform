@@ -14,6 +14,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {IContainer} from "./interfaces/IContainer.sol";
 import {IContainerPrincipal} from "./interfaces/IContainerPrincipal.sol";
+import {ICowProtocolModule} from "./interfaces/ICowProtocolModule.sol";
 import {IVault} from "./interfaces/IVault.sol";
 
 import {EnumerableAddressSetExtended} from "./libraries/EnumerableAddressSetExtended.sol";
@@ -180,6 +181,9 @@ contract Vault is
         require(_reshufflingGateway != address(0), Errors.ZeroAddress());
         address previousGateway = reshufflingGateway;
         require(previousGateway != _reshufflingGateway, Errors.SettingSameValue());
+        if (previousGateway != address(0)) {
+            _requireNoPendingCowOrders(previousGateway);
+        }
         reshufflingGateway = _reshufflingGateway;
         emit ReshufflingGatewayUpdated(previousGateway, _reshufflingGateway);
     }
@@ -188,12 +192,15 @@ contract Vault is
     function enableReshufflingMode() external onlyRole(RESHUFFLING_MANAGER_ROLE) notInReshufflingMode {
         require(reshufflingGateway != address(0), Errors.ReshufflingGatewayNotSet());
         require(status == VaultStatus.Idle, IncorrectVaultStatus(status));
+        _requireNoPendingReshufflingCowOrders();
         isReshuffling = true;
         emit ReshufflingModeEnabled();
     }
 
     /// @inheritdoc IVault
     function disableReshufflingMode() external onlyRole(RESHUFFLING_EXECUTOR_ROLE) onlyInReshufflingMode {
+        _requireNoPendingReshufflingCowOrders();
+
         for (uint256 i = 0; i < _containers.length(); ++i) {
             address container = _containers.at(i);
             require(containerWeights[container] > 0, ZeroContainerWeight(container));
@@ -385,6 +392,7 @@ contract Vault is
 
             containerWeights[containers[i]] = weights[i];
             if (weights[i] == 0) {
+                _requireNoPendingCowOrders(containers[i]);
                 notion.forceApprove(containers[i], 0);
                 _containers.remove(containers[i]);
                 if (IContainer(containers[i]).containerType() == IContainer.ContainerType.Local) {
@@ -408,6 +416,31 @@ contract Vault is
 
     function _isContainer(address container) internal view returns (bool) {
         return _containers.contains(container);
+    }
+
+    /// @dev Reverts when owner has a CoW Protocol order the adapter has not resolved. Reads the count
+    ///      rather than calling requireNoPendingOrders, because resolving an order moves tokens and
+    ///      disableReshufflingMode and setContainerWeights are not nonReentrant.
+    function _requireNoPendingCowOrders(address owner) internal view {
+        uint256 pendingOrders = ICowProtocolModule(owner).pendingCowOrderCount();
+        require(pendingOrders == 0, Errors.PendingCowOrders(owner, pendingOrders));
+    }
+
+    /// @dev Reverts when the reshuffling gateway or this chain's container has a pending CoW Protocol
+    ///      order. A reshuffle moves value sized from balances, which do not include an order's sell
+    ///      tokens, and only the gateway and the local container are touched while the mode is on.
+    ///      Either address is zero before it is set, and disableReshufflingMode runs in that state:
+    ///      initialize leaves isReshuffling true so the vault is configured inside the mode.
+    function _requireNoPendingReshufflingCowOrders() internal view {
+        address gateway = reshufflingGateway;
+        if (gateway != address(0)) {
+            _requireNoPendingCowOrders(gateway);
+        }
+
+        address localContainer = containerByChainId[block.chainid];
+        if (localContainer != address(0)) {
+            _requireNoPendingCowOrders(localContainer);
+        }
     }
 
     // ---- User actions ----

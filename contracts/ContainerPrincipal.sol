@@ -3,11 +3,14 @@ pragma solidity ^0.8.28;
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ICowProtocolAdapter} from "@shift-defi/cow-protocol-adapter/src/interfaces/ICowProtocolAdapter.sol";
 
+import {CowProtocolModule} from "./CowProtocolModule.sol";
 import {CrossChainContainer} from "./CrossChainContainer.sol";
 
 import {IBridgeAdapter} from "./interfaces/IBridgeAdapter.sol";
 import {IContainerPrincipal} from "./interfaces/IContainerPrincipal.sol";
+import {ICowProtocolModule} from "./interfaces/ICowProtocolModule.sol";
 import {ICrossChainContainer} from "./interfaces/ICrossChainContainer.sol";
 import {IMessageRouter} from "./interfaces/IMessageRouter.sol";
 import {ISwapRouter} from "./interfaces/ISwapRouter.sol";
@@ -16,7 +19,7 @@ import {IVault} from "./interfaces/IVault.sol";
 import {Codec} from "./libraries/Codec.sol";
 import {Errors} from "./libraries/Errors.sol";
 
-contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
+contract ContainerPrincipal is CrossChainContainer, CowProtocolModule, IContainerPrincipal {
     using SafeERC20 for IERC20;
 
     ContainerPrincipalStatus public status;
@@ -71,6 +74,8 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         IBridgeAdapter.BridgeInstruction[] calldata bridgeInstructions
     ) external payable whenNotPaused nonReentrant onlyRole(OPERATOR_ROLE) {
         require(status == ContainerPrincipalStatus.DepositRequestRegistered, Errors.IncorrectContainerStatus());
+
+        _requireNoPendingOrders();
 
         uint256 bridgeInstructionsLength = bridgeInstructions.length;
         require(bridgeInstructionsLength > 0, Errors.ZeroArrayLength());
@@ -160,6 +165,8 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
             Errors.IncorrectContainerStatus()
         );
 
+        _requireNoPendingOrders();
+
         require(claimCounter == 0, UnclaimedTokens());
         require(_validateWhitelistedTokensBeforeReport(true, true), WhitelistedTokensOnBalance());
 
@@ -178,6 +185,8 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
     /// @inheritdoc IContainerPrincipal
     function reportWithdrawal() external payable whenNotPaused nonReentrant onlyRole(OPERATOR_ROLE) {
         require(status == ContainerPrincipalStatus.BridgeClaimed, Errors.IncorrectContainerStatus());
+
+        _requireNoPendingOrders();
         require(registeredWithdrawShareAmount > 0, Errors.ZeroAmount());
         require(claimCounter == 0, UnclaimedTokens());
         require(_hasOnlyNotionToken(), WhitelistedTokensOnBalance());
@@ -268,5 +277,47 @@ contract ContainerPrincipal is CrossChainContainer, IContainerPrincipal {
         if (claimCounter == 0) {
             status = ContainerPrincipalStatus.BridgeClaimed;
         }
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function placeCowOrder(
+        ICowProtocolAdapter.OrderParams calldata params
+    ) external whenNotPaused nonReentrant onlyRole(OPERATOR_ROLE) returns (bytes32) {
+        return _placeCowOrder(params);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function cancelCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(OPERATOR_ROLE) {
+        _cancelCowOrder(orderDigest);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function resolveCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(OPERATOR_ROLE) {
+        _resolveCowOrder(orderDigest);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function sweepCowAdapter(address token) external nonReentrant onlyRole(TOKEN_MANAGER_ROLE) {
+        _sweepCowAdapter(token);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function sweepCowLane(uint256 laneIndex, address token) external nonReentrant onlyRole(TOKEN_MANAGER_ROLE) {
+        _sweepCowLane(laneIndex, token);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function setCowAdapter(address newCowAdapter) external onlyRole(TOKEN_MANAGER_ROLE) {
+        _setCowAdapter(newCowAdapter);
+    }
+
+    /// @dev Over the whitelist this container already keeps.
+    function _isCowTokenWhitelisted(address token) internal view override returns (bool) {
+        return _isTokenWhitelisted(token);
+    }
+
+    /// @dev A fill of a blacklisted token lands where the report checks cannot see it.
+    function _beforeTokenBlacklisted() internal override {
+        _requireNoPendingOrders();
     }
 }

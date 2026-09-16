@@ -24,6 +24,14 @@ contract MockContainerPrincipal is IContainerPrincipal {
     uint256 public remoteChainId;
     uint256 public claimCounter;
 
+    /// @dev Stands in for CowProtocolModule.pendingCowOrderCount, which the Vault reads on a
+    ///      container before removing it or toggling reshuffling mode.
+    uint256 public pendingCowOrderCount;
+
+    function setPendingCowOrderCount(uint256 newPendingCowOrderCount) external {
+        pendingCowOrderCount = newPendingCowOrderCount;
+    }
+
     uint256 public constant MAX_BRIDGE_SLIPPAGE = 9000; // 10%
 
     constructor(address _vault, address _notion, uint256 _remoteChainId) {

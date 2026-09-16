@@ -82,6 +82,9 @@ abstract contract Container is
     /// @inheritdoc IContainer
     function blacklistToken(address token) external whenNotPaused onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
+
+        _beforeTokenBlacklisted();
+
         require(_whitelistedTokens.remove(token), NotWhitelistedToken(token));
         _whitelistedTokensDustThresholds[token] = 0;
         IERC20(token).forceApprove(swapRouter, 0);
@@ -189,4 +192,10 @@ abstract contract Container is
     }
 
     uint256[50] private __gap;
+
+    /**
+     * @dev Runs before the token leaves the whitelist and its router approval is dropped. Empty
+     *      here; a container holding value outside its own balance overrides it.
+     */
+    function _beforeTokenBlacklisted() internal virtual {}
 }

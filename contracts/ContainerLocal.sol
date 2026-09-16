@@ -3,18 +3,21 @@ pragma solidity ^0.8.28;
 
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ICowProtocolAdapter} from "@shift-defi/cow-protocol-adapter/src/interfaces/ICowProtocolAdapter.sol";
 
 import {Container} from "./Container.sol";
+import {CowProtocolModule} from "./CowProtocolModule.sol";
 import {StrategyContainer} from "./StrategyContainer.sol";
 
 import {IContainer} from "./interfaces/IContainer.sol";
 import {IContainerLocal} from "./interfaces/IContainerLocal.sol";
+import {ICowProtocolModule} from "./interfaces/ICowProtocolModule.sol";
 import {IStrategyContainer} from "./interfaces/IStrategyContainer.sol";
 import {IVault} from "./interfaces/IVault.sol";
 
 import {Errors} from "./libraries/Errors.sol";
 
-contract ContainerLocal is StrategyContainer, IContainerLocal {
+contract ContainerLocal is StrategyContainer, CowProtocolModule, IContainerLocal {
     using SafeERC20 for IERC20;
 
     ContainerLocalStatus public status;
@@ -77,6 +80,8 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
     {
         require(status == ContainerLocalStatus.AllStrategiesEntered, Errors.IncorrectContainerStatus());
 
+        _requireNoPendingOrders();
+
         require(_validateWhitelistedTokensBeforeReport(true, true), WhitelistedTokensOnBalance());
 
         (uint256 nav0, uint256 nav1) = getTotalNavs();
@@ -101,6 +106,8 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         onlyRole(OPERATOR_ROLE)
     {
         require(status == ContainerLocalStatus.AllStrategiesExited, Errors.IncorrectContainerStatus());
+
+        _requireNoPendingOrders();
 
         status = ContainerLocalStatus.Idle;
         registeredWithdrawShareAmount = 0;
@@ -142,6 +149,8 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         uint256 minNavDelta
     ) external whenNotPaused nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.DepositRequestRegistered, Errors.IncorrectContainerStatus());
+
+        _requireNoPendingOrders();
         _enterStrategy(strategy, inputAmounts, minNavDelta);
 
         if (_allStrategiesEntered()) {
@@ -157,6 +166,8 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
         uint256[] calldata minNavDelta
     ) external whenNotPaused nonReentrant notInReshufflingMode onlyRole(OPERATOR_ROLE) {
         require(status == ContainerLocalStatus.DepositRequestRegistered, Errors.IncorrectContainerStatus());
+
+        _requireNoPendingOrders();
         uint256 length = strategies.length;
         require(length > 0 && length <= getStrategiesNumber(), Errors.InvalidArrayLength());
         require(length == inputAmounts.length, Errors.ArrayLengthMismatch());
@@ -257,5 +268,52 @@ contract ContainerLocal is StrategyContainer, IContainerLocal {
                 IERC20(token).safeTransfer(reshufflingGatewayCached, amount);
             }
         }
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function placeCowOrder(
+        ICowProtocolAdapter.OrderParams calldata params
+    ) external whenNotPaused nonReentrant notResolvingEmergency onlyRole(OPERATOR_ROLE) returns (bytes32) {
+        return _placeCowOrder(params);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function cancelCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(OPERATOR_ROLE) {
+        _cancelCowOrder(orderDigest);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function resolveCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(OPERATOR_ROLE) {
+        _resolveCowOrder(orderDigest);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function sweepCowAdapter(address token) external nonReentrant onlyRole(TOKEN_MANAGER_ROLE) {
+        _sweepCowAdapter(token);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function sweepCowLane(uint256 laneIndex, address token) external nonReentrant onlyRole(TOKEN_MANAGER_ROLE) {
+        _sweepCowLane(laneIndex, token);
+    }
+
+    /// @inheritdoc ICowProtocolModule
+    function setCowAdapter(address newCowAdapter) external onlyRole(TOKEN_MANAGER_ROLE) {
+        _setCowAdapter(newCowAdapter);
+    }
+
+    /// @dev Over the whitelist this container already keeps.
+    function _isCowTokenWhitelisted(address token) internal view override returns (bool) {
+        return _isTokenWhitelisted(token);
+    }
+
+    /// @dev Entering or leaving the mode assumes value is where `balanceOf` says it is.
+    function _beforeReshufflingModeToggled() internal override {
+        _requireNoPendingOrders();
+    }
+
+    /// @dev A fill of a blacklisted token lands where the report checks cannot see it.
+    function _beforeTokenBlacklisted() internal override {
+        _requireNoPendingOrders();
     }
 }

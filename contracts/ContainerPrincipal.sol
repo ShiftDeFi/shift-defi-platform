@@ -316,8 +316,13 @@ contract ContainerPrincipal is CrossChainContainer, CowProtocolModule, IContaine
         return _isTokenWhitelisted(token);
     }
 
-    /// @dev A fill of a blacklisted token lands where the report checks cannot see it.
-    function _beforeTokenBlacklisted() internal override {
+    /// @dev A fill of a blacklisted token lands where the report checks cannot see it and out of
+    ///      `prepareLiquidity`'s reach. `_requireNoPendingOrders` can deliver one, so the balance
+    ///      is read after it.
+    function _beforeTokenBlacklisted(address token) internal override {
         _requireNoPendingOrders();
+
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        require(balance <= _whitelistedTokensDustThresholds[token], Errors.TokenBalanceNotDust(token, balance));
     }
 }

@@ -39,4 +39,5 @@ library Errors {
     error NotEnoughTokens(address token, uint256 amount, uint256 balance);
     error SwapFailed(address tokenIn, address tokenOut, uint256 amountIn, uint256 minAmountOut);
     error PendingCowOrders(address owner, uint256 pendingOrders);
+    error TokenBalanceNotDust(address token, uint256 balance);
 }

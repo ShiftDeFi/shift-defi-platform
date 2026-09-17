@@ -35,7 +35,7 @@ abstract contract Container is
 
     EnumerableSet.AddressSet private _whitelistedTokens;
 
-    mapping(address => uint256) private _whitelistedTokensDustThresholds;
+    mapping(address => uint256) internal _whitelistedTokensDustThresholds;
 
     modifier onlyVault() {
         require(msg.sender == vault, Errors.Unauthorized());
@@ -83,7 +83,7 @@ abstract contract Container is
     function blacklistToken(address token) external whenNotPaused onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
 
-        _beforeTokenBlacklisted();
+        _beforeTokenBlacklisted(token);
 
         require(_whitelistedTokens.remove(token), NotWhitelistedToken(token));
         _whitelistedTokensDustThresholds[token] = 0;
@@ -194,8 +194,9 @@ abstract contract Container is
     uint256[50] private __gap;
 
     /**
-     * @dev Runs before the token leaves the whitelist and its router approval is dropped. Empty
-     *      here; a container holding value outside its own balance overrides it.
+     * @dev Runs before the token leaves the whitelist and its router approval is dropped, taking
+     *      the token being removed. Empty here; a container holding value outside its own balance
+     *      overrides it.
      */
-    function _beforeTokenBlacklisted() internal virtual {}
+    function _beforeTokenBlacklisted(address) internal virtual {}
 }

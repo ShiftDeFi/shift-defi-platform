@@ -9,6 +9,8 @@ contract MockCowProtocolAdapter is ICowProtocolAdapter {
     mapping(bytes32 => bool) internal _placed;
     uint256 internal _deployedLaneCount;
     address internal _owner;
+    address internal _fillToken;
+    uint256 internal _fillAmount;
 
     /// @dev The real adapter takes its owner at construction and keeps it immutable, so a test
     ///      that wires one up states the owner the same way. setOwner stays for the tests that
@@ -29,6 +31,14 @@ contract MockCowProtocolAdapter is ICowProtocolAdapter {
         _pendingOrderCount = newPendingOrderCount;
     }
 
+    /// @dev Arms one filled order for the next `requireNoPendingOrders`: the pending count drops
+    ///      and the proceeds land on the owner, as the real adapter's `receiver: OWNER` does. The
+    ///      mock must hold the token for it to move.
+    function setFillOnRequire(address token, uint256 amount) external {
+        _fillToken = token;
+        _fillAmount = amount;
+    }
+
     function pendingOrderCount() external view returns (uint256) {
         return _pendingOrderCount;
     }
@@ -47,6 +57,13 @@ contract MockCowProtocolAdapter is ICowProtocolAdapter {
     }
 
     function requireNoPendingOrders() external {
+        if (_fillToken != address(0)) {
+            address fillToken = _fillToken;
+            _fillToken = address(0);
+            _pendingOrderCount = 0;
+            IERC20(fillToken).transfer(_owner, _fillAmount);
+        }
+
         require(_pendingOrderCount == 0, OrdersStillPending(_pendingOrderCount));
     }
 

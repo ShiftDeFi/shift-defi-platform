@@ -96,6 +96,7 @@ contract ReshufflingGateway is
     /// @inheritdoc IReshufflingGateway
     function whitelistToken(address token) external onlyRole(TOKEN_MANAGER_ROLE) {
         require(token != address(0), Errors.ZeroAddress());
+        require(token.code.length > 0, TokenNotContract(token));
         require(_whitelistedTokens.add(token), AlreadyWhitelistedToken());
         emit TokenWhitelisted(token);
     }
@@ -112,6 +113,9 @@ contract ReshufflingGateway is
         require(token != address(0), Errors.ZeroAddress());
 
         _requireNoPendingOrders();
+
+        uint256 balance = IERC20(token).balanceOf(address(this));
+        require(balance == 0, Errors.TokenBalanceNotDust(token, balance));
 
         require(_whitelistedTokens.remove(token), NotWhitelistedToken(token));
         emit TokenBlacklisted(token);

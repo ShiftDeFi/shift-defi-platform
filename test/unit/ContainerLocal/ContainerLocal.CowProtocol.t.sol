@@ -7,6 +7,8 @@ import {ICowProtocolAdapter} from "@shift-defi/cow-protocol-adapter/src/interfac
 import {IContainerLocal} from "contracts/interfaces/IContainerLocal.sol";
 import {ICowProtocolModule} from "contracts/interfaces/ICowProtocolModule.sol";
 
+import {Errors} from "contracts/libraries/Errors.sol";
+
 import {ContainerLocalBaseTest} from "test/unit/ContainerLocal/ContainerLocalBase.t.sol";
 import {MockCowProtocolAdapter} from "test/mocks/MockCowProtocolAdapter.sol";
 import {MockERC20} from "test/mocks/MockERC20.sol";
@@ -191,6 +193,37 @@ contract ContainerLocalCowProtocolTest is ContainerLocalBaseTest {
     function test_BlacklistToken() public {
         vm.prank(roles.tokenManager);
         containerLocal.blacklistToken(address(buyToken));
+
+        assertEq(containerLocal.isTokenWhitelisted(address(buyToken)), false);
+    }
+
+    function test_RevertIf_BlacklistToken_BalanceNotDust() public {
+        deal(address(buyToken), address(containerLocal), 1);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.TokenBalanceNotDust.selector, address(buyToken), 1));
+        vm.prank(roles.tokenManager);
+        containerLocal.blacklistToken(address(buyToken));
+    }
+
+    /// @dev The check resolves the order first, so the fill it delivers is what the balance check
+    ///      then catches; without it the proceeds land one statement before the token leaves the
+    ///      whitelist and its router approval is dropped.
+    function test_RevertIf_BlacklistToken_FillDeliveredWhileResolving() public {
+        adapter.setPendingOrderCount(1);
+        deal(address(buyToken), address(adapter), 1e6);
+        adapter.setFillOnRequire(address(buyToken), 1e6);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.TokenBalanceNotDust.selector, address(buyToken), 1e6));
+        vm.prank(roles.tokenManager);
+        containerLocal.blacklistToken(address(buyToken));
+    }
+
+    function test_BlacklistToken_BalanceAtDustThreshold() public {
+        vm.startPrank(roles.tokenManager);
+        containerLocal.setWhitelistedTokenDustThreshold(address(buyToken), 10);
+        deal(address(buyToken), address(containerLocal), 10);
+        containerLocal.blacklistToken(address(buyToken));
+        vm.stopPrank();
 
         assertEq(containerLocal.isTokenWhitelisted(address(buyToken)), false);
     }

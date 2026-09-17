@@ -7,6 +7,8 @@ import {ICowProtocolAdapter} from "@shift-defi/cow-protocol-adapter/src/interfac
 import {IBridgeAdapter} from "contracts/interfaces/IBridgeAdapter.sol";
 import {IContainerPrincipal} from "contracts/interfaces/IContainerPrincipal.sol";
 import {ICowProtocolModule} from "contracts/interfaces/ICowProtocolModule.sol";
+
+import {Errors} from "contracts/libraries/Errors.sol";
 import {ICrossChainContainer} from "contracts/interfaces/ICrossChainContainer.sol";
 
 import {ContainerPrincipalBaseTest} from "test/unit/ContainerPrincipal/ContainerPrincipalBase.t.sol";
@@ -160,6 +162,37 @@ contract ContainerPrincipalCowProtocolTest is ContainerPrincipalBaseTest {
     function test_BlacklistToken() public {
         vm.prank(roles.tokenManager);
         containerPrincipal.blacklistToken(address(buyToken));
+
+        assertEq(containerPrincipal.isTokenWhitelisted(address(buyToken)), false);
+    }
+
+    function test_RevertIf_BlacklistToken_BalanceNotDust() public {
+        deal(address(buyToken), address(containerPrincipal), 1);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.TokenBalanceNotDust.selector, address(buyToken), 1));
+        vm.prank(roles.tokenManager);
+        containerPrincipal.blacklistToken(address(buyToken));
+    }
+
+    /// @dev The check resolves the order first, so the fill it delivers is what the balance check
+    ///      then catches; without it the proceeds land one statement before the token leaves the
+    ///      whitelist and its router approval is dropped.
+    function test_RevertIf_BlacklistToken_FillDeliveredWhileResolving() public {
+        adapter.setPendingOrderCount(1);
+        deal(address(buyToken), address(adapter), 1e6);
+        adapter.setFillOnRequire(address(buyToken), 1e6);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.TokenBalanceNotDust.selector, address(buyToken), 1e6));
+        vm.prank(roles.tokenManager);
+        containerPrincipal.blacklistToken(address(buyToken));
+    }
+
+    function test_BlacklistToken_BalanceAtDustThreshold() public {
+        vm.startPrank(roles.tokenManager);
+        containerPrincipal.setWhitelistedTokenDustThreshold(address(buyToken), 10);
+        deal(address(buyToken), address(containerPrincipal), 10);
+        containerPrincipal.blacklistToken(address(buyToken));
+        vm.stopPrank();
 
         assertEq(containerPrincipal.isTokenWhitelisted(address(buyToken)), false);
     }

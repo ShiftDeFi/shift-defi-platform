@@ -152,4 +152,23 @@ contract ReshufflingGatewayCowProtocolTest is L1Base {
         vm.prank(roles.tokenManager);
         reshufflingGateway.blacklistToken(address(buyToken));
     }
+
+    /// @dev The gateway keeps no dust thresholds, so any balance blocks the removal.
+    function test_RevertIf_BlacklistToken_BalanceNotZero() public {
+        deal(address(buyToken), address(reshufflingGateway), 1);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.TokenBalanceNotDust.selector, address(buyToken), 1));
+        vm.prank(roles.tokenManager);
+        reshufflingGateway.blacklistToken(address(buyToken));
+    }
+
+    function test_RevertIf_BlacklistToken_FillDeliveredWhileResolving() public {
+        adapter.setPendingOrderCount(1);
+        deal(address(buyToken), address(adapter), 1e6);
+        adapter.setFillOnRequire(address(buyToken), 1e6);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.TokenBalanceNotDust.selector, address(buyToken), 1e6));
+        vm.prank(roles.tokenManager);
+        reshufflingGateway.blacklistToken(address(buyToken));
+    }
 }

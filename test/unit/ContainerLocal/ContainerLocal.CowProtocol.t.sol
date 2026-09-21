@@ -20,6 +20,12 @@ contract ContainerLocalCowProtocolTest is ContainerLocalBaseTest {
 
     uint256 internal constant SELL_AMOUNT = 100e18;
 
+    /// @dev No initializer grants this role, so every test that exercises cancel or resolve has to
+    ///      grant it the way a deployment does.
+    bytes32 internal constant COW_SWAP_MANAGER_ROLE = keccak256("COW_SWAP_MANAGER_ROLE");
+
+    address internal cowSwapManager = makeAddr("cowSwapManager");
+
     function setUp() public override {
         super.setUp();
 
@@ -44,6 +50,11 @@ contract ContainerLocalCowProtocolTest is ContainerLocalBaseTest {
                 validTo: uint32(block.timestamp + 1 hours),
                 appData: bytes32(0)
             });
+    }
+
+    function _grantCowSwapManager() internal {
+        vm.prank(roles.defaultAdmin);
+        IAccessControl(address(containerLocal)).grantRole(COW_SWAP_MANAGER_ROLE, cowSwapManager);
     }
 
     function _expectUnauthorized(address caller, string memory role) internal {
@@ -92,13 +103,118 @@ contract ContainerLocalCowProtocolTest is ContainerLocalBaseTest {
         cowModule.placeCowOrder(_params());
     }
 
-    function test_RevertIf_CancelCowOrder_CallerNotOperator() public {
-        _expectUnauthorized(roles.tokenManager, "OPERATOR_ROLE");
+    function test_RevertIf_PlaceCowOrder_InReshufflingMode() public {
+        vm.prank(roles.reshufflingManager);
+        containerLocal.enableReshufflingMode();
+
+        vm.expectRevert(Errors.ReshufflingModeEnabled.selector);
+        vm.prank(roles.operator);
+        cowModule.placeCowOrder(_params());
+    }
+
+    function test_PlaceCowOrderInReshufflingMode() public {
+        vm.prank(roles.reshufflingManager);
+        containerLocal.enableReshufflingMode();
+
+        vm.prank(roles.reshufflingExecutor);
+        bytes32 orderDigest = containerLocal.placeCowOrderInReshufflingMode(_params());
+
+        assertEq(orderDigest, keccak256(abi.encode(_params())));
+    }
+
+    function test_RevertIf_PlaceCowOrderInReshufflingMode_NotInReshufflingMode() public {
+        vm.expectRevert(Errors.ReshufflingModeDisabled.selector);
+        vm.prank(roles.reshufflingExecutor);
+        containerLocal.placeCowOrderInReshufflingMode(_params());
+    }
+
+    /// @dev onlyInReshufflingMode runs before onlyRole, so the mode has to be open for the role
+    ///      check to be what rejects the caller.
+    function test_RevertIf_PlaceCowOrderInReshufflingMode_CallerNotReshufflingExecutor() public {
+        vm.prank(roles.reshufflingManager);
+        containerLocal.enableReshufflingMode();
+
+        _expectUnauthorized(roles.operator, "RESHUFFLING_EXECUTOR_ROLE");
+        containerLocal.placeCowOrderInReshufflingMode(_params());
+    }
+
+    /// @dev The container is not Pausable-gated in the mode: placeCowOrder carries whenNotPaused
+    ///      and this does not, matching enterInReshufflingMode and exitInReshufflingMode.
+    function test_PlaceCowOrderInReshufflingMode_WhilePaused() public {
+        vm.prank(roles.reshufflingManager);
+        containerLocal.enableReshufflingMode();
+
+        vm.prank(roles.emergencyPauser);
+        containerLocal.pause();
+
+        vm.prank(roles.reshufflingExecutor);
+        bytes32 orderDigest = containerLocal.placeCowOrderInReshufflingMode(_params());
+
+        assertEq(orderDigest, keccak256(abi.encode(_params())));
+    }
+
+    /// @dev Same asymmetry for notResolvingEmergency. The mode has to be opened first, because
+    ///      enableReshufflingMode itself carries notResolvingEmergency.
+    function test_PlaceCowOrderInReshufflingMode_WhileResolvingEmergency() public {
+        vm.prank(roles.reshufflingManager);
+        containerLocal.enableReshufflingMode();
+
+        vm.prank(address(strategy));
+        containerLocal.startEmergencyResolution();
+
+        vm.prank(roles.reshufflingExecutor);
+        bytes32 orderDigest = containerLocal.placeCowOrderInReshufflingMode(_params());
+
+        assertEq(orderDigest, keccak256(abi.encode(_params())));
+    }
+
+    /// @dev The mock adapter reverts with OrderUnknown for a digest it never took, so the call
+    ///      succeeding is what proves the digest placeCowOrder returned reached the adapter.
+    function test_CancelCowOrder() public {
+        vm.prank(roles.operator);
+        bytes32 orderDigest = cowModule.placeCowOrder(_params());
+
+        _grantCowSwapManager();
+
+        vm.prank(cowSwapManager);
+        cowModule.cancelCowOrder(orderDigest);
+    }
+
+    function test_ResolveCowOrder() public {
+        vm.prank(roles.operator);
+        bytes32 orderDigest = cowModule.placeCowOrder(_params());
+
+        _grantCowSwapManager();
+
+        vm.prank(cowSwapManager);
+        cowModule.resolveCowOrder(orderDigest);
+    }
+
+    /// @dev An order placed by the reshuffling executor inside the mode is cancelled by the cow
+    ///      swap manager outside it: cancel and resolve carry no mode modifier.
+    function test_CancelCowOrder_PlacedInReshufflingMode() public {
+        vm.prank(roles.reshufflingManager);
+        containerLocal.enableReshufflingMode();
+
+        vm.prank(roles.reshufflingExecutor);
+        bytes32 orderDigest = containerLocal.placeCowOrderInReshufflingMode(_params());
+
+        vm.prank(roles.reshufflingExecutor);
+        containerLocal.disableReshufflingMode();
+
+        _grantCowSwapManager();
+
+        vm.prank(cowSwapManager);
+        cowModule.cancelCowOrder(orderDigest);
+    }
+
+    function test_RevertIf_CancelCowOrder_CallerNotCowSwapManager() public {
+        _expectUnauthorized(roles.operator, "COW_SWAP_MANAGER_ROLE");
         cowModule.cancelCowOrder(bytes32(0));
     }
 
-    function test_RevertIf_ResolveCowOrder_CallerNotOperator() public {
-        _expectUnauthorized(roles.tokenManager, "OPERATOR_ROLE");
+    function test_RevertIf_ResolveCowOrder_CallerNotCowSwapManager() public {
+        _expectUnauthorized(roles.operator, "COW_SWAP_MANAGER_ROLE");
         cowModule.resolveCowOrder(bytes32(0));
     }
 

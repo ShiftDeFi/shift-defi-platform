@@ -22,6 +22,12 @@ contract ContainerPrincipalCowProtocolTest is ContainerPrincipalBaseTest {
 
     uint256 internal constant SELL_AMOUNT = 100e18;
 
+    /// @dev No initializer grants this role, so every test that exercises cancel or resolve has to
+    ///      grant it the way a deployment does.
+    bytes32 internal constant COW_SWAP_MANAGER_ROLE = keccak256("COW_SWAP_MANAGER_ROLE");
+
+    address internal cowSwapManager = makeAddr("cowSwapManager");
+
     function setUp() public override {
         super.setUp();
 
@@ -46,6 +52,11 @@ contract ContainerPrincipalCowProtocolTest is ContainerPrincipalBaseTest {
                 validTo: uint32(block.timestamp + 1 hours),
                 appData: bytes32(0)
             });
+    }
+
+    function _grantCowSwapManager() internal {
+        vm.prank(roles.defaultAdmin);
+        IAccessControl(address(containerPrincipal)).grantRole(COW_SWAP_MANAGER_ROLE, cowSwapManager);
     }
 
     function _expectUnauthorized(address caller, string memory role) internal {
@@ -84,13 +95,35 @@ contract ContainerPrincipalCowProtocolTest is ContainerPrincipalBaseTest {
         cowModule.placeCowOrder(_params());
     }
 
-    function test_RevertIf_CancelCowOrder_CallerNotOperator() public {
-        _expectUnauthorized(roles.tokenManager, "OPERATOR_ROLE");
+    /// @dev The mock adapter reverts with OrderUnknown for a digest it never took, so the call
+    ///      succeeding is what proves the digest placeCowOrder returned reached the adapter.
+    function test_CancelCowOrder() public {
+        vm.prank(roles.operator);
+        bytes32 orderDigest = cowModule.placeCowOrder(_params());
+
+        _grantCowSwapManager();
+
+        vm.prank(cowSwapManager);
+        cowModule.cancelCowOrder(orderDigest);
+    }
+
+    function test_ResolveCowOrder() public {
+        vm.prank(roles.operator);
+        bytes32 orderDigest = cowModule.placeCowOrder(_params());
+
+        _grantCowSwapManager();
+
+        vm.prank(cowSwapManager);
+        cowModule.resolveCowOrder(orderDigest);
+    }
+
+    function test_RevertIf_CancelCowOrder_CallerNotCowSwapManager() public {
+        _expectUnauthorized(roles.operator, "COW_SWAP_MANAGER_ROLE");
         cowModule.cancelCowOrder(bytes32(0));
     }
 
-    function test_RevertIf_ResolveCowOrder_CallerNotOperator() public {
-        _expectUnauthorized(roles.tokenManager, "OPERATOR_ROLE");
+    function test_RevertIf_ResolveCowOrder_CallerNotCowSwapManager() public {
+        _expectUnauthorized(roles.operator, "COW_SWAP_MANAGER_ROLE");
         cowModule.resolveCowOrder(bytes32(0));
     }
 

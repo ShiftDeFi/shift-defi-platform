@@ -287,12 +287,12 @@ contract ContainerPrincipal is CrossChainContainer, CowProtocolModule, IContaine
     }
 
     /// @inheritdoc ICowProtocolModule
-    function cancelCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(OPERATOR_ROLE) {
+    function cancelCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(COW_SWAP_MANAGER_ROLE) {
         _cancelCowOrder(orderDigest);
     }
 
     /// @inheritdoc ICowProtocolModule
-    function resolveCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(OPERATOR_ROLE) {
+    function resolveCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(COW_SWAP_MANAGER_ROLE) {
         _resolveCowOrder(orderDigest);
     }
 

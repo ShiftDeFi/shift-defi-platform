@@ -12,6 +12,9 @@ import {Errors} from "./libraries/Errors.sol";
 abstract contract CowProtocolModule is ICowProtocolModule {
     using SafeERC20 for IERC20;
 
+    /// @dev No initializer grants this role; DEFAULT_ADMIN_ROLE grants it after deployment.
+    bytes32 internal constant COW_SWAP_MANAGER_ROLE = keccak256("COW_SWAP_MANAGER_ROLE");
+
     /// @custom:storage-location erc7201:shift-defi.storage.CowProtocolModule
     struct CowProtocolModuleStorage {
         address cowAdapter;

@@ -273,17 +273,32 @@ contract ContainerLocal is StrategyContainer, CowProtocolModule, IContainerLocal
     /// @inheritdoc ICowProtocolModule
     function placeCowOrder(
         ICowProtocolAdapter.OrderParams calldata params
-    ) external whenNotPaused nonReentrant notResolvingEmergency onlyRole(OPERATOR_ROLE) returns (bytes32) {
+    )
+        external
+        whenNotPaused
+        nonReentrant
+        notResolvingEmergency
+        notInReshufflingMode
+        onlyRole(OPERATOR_ROLE)
+        returns (bytes32)
+    {
+        return _placeCowOrder(params);
+    }
+
+    /// @inheritdoc IContainerLocal
+    function placeCowOrderInReshufflingMode(
+        ICowProtocolAdapter.OrderParams calldata params
+    ) external nonReentrant onlyInReshufflingMode onlyRole(RESHUFFLING_EXECUTOR_ROLE) returns (bytes32) {
         return _placeCowOrder(params);
     }
 
     /// @inheritdoc ICowProtocolModule
-    function cancelCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(OPERATOR_ROLE) {
+    function cancelCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(COW_SWAP_MANAGER_ROLE) {
         _cancelCowOrder(orderDigest);
     }
 
     /// @inheritdoc ICowProtocolModule
-    function resolveCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(OPERATOR_ROLE) {
+    function resolveCowOrder(bytes32 orderDigest) external nonReentrant onlyRole(COW_SWAP_MANAGER_ROLE) {
         _resolveCowOrder(orderDigest);
     }
 

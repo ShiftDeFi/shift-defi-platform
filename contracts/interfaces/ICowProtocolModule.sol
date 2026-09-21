@@ -72,8 +72,10 @@ interface ICowProtocolModule {
     /**
      * @notice Places a CoW Protocol order, committing its sell tokens to the adapter.
      * @dev Can only be called by accounts with OPERATOR_ROLE on a container, or by accounts with
-     *      RESHUFFLING_EXECUTOR_ROLE on the reshuffling gateway. Settlement is asynchronous, so
-     *      nothing has been bought when this returns. Both tokens must be whitelisted.
+     *      RESHUFFLING_EXECUTOR_ROLE on the reshuffling gateway. On ContainerLocal it also requires
+     *      the container not to be in reshuffling mode, where placeCowOrderInReshufflingMode takes
+     *      the order instead. Settlement is asynchronous, so nothing has been bought when this
+     *      returns. Both tokens must be whitelisted.
      * @param params The caller-supplied part of the order
      * @return orderDigest The order's EIP-712 digest, the key cancelCowOrder and resolveCowOrder take it by
      */
@@ -81,7 +83,7 @@ interface ICowProtocolModule {
 
     /**
      * @notice Cancels a pending CoW Protocol order and returns its sell tokens.
-     * @dev Can only be called by accounts with OPERATOR_ROLE on a container, or by accounts with
+     * @dev Can only be called by accounts with COW_SWAP_MANAGER_ROLE on a container, or by accounts with
      *      RESHUFFLING_EXECUTOR_ROLE on the reshuffling gateway. Reverts if a solver filled the
      *      order first, which resolveCowOrder takes instead. An expired order stays pending until
      *      this is called.
@@ -91,7 +93,7 @@ interface ICowProtocolModule {
 
     /**
      * @notice Resolves one filled CoW Protocol order, releasing its commitment.
-     * @dev Can only be called by accounts with OPERATOR_ROLE on a container, or by accounts with
+     * @dev Can only be called by accounts with COW_SWAP_MANAGER_ROLE on a container, or by accounts with
      *      RESHUFFLING_EXECUTOR_ROLE on the reshuffling gateway. Reverts for an order the adapter
      *      cannot establish as filled, which cancelCowOrder takes instead.
      * @param orderDigest The EIP-712 digest of the order to resolve

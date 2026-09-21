@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {ICowProtocolAdapter} from "@shift-defi/cow-protocol-adapter/src/interfaces/ICowProtocolAdapter.sol";
+
 import {IContainerLocal} from "contracts/interfaces/IContainerLocal.sol";
 import {ISwapRouter} from "contracts/interfaces/ISwapRouter.sol";
 
@@ -156,4 +158,8 @@ contract MockContainerLocal is IContainerLocal {
     function resolveStrategyNav(uint256) external {}
 
     function prepareLiquidityInReshufflingMode(ISwapRouter.SwapInstruction[] calldata) external pure {}
+
+    function placeCowOrderInReshufflingMode(ICowProtocolAdapter.OrderParams calldata) external pure returns (bytes32) {
+        return bytes32(0);
+    }
 }

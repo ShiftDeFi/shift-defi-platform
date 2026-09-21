@@ -12,8 +12,7 @@ import {MockContainerLocal} from "test/mocks/MockContainerLocal.sol";
 import {MockContainerPrincipal} from "test/mocks/MockContainerPrincipal.sol";
 import {MockCowProtocolAdapter} from "test/mocks/MockCowProtocolAdapter.sol";
 
-/// @dev The Vault reads pendingCowOrderCount rather than calling requireNoPendingOrders, so every
-///      revert here is raised without the container or the gateway moving a token.
+/// @dev The Vault reads pendingCowOrderCount rather than calling requireNoPendingOrders.
 contract VaultCowProtocolTest is L1Base {
     MockCowProtocolAdapter internal gatewayAdapter;
 
@@ -40,9 +39,8 @@ contract VaultCowProtocolTest is L1Base {
         vault.enableReshufflingMode();
     }
 
-    /// @dev Registers this chain's container and gives it the whole weight, so that
-    ///      disableReshufflingMode's ZeroContainerWeight require is satisfied. Requires the
-    ///      reshuffling mode to be on: addContainer is onlyInReshufflingMode.
+    /// @dev Registers this chain's container and gives it the whole weight. Requires the
+    ///      reshuffling mode to be on.
     function _addWeightedLocalContainer() internal returns (IContainerLocal container) {
         container = _deployMockContainerLocal();
         _addContainer(address(container), block.chainid);
@@ -57,8 +55,7 @@ contract VaultCowProtocolTest is L1Base {
     }
 
     function test_RevertIf_EnableReshufflingMode_PendingCowOrdersOnLocalContainer() public {
-        // addContainer is onlyInReshufflingMode, so the container this chain's entry points at is
-        // registered inside a first reshuffle and the order placed once the mode is back off.
+        // addContainer is onlyInReshufflingMode.
         vm.prank(roles.reshufflingManager);
         vault.enableReshufflingMode();
 
@@ -85,8 +82,7 @@ contract VaultCowProtocolTest is L1Base {
         vault.disableReshufflingMode();
     }
 
-    /// @dev The other branch of _requireNoPendingReshufflingCowOrders on the way out. The gateway
-    ///      is checked first and answers zero, so this only passes if the container is read too.
+    /// @dev The container branch of _requireNoPendingReshufflingCowOrders on the way out.
     function test_RevertIf_DisableReshufflingMode_PendingCowOrdersOnLocalContainer() public {
         vm.prank(roles.reshufflingManager);
         vault.enableReshufflingMode();
@@ -99,8 +95,7 @@ contract VaultCowProtocolTest is L1Base {
         vault.disableReshufflingMode();
     }
 
-    /// @dev Removal of a Local container, which unlike a Principal also deletes
-    ///      containerByChainId[block.chainid] in the same branch.
+    /// @dev Removal of a Local container, which also deletes containerByChainId[block.chainid].
     function test_RevertIf_SetContainerWeights_PendingCowOrdersOnLocalContainer() public {
         vm.prank(roles.reshufflingManager);
         vault.enableReshufflingMode();

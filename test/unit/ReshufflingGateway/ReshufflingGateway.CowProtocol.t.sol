@@ -153,7 +153,7 @@ contract ReshufflingGatewayCowProtocolTest is L1Base {
         reshufflingGateway.blacklistToken(address(buyToken));
     }
 
-    /// @dev The gateway keeps no dust thresholds, so any balance blocks the removal.
+    /// @dev The gateway keeps no dust thresholds.
     function test_RevertIf_BlacklistToken_BalanceNotZero() public {
         deal(address(buyToken), address(reshufflingGateway), 1);
 

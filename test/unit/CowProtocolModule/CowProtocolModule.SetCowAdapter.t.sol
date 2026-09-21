@@ -57,8 +57,6 @@ contract CowProtocolModuleSetCowAdapterTest is Test {
         assertEq(module.cowAdapter(), address(0));
     }
 
-    /// @dev The reason the owner read is worth its gas: an address with no code cannot reach the
-    ///      slot, so replacing the adapter — which reads the outgoing one — can never revert.
     function test_RevertIf_SetCowAdapter_AdapterHasNoCode() public {
         vm.expectRevert();
         module.setCowAdapter(makeAddr("NOT_A_CONTRACT"));

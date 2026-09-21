@@ -42,13 +42,8 @@ abstract contract CowProtocolModule is ICowProtocolModule {
 
     /**
      * @dev Sets the adapter this module places orders through. Replacing a non-zero adapter
-     *      requires it to carry no pending order: an order is reachable only through the adapter
-     *      that placed it, so replacing one under a pending order strands it.
-     *
-     *      The incoming adapter must name this contract as its owner. That is the adapter's own
-     *      requirement — its owner is immutable and gates every call this module makes — and
-     *      reading it is what keeps an address with no code out of the slot, which matters
-     *      because replacing an adapter reads the outgoing one and would revert forever.
+     *      requires the outgoing one to carry no pending order, and the incoming one must name
+     *      this contract as its owner.
      * @param newCowAdapter The address of the new CoW Protocol adapter contract.
      */
     function _setCowAdapter(address newCowAdapter) internal {
@@ -70,11 +65,8 @@ abstract contract CowProtocolModule is ICowProtocolModule {
 
     /**
      * @dev Places an order and commits its sell tokens to the adapter. Both tokens must be
-     *      whitelisted: a bought token outside the whitelist is invisible to the balance checks a
-     *      batch report makes. The approval is exact and carries no trailing zero — the adapter's
-     *      pull is exact-or-revert, a failed placement reverts the approval with it, and the next
-     *      placement overwrites any residual. The remaining fields of `params` are the adapter's
-     *      to validate.
+     *      whitelisted, and the approval is exact and carries no trailing zero. The remaining
+     *      fields of `params` are the adapter's to validate.
      * @param params The caller-supplied part of the order.
      * @return The order's EIP-712 digest.
      */
@@ -102,8 +94,7 @@ abstract contract CowProtocolModule is ICowProtocolModule {
 
     /**
      * @dev Cancels a pending order, retracting it at settlement and returning its sell tokens.
-     *      Reverts through the adapter for an order a solver has already filled, which
-     *      _resolveCowOrder takes instead.
+     *      Reverts through the adapter for an order a solver has already filled.
      * @param orderDigest The EIP-712 digest of the order to cancel.
      */
     function _cancelCowOrder(bytes32 orderDigest) internal {
@@ -112,8 +103,7 @@ abstract contract CowProtocolModule is ICowProtocolModule {
 
     /**
      * @dev Resolves one filled order, releasing its commitment and draining its lane to this
-     *      contract. Reverts through the adapter for an order it cannot establish as filled,
-     *      which _cancelCowOrder takes instead.
+     *      contract. Reverts through the adapter for an order it cannot establish as filled.
      * @param orderDigest The EIP-712 digest of the order to resolve.
      */
     function _resolveCowOrder(bytes32 orderDigest) internal {
@@ -121,8 +111,7 @@ abstract contract CowProtocolModule is ICowProtocolModule {
     }
 
     /**
-     * @dev Returns a token balance held by the adapter itself to this contract. An order's sell
-     *      tokens are held by its lane, so anything the adapter holds arrived unsolicited.
+     * @dev Returns a token balance held by the adapter itself to this contract.
      * @param token The token to return.
      */
     function _sweepCowAdapter(address token) internal {
@@ -130,9 +119,7 @@ abstract contract CowProtocolModule is ICowProtocolModule {
     }
 
     /**
-     * @dev Returns a token balance held by one of the adapter's lanes to this contract. For
-     *      balances that arrived at a lane outside an order; a lane's own order sends its
-     *      leftovers back when it resolves.
+     * @dev Returns a token balance held by one of the adapter's lanes to this contract.
      * @param laneIndex The lane to sweep.
      * @param token The token to return.
      */
@@ -142,9 +129,8 @@ abstract contract CowProtocolModule is ICowProtocolModule {
 
     /**
      * @dev Resolves every filled order the adapter has placed and reverts unless none is left
-     *      pending, draining each lane to this contract as it goes. A module with no adapter set
-     *      has no orders, so this returns without calling out rather than reverting: it sits on
-     *      the batch path, which must stay open on a contract deployed before its adapter.
+     *      pending, draining each lane to this contract as it goes. Returns without calling out
+     *      when no adapter is set.
      */
     function _requireNoPendingOrders() internal {
         address cowAdapterCached = _getCowProtocolModuleStorage().cowAdapter;
@@ -157,9 +143,7 @@ abstract contract CowProtocolModule is ICowProtocolModule {
     }
 
     /**
-     * @dev The adapter this module places orders through, rejecting a call made before one is
-     *      set. The read-only surface answers for an unset adapter instead of reverting; this is
-     *      for the calls that cannot.
+     * @dev The adapter this module places orders through, reverting if none is set.
      * @return The adapter address, never zero.
      */
     function _requireCowAdapter() internal view returns (address) {
@@ -171,16 +155,14 @@ abstract contract CowProtocolModule is ICowProtocolModule {
 
     /**
      * @dev Whether a token may be named by an order. Implemented by the contract inheriting this
-     *      module, over whatever whitelist it already keeps.
+     *      module.
      * @param token The token to check.
      * @return True where the token is whitelisted.
      */
     function _isCowTokenWhitelisted(address token) internal view virtual returns (bool);
 
     /**
-     * @dev Resolves the ERC-7201 namespace this module keeps its state in. The namespace occupies
-     *      no sequential slot, so the module's position in a linearization does not shift the
-     *      storage of the contract inheriting it.
+     * @dev Resolves the ERC-7201 namespace this module keeps its state in.
      * @return The module's namespaced storage.
      */
     function _getCowProtocolModuleStorage() internal pure returns (CowProtocolModuleStorage storage) {

@@ -11,8 +11,7 @@ contract MockContainerLocal is IContainerLocal {
 
     bool public isReshuffling = true;
 
-    /// @dev Stands in for CowProtocolModule.pendingCowOrderCount, which the Vault reads on a
-    ///      container before removing it or toggling reshuffling mode.
+    /// @dev Stands in for CowProtocolModule.pendingCowOrderCount.
     uint256 public pendingCowOrderCount;
 
     function setPendingCowOrderCount(uint256 newPendingCowOrderCount) external {

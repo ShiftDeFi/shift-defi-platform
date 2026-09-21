@@ -13,15 +13,13 @@ contract MockCowProtocolModule is CowProtocolModule {
     }
 
     /**
-     * @dev Writes the namespace directly, so the storage location can be tested independently of
-     *      the validation _setCowAdapter applies.
+     * @dev Writes the namespace directly, bypassing the validation _setCowAdapter applies.
      * @param newCowAdapter The address to write.
      */
     function setCowAdapterRaw(address newCowAdapter) external {
         _getCowProtocolModuleStorage().cowAdapter = newCowAdapter;
     }
 
-    /// @dev Exposes the internal, which the containers reach through their own call sites.
     function requireNoPendingOrders() external {
         _requireNoPendingOrders();
     }

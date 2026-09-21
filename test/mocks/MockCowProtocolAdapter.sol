@@ -12,9 +12,7 @@ contract MockCowProtocolAdapter is ICowProtocolAdapter {
     address internal _fillToken;
     uint256 internal _fillAmount;
 
-    /// @dev The real adapter takes its owner at construction and keeps it immutable, so a test
-    ///      that wires one up states the owner the same way. setOwner stays for the tests that
-    ///      need it to be wrong.
+    /// @dev The real adapter's owner is immutable; setOwner is here for the tests that need it wrong.
     constructor(address owner_) {
         _owner = owner_;
     }
@@ -31,9 +29,8 @@ contract MockCowProtocolAdapter is ICowProtocolAdapter {
         _pendingOrderCount = newPendingOrderCount;
     }
 
-    /// @dev Arms one filled order for the next `requireNoPendingOrders`: the pending count drops
-    ///      and the proceeds land on the owner, as the real adapter's `receiver: OWNER` does. The
-    ///      mock must hold the token for it to move.
+    /// @dev Arms one filled order for the next `requireNoPendingOrders`: the pending count drops and
+    ///      the proceeds land on the owner. The mock must hold the token for it to move.
     function setFillOnRequire(address token, uint256 amount) external {
         _fillToken = token;
         _fillAmount = amount;

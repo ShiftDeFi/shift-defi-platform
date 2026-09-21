@@ -194,9 +194,7 @@ abstract contract Container is
     uint256[50] private __gap;
 
     /**
-     * @dev Runs before the token leaves the whitelist and its router approval is dropped, taking
-     *      the token being removed. Empty here; a container holding value outside its own balance
-     *      overrides it.
+     * @dev Runs before the token leaves the whitelist and its router approval is dropped. Empty here.
      */
     function _beforeTokenBlacklisted(address) internal virtual {}
 }

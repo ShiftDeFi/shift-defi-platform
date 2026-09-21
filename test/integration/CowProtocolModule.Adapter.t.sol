@@ -14,11 +14,10 @@ import {MockFeeOnTransferERC20} from "test/mocks/MockFeeOnTransferERC20.sol";
 import {MockGPv2Settlement} from "test/mocks/MockGPv2Settlement.sol";
 
 /**
- * @dev The module against the real adapter rather than MockCowProtocolAdapter. Two behaviours the
- *      call sites in CLAUDE.local.md §5 rest on cannot be shown against a mock, because a mock
- *      agrees with the adapter by construction rather than by obligation: that
- *      requireNoPendingOrders resolves a filled order in place instead of only reverting, and that
- *      the adapter's pull is exact-or-revert against forceApprove(adapter, sellAmount).
+ * @dev The module against the real adapter rather than MockCowProtocolAdapter, covering two
+ *      behaviours a mock cannot show: that requireNoPendingOrders resolves a filled order in place
+ *      instead of only reverting, and that the adapter's pull is exact-or-revert against
+ *      forceApprove(adapter, sellAmount).
  */
 contract CowProtocolModuleAdapterTest is Test {
     MockCowProtocolModule internal module;
@@ -94,8 +93,7 @@ contract CowProtocolModuleAdapterTest is Test {
         assertEq(buyToken.balanceOf(address(module)), BUY_AMOUNT, "proceeds did not reach the module");
     }
 
-    /// @dev The counterpart Vault relies on: the view reports a filled order as still pending, so
-    ///      it blocks rather than resolving on the Vault's behalf.
+    /// @dev The view reports a filled order as still pending and resolves nothing.
     function test_PendingCowOrderCount_ReportsFilledOrderAsPending() public {
         bytes32 orderDigest = module.placeCowOrder(_params(address(sellToken), SELL_AMOUNT));
         _fill(orderDigest);

@@ -436,8 +436,7 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     uint256[50] private __gap;
 
     /**
-     * @dev Runs before `isReshuffling` is written, on both entering and leaving the mode. Empty
-     *      here; a container holding value outside its own balance overrides it.
+     * @dev Runs before `isReshuffling` is written, on both entering and leaving the mode. Empty here.
      */
     function _beforeReshufflingModeToggled() internal virtual {}
 }

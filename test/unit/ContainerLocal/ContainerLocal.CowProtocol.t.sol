@@ -20,8 +20,7 @@ contract ContainerLocalCowProtocolTest is ContainerLocalBaseTest {
 
     uint256 internal constant SELL_AMOUNT = 100e18;
 
-    /// @dev No initializer grants this role, so every test that exercises cancel or resolve has to
-    ///      grant it the way a deployment does.
+    /// @dev No initializer grants this role; a deployment grants it afterwards.
     bytes32 internal constant COW_SWAP_MANAGER_ROLE = keccak256("COW_SWAP_MANAGER_ROLE");
 
     address internal cowSwapManager = makeAddr("cowSwapManager");
@@ -128,8 +127,7 @@ contract ContainerLocalCowProtocolTest is ContainerLocalBaseTest {
         containerLocal.placeCowOrderInReshufflingMode(_params());
     }
 
-    /// @dev onlyInReshufflingMode runs before onlyRole, so the mode has to be open for the role
-    ///      check to be what rejects the caller.
+    /// @dev onlyInReshufflingMode runs before onlyRole.
     function test_RevertIf_PlaceCowOrderInReshufflingMode_CallerNotReshufflingExecutor() public {
         vm.prank(roles.reshufflingManager);
         containerLocal.enableReshufflingMode();
@@ -138,8 +136,7 @@ contract ContainerLocalCowProtocolTest is ContainerLocalBaseTest {
         containerLocal.placeCowOrderInReshufflingMode(_params());
     }
 
-    /// @dev The container is not Pausable-gated in the mode: placeCowOrder carries whenNotPaused
-    ///      and this does not, matching enterInReshufflingMode and exitInReshufflingMode.
+    /// @dev placeCowOrderInReshufflingMode carries no whenNotPaused.
     function test_PlaceCowOrderInReshufflingMode_WhilePaused() public {
         vm.prank(roles.reshufflingManager);
         containerLocal.enableReshufflingMode();
@@ -153,8 +150,7 @@ contract ContainerLocalCowProtocolTest is ContainerLocalBaseTest {
         assertEq(orderDigest, keccak256(abi.encode(_params())));
     }
 
-    /// @dev Same asymmetry for notResolvingEmergency. The mode has to be opened first, because
-    ///      enableReshufflingMode itself carries notResolvingEmergency.
+    /// @dev placeCowOrderInReshufflingMode carries no notResolvingEmergency.
     function test_PlaceCowOrderInReshufflingMode_WhileResolvingEmergency() public {
         vm.prank(roles.reshufflingManager);
         containerLocal.enableReshufflingMode();
@@ -168,8 +164,7 @@ contract ContainerLocalCowProtocolTest is ContainerLocalBaseTest {
         assertEq(orderDigest, keccak256(abi.encode(_params())));
     }
 
-    /// @dev The mock adapter reverts with OrderUnknown for a digest it never took, so the call
-    ///      succeeding is what proves the digest placeCowOrder returned reached the adapter.
+    /// @dev The mock adapter reverts with OrderUnknown for a digest it never took.
     function test_CancelCowOrder() public {
         vm.prank(roles.operator);
         bytes32 orderDigest = cowModule.placeCowOrder(_params());
@@ -190,8 +185,7 @@ contract ContainerLocalCowProtocolTest is ContainerLocalBaseTest {
         cowModule.resolveCowOrder(orderDigest);
     }
 
-    /// @dev An order placed by the reshuffling executor inside the mode is cancelled by the cow
-    ///      swap manager outside it: cancel and resolve carry no mode modifier.
+    /// @dev cancelCowOrder carries no mode modifier.
     function test_CancelCowOrder_PlacedInReshufflingMode() public {
         vm.prank(roles.reshufflingManager);
         containerLocal.enableReshufflingMode();
@@ -233,7 +227,7 @@ contract ContainerLocalCowProtocolTest is ContainerLocalBaseTest {
         cowModule.sweepCowLane(0, address(notion));
     }
 
-    // ---- Pending-order call sites (design §5) ----
+    // ---- Pending-order call sites ----
 
     function test_RevertIf_ReportDeposit_OrdersStillPending() public {
         _setContainerStatus(IContainerLocal.ContainerLocalStatus.AllStrategiesEntered);
@@ -277,7 +271,7 @@ contract ContainerLocalCowProtocolTest is ContainerLocalBaseTest {
         containerLocal.enterStrategyMultiple(strategies, inputAmounts, minNavDelta);
     }
 
-    // ---- Call sites reached by override (design §5) ----
+    // ---- Call sites reached by hook ----
 
     function test_RevertIf_EnableReshufflingMode_OrdersStillPending() public {
         adapter.setPendingOrderCount(1);
@@ -321,9 +315,7 @@ contract ContainerLocalCowProtocolTest is ContainerLocalBaseTest {
         containerLocal.blacklistToken(address(buyToken));
     }
 
-    /// @dev The check resolves the order first, so the fill it delivers is what the balance check
-    ///      then catches; without it the proceeds land one statement before the token leaves the
-    ///      whitelist and its router approval is dropped.
+    /// @dev The pending-order check resolves the order first, so the balance read sees the fill.
     function test_RevertIf_BlacklistToken_FillDeliveredWhileResolving() public {
         adapter.setPendingOrderCount(1);
         deal(address(buyToken), address(adapter), 1e6);

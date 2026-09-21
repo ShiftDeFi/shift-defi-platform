@@ -322,14 +322,11 @@ contract ContainerLocal is StrategyContainer, CowProtocolModule, IContainerLocal
         return _isTokenWhitelisted(token);
     }
 
-    /// @dev Entering or leaving the mode assumes value is where `balanceOf` says it is.
     function _beforeReshufflingModeToggled() internal override {
         _requireNoPendingOrders();
     }
 
-    /// @dev A fill of a blacklisted token lands where the report checks cannot see it and out of
-    ///      `prepareLiquidity`'s reach. `_requireNoPendingOrders` can deliver one, so the balance
-    ///      is read after it.
+    /// @dev Resolves pending orders first, so the balance read includes any fill they deliver.
     function _beforeTokenBlacklisted(address token) internal override {
         _requireNoPendingOrders();
 

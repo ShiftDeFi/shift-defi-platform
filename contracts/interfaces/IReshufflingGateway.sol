@@ -44,10 +44,7 @@ interface IReshufflingGateway {
 
     /**
      * @notice Whitelists a token for reshuffling.
-     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE. Reverts for an address with no
-     *      code: blacklisting reads the gateway's balance of the token, so a non-contract entry
-     *      could never be removed and would leave `setSwapRouter` reverting on the approval it
-     *      drops across the whitelist.
+     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE. Reverts for an address with no code.
      * @param token Token address.
      */
     function whitelistToken(address token) external;
@@ -62,7 +59,7 @@ interface IReshufflingGateway {
     /**
      * @notice Removes a token from the whitelist.
      * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE. Reverts unless the gateway holds
-     *      none of the token, which keeps no dust threshold of its own.
+     *      none of the token.
      * @param token Token address.
      */
     function blacklistToken(address token) external;

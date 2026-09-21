@@ -22,8 +22,7 @@ contract ContainerPrincipalCowProtocolTest is ContainerPrincipalBaseTest {
 
     uint256 internal constant SELL_AMOUNT = 100e18;
 
-    /// @dev No initializer grants this role, so every test that exercises cancel or resolve has to
-    ///      grant it the way a deployment does.
+    /// @dev No initializer grants this role; a deployment grants it afterwards.
     bytes32 internal constant COW_SWAP_MANAGER_ROLE = keccak256("COW_SWAP_MANAGER_ROLE");
 
     address internal cowSwapManager = makeAddr("cowSwapManager");
@@ -95,8 +94,7 @@ contract ContainerPrincipalCowProtocolTest is ContainerPrincipalBaseTest {
         cowModule.placeCowOrder(_params());
     }
 
-    /// @dev The mock adapter reverts with OrderUnknown for a digest it never took, so the call
-    ///      succeeding is what proves the digest placeCowOrder returned reached the adapter.
+    /// @dev The mock adapter reverts with OrderUnknown for a digest it never took.
     function test_CancelCowOrder() public {
         vm.prank(roles.operator);
         bytes32 orderDigest = cowModule.placeCowOrder(_params());
@@ -142,7 +140,7 @@ contract ContainerPrincipalCowProtocolTest is ContainerPrincipalBaseTest {
         cowModule.sweepCowLane(0, address(notion));
     }
 
-    // ---- Pending-order call sites (design §5) ----
+    // ---- Pending-order call sites ----
 
     function test_RevertIf_SendDepositRequest_OrdersStillPending() public {
         uint256 depositAmount = vault.minDepositBatchSize();
@@ -182,7 +180,7 @@ contract ContainerPrincipalCowProtocolTest is ContainerPrincipalBaseTest {
         containerPrincipal.reportWithdrawal();
     }
 
-    // ---- Call sites reached by override (design §5) ----
+    // ---- Call sites reached by hook ----
 
     function test_RevertIf_BlacklistToken_OrdersStillPending() public {
         adapter.setPendingOrderCount(1);
@@ -207,9 +205,7 @@ contract ContainerPrincipalCowProtocolTest is ContainerPrincipalBaseTest {
         containerPrincipal.blacklistToken(address(buyToken));
     }
 
-    /// @dev The check resolves the order first, so the fill it delivers is what the balance check
-    ///      then catches; without it the proceeds land one statement before the token leaves the
-    ///      whitelist and its router approval is dropped.
+    /// @dev The pending-order check resolves the order first, so the balance read sees the fill.
     function test_RevertIf_BlacklistToken_FillDeliveredWhileResolving() public {
         adapter.setPendingOrderCount(1);
         deal(address(buyToken), address(adapter), 1e6);

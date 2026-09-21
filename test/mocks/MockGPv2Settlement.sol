@@ -8,11 +8,8 @@ import {IGPv2Settlement} from "@shift-defi/cow-protocol-adapter/src/interfaces/I
 
 /**
  * @dev Stands in for CoW Protocol's GPv2Settlement, which targets solc 0.7.6 and cannot be
- *      compiled into this tree. CowProtocolAdapter's constructor reads vaultRelayer and
- *      domainSeparator and rejects a zero for either, so both answer non-zero here.
- *
- *      This contract is its own vault relayer, so settle spends the allowance the lane granted
- *      without a second address in the way.
+ *      compiled into this tree. vaultRelayer and domainSeparator answer non-zero, and this
+ *      contract is its own vault relayer.
  */
 contract MockGPv2Settlement is IGPv2Settlement {
     using SafeERC20 for IERC20;
@@ -34,7 +31,7 @@ contract MockGPv2Settlement is IGPv2Settlement {
      * @param sellAmount The amount pulled off the lane, which is what the fill is recorded as.
      * @param buyToken The token the order buys.
      * @param buyAmount The amount delivered to the receiver.
-     * @param receiver The order's receiver, which the adapter sets to its own owner.
+     * @param receiver The order's receiver.
      */
     function settle(
         bytes calldata orderUid,

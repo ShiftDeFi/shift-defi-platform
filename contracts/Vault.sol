@@ -418,19 +418,14 @@ contract Vault is
         return _containers.contains(container);
     }
 
-    /// @dev Reverts when owner has a CoW Protocol order the adapter has not resolved. Reads the count
-    ///      rather than calling requireNoPendingOrders, because resolving an order moves tokens and
-    ///      disableReshufflingMode and setContainerWeights are not nonReentrant.
+    /// @dev Reverts when owner has a CoW Protocol order the adapter has not resolved.
     function _requireNoPendingCowOrders(address owner) internal view {
         uint256 pendingOrders = ICowProtocolModule(owner).pendingCowOrderCount();
         require(pendingOrders == 0, Errors.PendingCowOrders(owner, pendingOrders));
     }
 
     /// @dev Reverts when the reshuffling gateway or this chain's container has a pending CoW Protocol
-    ///      order. A reshuffle moves value sized from balances, which do not include an order's sell
-    ///      tokens, and only the gateway and the local container are touched while the mode is on.
-    ///      Either address is zero before it is set, and disableReshufflingMode runs in that state:
-    ///      initialize leaves isReshuffling true so the vault is configured inside the mode.
+    ///      order. Either address is zero before it is set, and is skipped until then.
     function _requireNoPendingReshufflingCowOrders() internal view {
         address gateway = reshufflingGateway;
         if (gateway != address(0)) {

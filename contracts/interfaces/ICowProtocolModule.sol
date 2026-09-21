@@ -14,9 +14,6 @@ interface ICowProtocolModule {
 
     /**
      * @notice Emitted when a CoW Protocol order is placed and its sell tokens are committed.
-     * @dev The adapter's own OrderPlaced carries the identifier settlement records fills under; this
-     *      event carries what the caller supplied, so an order can be attributed to this contract
-     *      without reading its adapter address first.
      * @param orderDigest The order's EIP-712 digest, the key the adapter records it under.
      * @param sellToken The token the order sells.
      * @param buyToken The token the order buys.
@@ -40,18 +37,12 @@ interface ICowProtocolModule {
 
     /**
      * @notice Thrown when the adapter offered is not owned by this contract.
-     * @dev An adapter's owner is immutable and only its owner may place, cancel or resolve on it,
-     *      so an adapter owned by anything else is unusable here. Reading it also rejects an
-     *      address carrying no code, which could otherwise be written and never replaced —
-     *      replacing an adapter reads the outgoing one.
      * @param cowAdapter The adapter offered.
      */
     error CowAdapterNotOwned(address cowAdapter);
 
     /**
      * @notice Thrown when an order names a token this contract has not whitelisted.
-     * @dev Both of an order's tokens must be whitelisted: a bought token outside the whitelist is
-     *      invisible to the balance checks a batch report makes.
      * @param token The token named.
      */
     error OrderTokenNotWhitelisted(address token);
@@ -64,7 +55,7 @@ interface ICowProtocolModule {
 
     /**
      * @notice Returns how many orders the adapter has placed and not resolved.
-     * @dev Returns zero when no adapter is set, so the caller need not read cowAdapter first.
+     * @dev Returns zero when no adapter is set.
      * @return The number of pending CoW Protocol orders
      */
     function pendingCowOrderCount() external view returns (uint256);
@@ -102,16 +93,14 @@ interface ICowProtocolModule {
 
     /**
      * @notice Returns a token balance held by the adapter itself.
-     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE. Recovers a donation: an order's
-     *      sell tokens are held by its lane, so anything the adapter holds arrived unsolicited.
+     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE.
      * @param token The address of the token to return
      */
     function sweepCowAdapter(address token) external;
 
     /**
      * @notice Returns a token balance held by one of the adapter's lanes.
-     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE. Recovers a balance that arrived
-     *      at a lane outside an order; a lane's own order sends its leftovers back when it resolves.
+     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE.
      * @param laneIndex The index of the lane to sweep
      * @param token The address of the token to return
      */
@@ -120,8 +109,7 @@ interface ICowProtocolModule {
     /**
      * @notice Sets the CoW Protocol adapter address.
      * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE. Replacing a non-zero adapter
-     *      requires it to carry no pending order: an order is reachable only through the adapter
-     *      that placed it, so replacing one under a pending order strands it.
+     *      requires the outgoing one to carry no pending order.
      * @param newCowAdapter The address of the new CoW Protocol adapter contract
      */
     function setCowAdapter(address newCowAdapter) external;

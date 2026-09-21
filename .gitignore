@@ -26,3 +26,8 @@ x-ray/
 .venv/
 
 lcov.info
+# Wall reports
+slither.out.json
+aderyn.out.json
+__pycache__/
+CLAUDE.local.md

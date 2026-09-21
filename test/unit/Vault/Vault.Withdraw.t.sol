@@ -270,12 +270,8 @@ contract VaultWithdrawTest is VaultBaseTest {
     function test_RevertIf_Withdraw_VaultInReshufflingMode() public {
         _giveUserShares(users.alice, DEFAULT_SHARES_AMOUNT);
 
-        address mockGateway = address(0x1234);
-
-        vm.startPrank(roles.reshufflingManager);
-        vault.setReshufflingGateway(mockGateway);
+        vm.prank(roles.reshufflingManager);
         vault.enableReshufflingMode();
-        vm.stopPrank();
 
         vm.prank(users.alice);
         vm.expectRevert(Errors.ReshufflingModeEnabled.selector);

@@ -152,6 +152,9 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         onlyRole(RESHUFFLING_MANAGER_ROLE)
     {
         require(_getCurrentBatchType() == CurrentBatchType.NoBatch, Errors.IncorrectContainerStatus());
+
+        _beforeReshufflingModeToggled();
+
         isReshuffling = true;
         emit ReshufflingModeEnabled();
     }
@@ -164,6 +167,9 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
         onlyRole(RESHUFFLING_EXECUTOR_ROLE)
     {
         require(_getCurrentBatchType() == CurrentBatchType.NoBatch, Errors.IncorrectContainerStatus());
+
+        _beforeReshufflingModeToggled();
+
         isReshuffling = false;
         emit ReshufflingModeDisabled();
     }
@@ -428,4 +434,9 @@ abstract contract StrategyContainer is Initializable, ReentrancyGuardUpgradeable
     function _getCurrentBatchType() internal view virtual returns (CurrentBatchType);
 
     uint256[50] private __gap;
+
+    /**
+     * @dev Runs before `isReshuffling` is written, on both entering and leaving the mode. Empty here.
+     */
+    function _beforeReshufflingModeToggled() internal virtual {}
 }

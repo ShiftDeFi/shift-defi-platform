@@ -78,7 +78,8 @@ interface IContainer {
 
     /**
      * @notice Removes a token from the whitelist.
-     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE.
+     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE. Reverts unless the container's
+     *      balance of the token is at or under its dust threshold.
      * @param token The address of the token to blacklist
      */
     function blacklistToken(address token) external;

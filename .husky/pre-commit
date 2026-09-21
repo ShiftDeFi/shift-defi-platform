@@ -1,11 +1,44 @@
 #!/bin/sh
+# Runs `make verify` before a commit that touches Solidity. The gate owns
+# formatting, compilation and the test suite, so this hook no longer runs
+# prettier or `forge test` separately — one of each, in one place.
+#
+# Bypassable with `git commit --no-verify`. CI and branch protection are what
+# actually enforce the gate.
 
-npx lint-staged
-forge test -vvv
-
-if [ $? -ne 0 ]; then
-    echo "Forge tests failed! Commit aborted."
-    exit 1
+staged=$(git diff --cached --name-only --diff-filter=ACMR -- '*.sol')
+if [ -z "$staged" ]; then
+    exit 0
 fi
 
-exit 0
+for tool in forge slither aderyn make python3 npx; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+        echo "wall: skipping the gate — $tool is not installed."
+        echo "      See the toolchain table in CLAUDE.md."
+        exit 0
+    fi
+done
+
+# `make verify` reads the working tree. When a tracked .sol file has unstaged
+# changes, the tree and the commit differ, and the result does not describe
+# what is about to be committed.
+unstaged=$(git diff --name-only -- '*.sol')
+if [ -n "$unstaged" ]; then
+    echo "wall: these files have unstaged changes, so the gate is running"
+    echo "      against the working tree rather than the staged content:"
+    echo "$unstaged" | sed 's/^/        /'
+    echo ""
+fi
+
+out=$(mktemp)
+if make verify >"$out" 2>&1; then
+    rm -f "$out"
+    exit 0
+fi
+
+echo ""
+tail -n 120 "$out"
+rm -f "$out"
+echo ""
+echo "wall: commit refused."
+exit 1

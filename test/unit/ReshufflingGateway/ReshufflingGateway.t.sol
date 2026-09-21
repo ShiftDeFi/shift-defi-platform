@@ -89,13 +89,21 @@ contract ReshufflingGatewayTest is L1Base {
     }
 
     function test_WhitelistToken() public {
-        address token = makeAddr("TOKEN");
+        address token = address(new MockERC20("Token", "TKN", 18));
 
         vm.expectEmit();
         emit IReshufflingGateway.TokenWhitelisted(token);
 
         vm.prank(roles.tokenManager);
         reshufflingGateway.whitelistToken(token);
+    }
+
+    function test_RevertIf_WhitelistToken_NotContract() public {
+        address notContract = makeAddr("NOT_CONTRACT");
+
+        vm.prank(roles.tokenManager);
+        vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.TokenNotContract.selector, notContract));
+        reshufflingGateway.whitelistToken(notContract);
     }
 
     function test_RevertIf_WhitelistToken_ZeroAddress() public {
@@ -111,7 +119,7 @@ contract ReshufflingGatewayTest is L1Base {
     }
 
     function test_BlacklistToken() public {
-        address token = makeAddr("TOKEN");
+        address token = address(new MockERC20("Token", "TKN", 18));
 
         vm.prank(roles.tokenManager);
         reshufflingGateway.whitelistToken(token);
@@ -130,7 +138,7 @@ contract ReshufflingGatewayTest is L1Base {
     }
 
     function test_RevertIf_BlacklistToken_NotWhitelisted() public {
-        address notWhitelistedToken = makeAddr("NOT_WHITELISTED_TOKEN");
+        address notWhitelistedToken = address(new MockERC20("Not Whitelisted", "NWL", 18));
 
         vm.prank(roles.tokenManager);
         vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotWhitelistedToken.selector, notWhitelistedToken));

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+import {ICowProtocolAdapter} from "@shift-defi/cow-protocol-adapter/src/interfaces/ICowProtocolAdapter.sol";
+
 import {IStrategyContainer} from "./IStrategyContainer.sol";
 
 interface IContainerLocal is IStrategyContainer {
@@ -108,4 +110,17 @@ interface IContainerLocal is IStrategyContainer {
      * @param amounts Array of token amounts to withdraw
      */
     function withdrawToReshufflingGateway(address[] memory tokens, uint256[] memory amounts) external;
+
+    /**
+     * @notice Places a CoW Protocol order while the container is in reshuffling mode.
+     * @dev Can only be called when in reshuffling mode. Can only be called by accounts with
+     *      RESHUFFLING_EXECUTOR_ROLE. Outside the mode placeCowOrder takes the order instead.
+     *      Settlement is asynchronous, so nothing has been bought when this returns. Both tokens
+     *      must be whitelisted.
+     * @param params The caller-supplied part of the order
+     * @return orderDigest The order's EIP-712 digest, the key cancelCowOrder and resolveCowOrder take it by
+     */
+    function placeCowOrderInReshufflingMode(
+        ICowProtocolAdapter.OrderParams calldata params
+    ) external returns (bytes32 orderDigest);
 }

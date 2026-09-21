@@ -1,0 +1,470 @@
+{
+  "ContainerLocal": [
+    {
+      "label": "vault",
+      "slot": 0,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "notion",
+      "slot": 1,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "swapRouter",
+      "slot": 2,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "_whitelistedTokens",
+      "slot": 3,
+      "offset": 0,
+      "type": "t_struct(AddressSet)_storage",
+      "bytes": 64
+    },
+    {
+      "label": "_whitelistedTokensDustThresholds",
+      "slot": 5,
+      "offset": 0,
+      "type": "t_mapping(t_address,t_uint256)",
+      "bytes": 32
+    },
+    {
+      "label": "__gap",
+      "slot": 6,
+      "offset": 0,
+      "type": "t_array(t_uint256)50_storage",
+      "bytes": 1600
+    },
+    {
+      "label": "_strategies",
+      "slot": 56,
+      "offset": 0,
+      "type": "t_struct(AddressSet)_storage",
+      "bytes": 64
+    },
+    {
+      "label": "_strategyNav0",
+      "slot": 58,
+      "offset": 0,
+      "type": "t_mapping(t_address,t_uint256)",
+      "bytes": 32
+    },
+    {
+      "label": "_strategyNav1",
+      "slot": 59,
+      "offset": 0,
+      "type": "t_mapping(t_address,t_uint256)",
+      "bytes": 32
+    },
+    {
+      "label": "_strategyEnterBitmask",
+      "slot": 60,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "_strategyExitBitmask",
+      "slot": 61,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "_strategyUnresolvedNavBitmask",
+      "slot": 62,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "reshufflingGateway",
+      "slot": 63,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "treasury",
+      "slot": 64,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "feePct",
+      "slot": 65,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "priceOracle",
+      "slot": 66,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "isReshuffling",
+      "slot": 66,
+      "offset": 20,
+      "type": "t_bool",
+      "bytes": 1
+    },
+    {
+      "label": "isResolvingEmergency",
+      "slot": 66,
+      "offset": 21,
+      "type": "t_bool",
+      "bytes": 1
+    },
+    {
+      "label": "__gap",
+      "slot": 67,
+      "offset": 0,
+      "type": "t_array(t_uint256)50_storage",
+      "bytes": 1600
+    },
+    {
+      "label": "status",
+      "slot": 117,
+      "offset": 0,
+      "type": "t_enum(ContainerLocalStatus)",
+      "bytes": 1
+    },
+    {
+      "label": "registeredWithdrawShareAmount",
+      "slot": 118,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    }
+  ],
+  "ContainerPrincipal": [
+    {
+      "label": "vault",
+      "slot": 0,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "notion",
+      "slot": 1,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "swapRouter",
+      "slot": 2,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "_whitelistedTokens",
+      "slot": 3,
+      "offset": 0,
+      "type": "t_struct(AddressSet)_storage",
+      "bytes": 64
+    },
+    {
+      "label": "_whitelistedTokensDustThresholds",
+      "slot": 5,
+      "offset": 0,
+      "type": "t_mapping(t_address,t_uint256)",
+      "bytes": 32
+    },
+    {
+      "label": "__gap",
+      "slot": 6,
+      "offset": 0,
+      "type": "t_array(t_uint256)50_storage",
+      "bytes": 1600
+    },
+    {
+      "label": "messageRouter",
+      "slot": 56,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "peerContainer",
+      "slot": 57,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "remoteChainId",
+      "slot": 58,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "claimCounter",
+      "slot": 59,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "_expectedTokenAmounts",
+      "slot": 60,
+      "offset": 0,
+      "type": "t_mapping(t_address,t_uint256)",
+      "bytes": 32
+    },
+    {
+      "label": "_isBridgeAdapterSupported",
+      "slot": 61,
+      "offset": 0,
+      "type": "t_mapping(t_address,t_bool)",
+      "bytes": 32
+    },
+    {
+      "label": "__gap",
+      "slot": 62,
+      "offset": 0,
+      "type": "t_array(t_uint256)50_storage",
+      "bytes": 1600
+    },
+    {
+      "label": "status",
+      "slot": 112,
+      "offset": 0,
+      "type": "t_enum(ContainerPrincipalStatus)",
+      "bytes": 1
+    },
+    {
+      "label": "nav0",
+      "slot": 113,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "nav1",
+      "slot": 114,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "registeredWithdrawShareAmount",
+      "slot": 115,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    }
+  ],
+  "ContainerAgent": [
+    {
+      "label": "vault",
+      "slot": 0,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "notion",
+      "slot": 1,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "swapRouter",
+      "slot": 2,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "_whitelistedTokens",
+      "slot": 3,
+      "offset": 0,
+      "type": "t_struct(AddressSet)_storage",
+      "bytes": 64
+    },
+    {
+      "label": "_whitelistedTokensDustThresholds",
+      "slot": 5,
+      "offset": 0,
+      "type": "t_mapping(t_address,t_uint256)",
+      "bytes": 32
+    },
+    {
+      "label": "__gap",
+      "slot": 6,
+      "offset": 0,
+      "type": "t_array(t_uint256)50_storage",
+      "bytes": 1600
+    },
+    {
+      "label": "messageRouter",
+      "slot": 56,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "peerContainer",
+      "slot": 57,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "remoteChainId",
+      "slot": 58,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "claimCounter",
+      "slot": 59,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "_expectedTokenAmounts",
+      "slot": 60,
+      "offset": 0,
+      "type": "t_mapping(t_address,t_uint256)",
+      "bytes": 32
+    },
+    {
+      "label": "_isBridgeAdapterSupported",
+      "slot": 61,
+      "offset": 0,
+      "type": "t_mapping(t_address,t_bool)",
+      "bytes": 32
+    },
+    {
+      "label": "__gap",
+      "slot": 62,
+      "offset": 0,
+      "type": "t_array(t_uint256)50_storage",
+      "bytes": 1600
+    },
+    {
+      "label": "_strategies",
+      "slot": 112,
+      "offset": 0,
+      "type": "t_struct(AddressSet)_storage",
+      "bytes": 64
+    },
+    {
+      "label": "_strategyNav0",
+      "slot": 114,
+      "offset": 0,
+      "type": "t_mapping(t_address,t_uint256)",
+      "bytes": 32
+    },
+    {
+      "label": "_strategyNav1",
+      "slot": 115,
+      "offset": 0,
+      "type": "t_mapping(t_address,t_uint256)",
+      "bytes": 32
+    },
+    {
+      "label": "_strategyEnterBitmask",
+      "slot": 116,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "_strategyExitBitmask",
+      "slot": 117,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "_strategyUnresolvedNavBitmask",
+      "slot": 118,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "reshufflingGateway",
+      "slot": 119,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "treasury",
+      "slot": 120,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "feePct",
+      "slot": 121,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    },
+    {
+      "label": "priceOracle",
+      "slot": 122,
+      "offset": 0,
+      "type": "t_address",
+      "bytes": 20
+    },
+    {
+      "label": "isReshuffling",
+      "slot": 122,
+      "offset": 20,
+      "type": "t_bool",
+      "bytes": 1
+    },
+    {
+      "label": "isResolvingEmergency",
+      "slot": 122,
+      "offset": 21,
+      "type": "t_bool",
+      "bytes": 1
+    },
+    {
+      "label": "__gap",
+      "slot": 123,
+      "offset": 0,
+      "type": "t_array(t_uint256)50_storage",
+      "bytes": 1600
+    },
+    {
+      "label": "status",
+      "slot": 173,
+      "offset": 0,
+      "type": "t_enum(ContainerAgentStatus)",
+      "bytes": 1
+    },
+    {
+      "label": "registeredWithdrawShareAmount",
+      "slot": 174,
+      "offset": 0,
+      "type": "t_uint256",
+      "bytes": 32
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+    "filter_paths": "lib|test|script",
+    "exclude_dependencies": true,
+    "exclude_informational": true,
+    "exclude_optimization": false,
+    "exclude_low": false,
+    "disable_color": false,
+    "solc_disable_warnings": false,
+    "detectors_to_exclude": ""
+}

@@ -7,6 +7,7 @@ import {ICowProtocolAdapter} from "@shift-defi/cow-protocol-adapter/src/interfac
 import {L1Base} from "test/L1Base.t.sol";
 
 import {ICowProtocolModule} from "contracts/interfaces/ICowProtocolModule.sol";
+import {IReshufflingGateway} from "contracts/interfaces/IReshufflingGateway.sol";
 import {Errors} from "contracts/libraries/Errors.sol";
 
 import {MockCowProtocolAdapter} from "test/mocks/MockCowProtocolAdapter.sol";
@@ -153,8 +154,43 @@ contract ReshufflingGatewayCowProtocolTest is L1Base {
         reshufflingGateway.blacklistToken(address(buyToken));
     }
 
-    /// @dev The gateway keeps no dust thresholds.
-    function test_RevertIf_BlacklistToken_BalanceNotZero() public {
+    function test_RevertIf_BlacklistToken_BalanceNotDust() public {
+        vm.prank(roles.tokenManager);
+        reshufflingGateway.setWhitelistedTokenDustThreshold(address(buyToken), 10);
+        deal(address(buyToken), address(reshufflingGateway), 11);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.TokenBalanceNotDust.selector, address(buyToken), 11));
+        vm.prank(roles.tokenManager);
+        reshufflingGateway.blacklistToken(address(buyToken));
+    }
+
+    function test_RevertIf_BlacklistToken_BalanceNotDust_NoThresholdSet() public {
+        deal(address(buyToken), address(reshufflingGateway), 1);
+
+        vm.expectRevert(abi.encodeWithSelector(Errors.TokenBalanceNotDust.selector, address(buyToken), 1));
+        vm.prank(roles.tokenManager);
+        reshufflingGateway.blacklistToken(address(buyToken));
+    }
+
+    function test_BlacklistToken_BalanceAtDustThreshold() public {
+        vm.startPrank(roles.tokenManager);
+        reshufflingGateway.setWhitelistedTokenDustThreshold(address(buyToken), 10);
+        deal(address(buyToken), address(reshufflingGateway), 10);
+
+        vm.expectEmit();
+        emit IReshufflingGateway.TokenBlacklisted(address(buyToken));
+        reshufflingGateway.blacklistToken(address(buyToken));
+        vm.stopPrank();
+    }
+
+    /// @dev A re-whitelisted token starts from no threshold rather than the one it left with.
+    function test_BlacklistToken_ResetsDustThreshold() public {
+        vm.startPrank(roles.tokenManager);
+        reshufflingGateway.setWhitelistedTokenDustThreshold(address(buyToken), 10);
+        reshufflingGateway.blacklistToken(address(buyToken));
+        reshufflingGateway.whitelistToken(address(buyToken));
+        vm.stopPrank();
+
         deal(address(buyToken), address(reshufflingGateway), 1);
 
         vm.expectRevert(abi.encodeWithSelector(Errors.TokenBalanceNotDust.selector, address(buyToken), 1));

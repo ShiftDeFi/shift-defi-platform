@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import {L1Base} from "test/L1Base.t.sol";
@@ -143,6 +144,45 @@ contract ReshufflingGatewayTest is L1Base {
         vm.prank(roles.tokenManager);
         vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotWhitelistedToken.selector, notWhitelistedToken));
         reshufflingGateway.blacklistToken(notWhitelistedToken);
+    }
+
+    function test_SetWhitelistedTokenDustThreshold() public {
+        vm.expectEmit();
+        emit IReshufflingGateway.WhitelistedTokenDustThresholdUpdated(address(notion), 1);
+
+        vm.prank(roles.tokenManager);
+        reshufflingGateway.setWhitelistedTokenDustThreshold(address(notion), 1);
+    }
+
+    function test_RevertIf_SetWhitelistedTokenDustThreshold_CallerNotTokenManager() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                keccak256("TOKEN_MANAGER_ROLE")
+            )
+        );
+        reshufflingGateway.setWhitelistedTokenDustThreshold(address(notion), 1);
+    }
+
+    function test_RevertIf_SetWhitelistedTokenDustThreshold_ZeroAddress() public {
+        vm.prank(roles.tokenManager);
+        vm.expectRevert(Errors.ZeroAddress.selector);
+        reshufflingGateway.setWhitelistedTokenDustThreshold(address(0), 1);
+    }
+
+    function test_RevertIf_SetWhitelistedTokenDustThreshold_ZeroAmount() public {
+        vm.prank(roles.tokenManager);
+        vm.expectRevert(Errors.ZeroAmount.selector);
+        reshufflingGateway.setWhitelistedTokenDustThreshold(address(notion), 0);
+    }
+
+    function test_RevertIf_SetWhitelistedTokenDustThreshold_NotWhitelisted() public {
+        address notWhitelistedToken = address(new MockERC20("Not Whitelisted", "NWL", 18));
+
+        vm.prank(roles.tokenManager);
+        vm.expectRevert(abi.encodeWithSelector(IReshufflingGateway.NotWhitelistedToken.selector, notWhitelistedToken));
+        reshufflingGateway.setWhitelistedTokenDustThreshold(notWhitelistedToken, 1);
     }
 
     function test_WhitelistBridgeAdapter() public {

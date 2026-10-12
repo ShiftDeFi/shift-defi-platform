@@ -41,6 +41,8 @@ contract ReshufflingGateway is
     EnumerableSet.AddressSet private _whitelistedTokens;
     EnumerableSet.AddressSet private _whitelistedBridgeAdapters;
 
+    mapping(address => uint256) private _whitelistedTokensDustThresholds;
+
     modifier onlyInReshufflingMode() {
         require(IVault(vault).isReshuffling(), Errors.ReshufflingModeDisabled());
         _;
@@ -115,10 +117,21 @@ contract ReshufflingGateway is
         _requireNoPendingOrders();
 
         uint256 balance = IERC20(token).balanceOf(address(this));
-        require(balance == 0, Errors.TokenBalanceNotDust(token, balance));
+        require(balance <= _whitelistedTokensDustThresholds[token], Errors.TokenBalanceNotDust(token, balance));
 
         require(_whitelistedTokens.remove(token), NotWhitelistedToken(token));
+        _whitelistedTokensDustThresholds[token] = 0;
         emit TokenBlacklisted(token);
+    }
+
+    /// @inheritdoc IReshufflingGateway
+    function setWhitelistedTokenDustThreshold(address token, uint256 threshold) external onlyRole(TOKEN_MANAGER_ROLE) {
+        require(token != address(0), Errors.ZeroAddress());
+        require(threshold > 0, Errors.ZeroAmount());
+        require(_whitelistedTokens.contains(token), NotWhitelistedToken(token));
+
+        _whitelistedTokensDustThresholds[token] = threshold;
+        emit WhitelistedTokenDustThresholdUpdated(token, threshold);
     }
 
     /// @inheritdoc IReshufflingGateway

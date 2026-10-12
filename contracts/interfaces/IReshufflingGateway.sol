@@ -10,6 +10,7 @@ interface IReshufflingGateway {
 
     event TokenWhitelisted(address indexed token);
     event TokenBlacklisted(address indexed token);
+    event WhitelistedTokenDustThresholdUpdated(address indexed token, uint256 threshold);
     event BridgeAdapterWhitelisted(address indexed bridgeAdapter);
     event BridgeAdapterBlacklisted(address indexed bridgeAdapter);
     event SwapRouterUpdated(address indexed previousSwapRouter, address indexed newSwapRouter);
@@ -58,11 +59,19 @@ interface IReshufflingGateway {
 
     /**
      * @notice Removes a token from the whitelist.
-     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE. Reverts unless the gateway holds
-     *      none of the token.
+     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE. Reverts unless the gateway's
+     *      balance of the token is at or under its dust threshold.
      * @param token Token address.
      */
     function blacklistToken(address token) external;
+
+    /**
+     * @notice Sets the dust threshold for a whitelisted token.
+     * @dev Can only be called by accounts with TOKEN_MANAGER_ROLE.
+     * @param token Token address.
+     * @param threshold The amount at or under which the token balance is considered dust.
+     */
+    function setWhitelistedTokenDustThreshold(address token, uint256 threshold) external;
 
     /**
      * @notice Removes a bridge adapter from the whitelist.

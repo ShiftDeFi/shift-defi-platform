@@ -805,4 +805,23 @@ contract Vault is
     function unpause() external whenPaused onlyRole(EMERGENCY_PAUSER_ROLE) {
         _unpause();
     }
+
+    /// @notice Recovers notion stranded in the vault due to rounding dust that
+    ///         accumulated from batches where `totalUnclaimedNotionRemainder`
+    ///         overstates what depositors will ever claim. Without this, the
+    ///         `NotEnoughNotion` guard in claim paths can falsely revert once
+    ///         dust exceeds the tracked remainder, bricking deposits/withdrawals.
+    /// @param amount The amount of stranded notion to recover.
+    function recoverStrandedNotion(uint256 amount) external onlyRole(CONFIGURATOR_ROLE) nonReentrant {
+        if (amount == 0) revert Errors.ZeroAmount();
+        uint256 notionBalance = notion.balanceOf(address(this));
+        uint256 tracked = bufferedDeposits + totalUnclaimedNotionRemainder + totalUnclaimedNotionForWithdraw;
+        if (amount > notionBalance - tracked) revert NotEnoughNotion();
+
+        notion.safeTransfer(msg.sender, amount);
+
+        emit StrandedNotionRecovered(amount);
+    }
+
+    event StrandedNotionRecovered(uint256 amount);
 }
